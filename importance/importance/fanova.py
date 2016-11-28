@@ -1,9 +1,16 @@
 from importance.importance.base_evaluator import AbstractEvaluator
+from collections import OrderedDict
 
 
 class fANOVA(AbstractEvaluator):
 
-    def run(self):
+    def __init__(self):
+        self.name = 'fANOVA'
+
+    def plot_result(self):
+        pass
+
+    def run(self) -> OrderedDict:
         raise NotImplementedError
         # fanova.get_marginal list dimension list / position of parameters in configspace to analyze
 
