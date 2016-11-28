@@ -20,4 +20,4 @@ if __name__ == '__main__':
         evaluator = fANOVA(ih.scenario.cs, model, parameters_to_evaluate)
     else:
         evaluator = ForwardSelector(ih.scenario.cs, model, parameters_to_evaluate)
-    print(str(evaluator))
+    print(evaluator.X)

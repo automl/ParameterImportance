@@ -19,6 +19,10 @@ class AbstractEvaluator(object):
         else:
             self.features = self.model.instance_features
 
+        self.X = self.model.X
+        self.y = self.model.y
+        self.types = self.model.types
+
         self.evaluated_parameter_importance = OrderedDict()
         self.name = 'Base'
 
