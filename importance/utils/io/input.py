@@ -5,11 +5,16 @@ from importance.configspace import CategoricalHyperparameter
 import numpy as np
 from smac.tae.execute_ta_run import StatusType
 
-class InputHandler():
 
-    def __init__(self, args):
-        self.scenario = Scenario(scenario=args.scenario_file)
-        self.cs = scenario.cs
+class InputHandler(object):
+
+    def __init__(self, scenario_file, runhistory_file):
+        self.scenario = Scenario(scenario=scenario_file)
+        self.runhistory = RunHistory(aggregate_func=None).load_json(runhistory_file, self.scenario.cs)
+        self.X = None
+        self.y = None
+        self.types = None
+        self._convert_data()
 
     def _convert_data(self):  # From Marius
         '''
@@ -33,7 +38,7 @@ class InputHandler():
         '''
 
         types = np.zeros(len(self.scenario.cs.get_hyperparameters()),
-                             dtype=np.uint)
+                         dtype=np.uint)
 
         for i, param in enumerate(self.scenario.cs.get_hyperparameters()):
             if isinstance(param, (CategoricalHyperparameter)):
@@ -52,19 +57,19 @@ class InputHandler():
         params = self.scenario.cs.get_hyperparameters()
         num_params = len(params)
 
-        if scenario.run_obj == "runtime":
-            if scenario.run_obj == "runtime":
+        if self.scenario.run_obj == "runtime":
+            if self.scenario.run_obj == "runtime":
                 # if we log the performance data,
                 # the RFRImputator will already get
                 # log transform data from the runhistory
-                cutoff = np.log10(scenario.cutoff)
-                threshold = np.log10(scenario.cutoff *
-                                     scenario.par_factor)
+                cutoff = np.log10(self.scenario.cutoff)
+                threshold = np.log10(self.scenario.cutoff *
+                                     self.scenario.par_factor)
             else:
-                cutoff = scenario.cutoff
-                threshold = scenario.cutoff * scenario.par_factor
+                cutoff = self.scenario.cutoff
+                threshold = self.scenario.cutoff * self.scenario.par_factor
 
-            imputor = RFRImputator(cs=scenario.cs,
+            imputor = RFRImputator(cs=self.scenario.cs,
                                    rs=np.random.RandomState(42),
                                    cutoff=cutoff,
                                    threshold=threshold,
@@ -72,7 +77,7 @@ class InputHandler():
                                    change_threshold=0.01,
                                    max_iter=10)
             # TODO: Adapt runhistory2EPM object based on scenario
-            rh2EPM = RunHistory2EPM4LogCost(scenario=scenario,
+            rh2EPM = RunHistory2EPM4LogCost(scenario=self.scenario,
                                             num_params=num_params,
                                             success_states=[
                                                 StatusType.SUCCESS, ],
@@ -81,11 +86,13 @@ class InputHandler():
                                                 StatusType.TIMEOUT, ],
                                             imputor=imputor)
         else:
-            rh2EPM = RunHistory2EPM4Cost(scenario=scenario,
+            rh2EPM = RunHistory2EPM4Cost(scenario=self.scenario,
                                          num_params=num_params,
                                          success_states=None,
                                          impute_censored_data=False,
                                          impute_state=None)
-        X, Y = rh2EPM.transform(runhistory)
+        X, Y = rh2EPM.transform(self.runhistory)
 
-        return X, Y, types
+        self.X = X
+        self.y = Y
+        self.types = types
