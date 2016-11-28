@@ -34,4 +34,4 @@ class AbstractEvaluator(object):
         self.model.train(X, y, **kwargs)
 
     def __str__(self):
-        return self.name
+        return 'Parameter Importance Evaluation Method %s' % self.name

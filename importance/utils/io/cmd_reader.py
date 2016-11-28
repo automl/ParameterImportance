@@ -3,7 +3,7 @@ from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter, SUPPRESS
 from smac.utils.io.cmd_reader import CMDReader
 
 
-class CMDs(CMDReader):  #
+class CMDs(CMDReader):
 
     """
         use argparse to parse command line options

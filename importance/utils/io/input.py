@@ -10,7 +10,8 @@ class InputHandler(object):
 
     def __init__(self, scenario_file, runhistory_file):
         self.scenario = Scenario(scenario=scenario_file)
-        self.runhistory = RunHistory(aggregate_func=None).load_json(runhistory_file, self.scenario.cs)
+        self.runhistory = RunHistory(aggregate_func=None)
+        self.runhistory.load_json(runhistory_file, self.scenario.cs)
         self.X = None
         self.y = None
         self.types = None
