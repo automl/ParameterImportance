@@ -30,6 +30,7 @@ class Importance(object):
         self.types = None
         self._model = None
         self.incumbent = (None, None)
+        self.logged_y = False
         self._convert_data()
 
         if traj_file is not None:
@@ -64,7 +65,6 @@ class Importance(object):
                 inc_dict[key] = float(val)
             elif isinstance(self.scenario.cs.get_hyperparameter(key), (IntegerHyperparameter)):
                 inc_dict[key] = int(val)
-        print(inc_dict)
         incumbent = Configuration(self.scenario.cs, inc_dict)
         incumbent_cost = incumbent_dict['cost']
         return incumbent, incumbent_cost
@@ -86,7 +86,9 @@ class Importance(object):
                                  cs=self.scenario.cs,
                                  model=self._model,
                                  to_evaluate=self._parameters_to_evaluate,
-                                 incumbent=self.incumbent[0])
+                                 incumbent=self.incumbent[0],
+                                 logy=self.logged_y,
+                                 target_performance=self.incumbent[1])
         elif evaluation_method == 'fANOVA':
             evaluator = fANOVA(scenario=self.scenario,
                                cs=self.scenario.cs,
@@ -143,6 +145,7 @@ class Importance(object):
 
         if self.scenario.run_obj == "runtime":
             if self.scenario.run_obj == "runtime":
+                self.logged_y = True
                 # if we log the performance data,
                 # the RFRImputator will already get
                 # log transform data from the runhistory

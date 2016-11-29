@@ -10,5 +10,4 @@ if __name__ == '__main__':
                             parameters_to_evaluate=args.num_params,
                             traj_file=args.trajectory)  # create importance object
     importance_value_dict = importance.evaluate_scenario()
-    print(importance.evaluator)
     # TODO plotting
