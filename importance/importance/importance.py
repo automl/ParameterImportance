@@ -1,6 +1,6 @@
 from importance.utils import Scenario, RunHistory2EPM4LogCost, RunHistory2EPM4Cost, RunHistory
 from importance.epm import RandomForestWithInstances, RFRImputator
-from importance.configspace import CategoricalHyperparameter, Configuration
+from importance.configspace import CategoricalHyperparameter, FloatHyperparameter, IntegerHyperparameter, Configuration
 from importance.evaluator.ablation import Ablation
 from importance.evaluator.fanova import fANOVA
 from importance.evaluator.forward_selection import ForwardSelector
@@ -57,8 +57,14 @@ class Importance(object):
         incumbent_dict = json.loads(line)
         inc_dict = {}
         for key_val in incumbent_dict['incumbent']:  # convert string to Configuration
-            key, val = key_val.split('=')
-            inc_dict[key] = float(val.replace("'", ''))
+            key, val = key_val.replace("'", '').split('=')
+            if isinstance(self.scenario.cs.get_hyperparameter(key), (CategoricalHyperparameter)):
+                inc_dict[key] = val
+            elif isinstance(self.scenario.cs.get_hyperparameter(key), (FloatHyperparameter)):
+                inc_dict[key] = float(val)
+            elif isinstance(self.scenario.cs.get_hyperparameter(key), (IntegerHyperparameter)):
+                inc_dict[key] = int(val)
+        print(inc_dict)
         incumbent = Configuration(self.scenario.cs, inc_dict)
         incumbent_cost = incumbent_dict['cost']
         return incumbent, incumbent_cost
@@ -72,10 +78,15 @@ class Importance(object):
         if evaluation_method not in ['ablation', 'fANOVA', 'forward-selection']:
             raise ValueError('Specified evaluation method %s does not exist!' % evaluation_method)
         if evaluation_method == 'ablation':
+            if self.incumbent[0] is None:
+                raise ValueError('Incumbent is %s!\n \
+                                 Incumbent has to be read from a trajectory file before ablation can be used!'
+                                 % self.incumbent[0])
             evaluator = Ablation(scenario=self.scenario,
                                  cs=self.scenario.cs,
                                  model=self._model,
-                                 to_evaluate=self._parameters_to_evaluate)
+                                 to_evaluate=self._parameters_to_evaluate,
+                                 incumbent=self.incumbent[0])
         elif evaluation_method == 'fANOVA':
             evaluator = fANOVA(scenario=self.scenario,
                                cs=self.scenario.cs,
@@ -142,8 +153,7 @@ class Importance(object):
                 cutoff = self.scenario.cutoff
                 threshold = self.scenario.cutoff * self.scenario.par_factor
 
-            imputor = RFRImputator(cs=self.scenario.cs,
-                                   rs=np.random.RandomState(42),
+            imputor = RFRImputator(rs=np.random.RandomState(42),
                                    cutoff=cutoff,
                                    threshold=threshold,
                                    model=model,
