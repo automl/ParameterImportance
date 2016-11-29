@@ -3,6 +3,7 @@ from sklearn.decomposition import PCA
 from importance.evaluator.base_evaluator import AbstractEvaluator
 import time
 import numpy as np
+from matplotlib import pyplot as plt
 
 
 class ForwardSelector(AbstractEvaluator):
@@ -63,5 +64,31 @@ class ForwardSelector(AbstractEvaluator):
             self.evaluated_parameter_importance[best_parameter.name] = lowest_error
         return self.evaluated_parameter_importance
 
-    def plot_result(self):
-        pass
+    def plot_result(self, name=None):
+        '''
+            plot oob score as bar charts
+            Parameters
+            ----------
+            importance_tuples:list
+                list of tuples (parameter name, oob score)
+            save_fn:str
+                file name to save plot
+        '''
+
+        fig, ax = plt.subplots()
+        params = list(self.evaluated_parameter_importance.keys())
+        errors = list(self.evaluated_parameter_importance.values())
+
+        ind = np.arange(len(errors))
+        bar_plot = ax.bar(ind, errors, color='b')
+
+        ax.set_ylabel('Out-Of-Bag Error')
+        ax.set_xticks(ind+0.5)
+        ax.set_xticklabels(params, rotation=30, ha='right')
+        ax.set_xlim(0, len(errors) - 1.25)
+
+        plt.tight_layout()
+        if name is not None:
+            fig.savefig(name)
+        else:
+            plt.show()
