@@ -170,10 +170,10 @@ class Ablation(AbstractEvaluator):
                 performances[1:-1], width=.75)
 
         ax1.set_xticks(np.arange(len(path)) + 0.5)
-        ax1.set_xlim(0, len(path) - 1.25)
+        ax1.set_xlim(0, len(path) - .25)
 
         ax1.set_ylabel('improvement [%]', fontsize=fontsize, zorder=81)
-        ax1.set_ylim(min(performances) - .35*min(performances), max(performances) + .1*max(performances))
+        ax1.set_ylim(-0.025, max(performances) + .1*max(performances))
         ax1.plot(list(range(-1, len(path) + 1)), [0 for _ in range(len(path) + 2)], c='r')
         ax1.set_xticklabels(path, rotation=25, ha='right')
 
