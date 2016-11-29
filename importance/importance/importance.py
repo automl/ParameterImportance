@@ -6,20 +6,30 @@ from importance.evaluator.fanova import fANOVA
 from importance.evaluator.forward_selection import ForwardSelector
 
 import numpy as np
+import logging
 from smac.tae.execute_ta_run import StatusType
 
 
 class Importance(object):
 
-    def __init__(self, scenario_file, runhistory_file, evaluation_method, parameters_to_evaluate: int=-1):
+    def __init__(self, scenario_file, runhistory_file, evaluation_method,
+                 parameters_to_evaluate: int=-1):
+        self.logger = logging.getLogger("Importance")
+        self.logger.info('Reading Scenario file and files specified in the scenario')
         self.scenario = Scenario(scenario=scenario_file)
+
+        self.logger.info('Reading Runhistory')
         self.runhistory = RunHistory(aggregate_func=None)
         self.runhistory.load_json(runhistory_file, self.scenario.cs)
+
+        self.logger.info('Converting Data and constructing Model')
         self.X = None
         self.y = None
         self.types = None
+        self._model = None
         self._convert_data()
-        self._model = RandomForestWithInstances(self.types).train(self.X, self.y)
+
+        self.logger.info('Setting up Evaluation Method')
         self._parameters_to_evaluate = parameters_to_evaluate
         self.evaluator = evaluation_method
 
@@ -85,6 +95,7 @@ class Importance(object):
 
         model = RandomForestWithInstances(types,
                                           self.scenario.feature_array)
+        model.rf.compute_oob_error = True
 
         params = self.scenario.cs.get_hyperparameters()
         num_params = len(params)
@@ -128,3 +139,8 @@ class Importance(object):
         self.X = X
         self.y = Y
         self.types = types
+        self._model = model.train(X, Y)
+
+    def evaluate_scenario(self):
+        self.logger.info('Running evaluation method %s' % self.evaluator.name)
+        return self.evaluator.run()

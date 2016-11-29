@@ -1,4 +1,5 @@
 import abc
+import logging
 from collections import OrderedDict
 from importance.epm import RandomForestWithInstances
 from importance.configspace import ConfigurationSpace
@@ -45,4 +46,23 @@ class AbstractEvaluator(object):
         self.model.train(X, y, **kwargs)
 
     def __str__(self):
-        return 'Parameter Importance Evaluation Method %s' % self.name
+        tmp = 'Parameter Importance Evaluation Method %s\n' % self.name
+        tmp += '{:^15s}: {:<8s}\n'.format('Parameter', 'Value')
+        for key in self.evaluated_parameter_importance:
+            value = self.evaluated_parameter_importance[key]
+            tmp += '{:>15s}: {:<3.4f}\n'.format(key, value)
+        return tmp
+
+    @property
+    def logger(self):
+        return self._logger
+
+    @logger.setter
+    def logger(self, value):
+        self._logger = logging.getLogger(value)
+
+    def _refit_model(self, types, X, y):
+        self.model = RandomForestWithInstances(types)
+        self.model.rf.compute_oob_error = True
+        self.model.train(X, y)
+        return True
