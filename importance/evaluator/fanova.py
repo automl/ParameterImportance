@@ -1,5 +1,6 @@
-from importance.importance.base_evaluator import AbstractEvaluator
 from collections import OrderedDict
+
+from importance.evaluator.base_evaluator import AbstractEvaluator
 
 
 class fANOVA(AbstractEvaluator):

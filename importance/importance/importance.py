@@ -6,7 +6,7 @@ import numpy as np
 from smac.tae.execute_ta_run import StatusType
 
 
-class InputHandler(object):
+class Importance(object):
 
     def __init__(self, scenario_file, runhistory_file):
         self.scenario = Scenario(scenario=scenario_file)

@@ -1,12 +1,13 @@
-from importance.importance.base_evaluator import AbstractEvaluator
 from collections import OrderedDict
 
+from importance.evaluator.base_evaluator import AbstractEvaluator
 
-class ForwardSelector(AbstractEvaluator):
+
+class Ablation(AbstractEvaluator):
 
     def __init__(self, cs, model, to_evaluate: list, **kwargs):
         super().__init__(cs, model, to_evaluate, **kwargs)
-        self.name = 'Forward Selection'
+        self.name = 'Ablation'
 
     def run(self) -> OrderedDict:
         pass
