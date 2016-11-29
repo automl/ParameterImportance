@@ -42,7 +42,7 @@ class AbstractEvaluator(object):
         raise NotImplementedError
 
     @abc.abstractclassmethod
-    def plot_result(self):
+    def plot_result(self, name=None):
         raise NotImplementedError
 
     def _train_model(self, X, y, **kwargs):
@@ -65,7 +65,17 @@ class AbstractEvaluator(object):
         self._logger = logging.getLogger(value)
 
     def _refit_model(self, types, X, y):
+        """
+        Easily allows for refitting of the model.
+        Parameters
+        ----------
+        types: list
+            SMAC EPM types
+        X:ndarray
+            X matrix
+        y:ndarray
+            corresponding y vector
+        """
         self.model = RandomForestWithInstances(types)
         self.model.rf.compute_oob_error = True
         self.model.train(X, y)
-        return True

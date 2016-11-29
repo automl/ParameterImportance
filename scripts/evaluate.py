@@ -3,6 +3,9 @@ from importance.utils.io.cmd_reader import CMDs
 import logging
 
 if __name__ == '__main__':
+    """
+    Main Parameter importance script.
+    """
     cmd_reader = CMDs()
     args, misc_ = cmd_reader.read_cmd()  # read cmd args
     logging.basicConfig(level=args.verbose_level)
@@ -10,4 +13,4 @@ if __name__ == '__main__':
                             parameters_to_evaluate=args.num_params,
                             traj_file=args.trajectory)  # create importance object
     importance_value_dict = importance.evaluate_scenario()
-    importance.plot_results()
+    importance.plot_results(name=importance.evaluator.name.replace(' ', ''))

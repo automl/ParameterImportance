@@ -8,6 +8,10 @@ from matplotlib import pyplot as plt
 
 class Ablation(AbstractEvaluator):
 
+    """
+    Implementation of Ablation via surrogates
+    """
+
     def __init__(self, scenario, cs, model, to_evaluate: int, incumbent=None, logy=True,
                  target_performance=None, **kwargs):
         super().__init__(scenario, cs, model, to_evaluate, **kwargs)
@@ -30,6 +34,13 @@ class Ablation(AbstractEvaluator):
         self.predicted_parameter_performances = OrderedDict()
 
     def _diff_in_source_and_target(self):
+        """
+        Helper Method to determine which parameters might lie on an ablation path
+        Return
+        ------
+        delta:list
+            List of parameters that are modified from the source to the target
+        """
         delta = []
         for parameter in self.source:
             tmp = ' not'
@@ -42,6 +53,10 @@ class Ablation(AbstractEvaluator):
         return delta
 
     def _determine_combined_flipps(self):
+        """
+        Method to determine parameters that have to be jointly flipped with their parents.
+        Uses the methods provided by Config space to easily check conditions
+        """
         to_remove = []
         for idx, parameter in enumerate(self.delta):
             children = self.cs.get_children_of(parameter[0])
@@ -56,11 +71,20 @@ class Ablation(AbstractEvaluator):
             self.delta.pop(idx)
 
     def run(self) -> OrderedDict:
+        """
+        Main function.
+        Returns
+        -------
+        evaluated_parameter_importance:OrderedDict
+            Parameter -> importance. The order is important as smaller indices indicate higher importance
+        """
+        # Minor setup
         modifiable_config_dict = copy.deepcopy(self.source.get_dictionary())
         modified_so_far = []
         start_delta = len(self.delta)
         best_performance = -1
 
+        # Predict source and target performance to later use it to predict the %improvement a parameter causes
         source_mean, var = self._predict_over_instance_set(self.source)
         prev_performance = source_mean
         target_mean, var = self._predict_over_instance_set(self.target)
@@ -68,7 +92,7 @@ class Ablation(AbstractEvaluator):
         self.predicted_parameter_performances['-source-'] = source_mean
         self.evaluated_parameter_importance['-source-'] = 0
 
-        while len(self.delta) > 0:
+        while len(self.delta) > 0:  # Main loop. While parameters still left ...
             self.logger.debug('Round %d of %d:' % (start_delta - len(self.delta), start_delta - 1))
             for param_tuple in modified_so_far:  # necessary due to combined flips
                 for parameter in param_tuple:
@@ -79,14 +103,14 @@ class Ablation(AbstractEvaluator):
                 for candidate in candidate_tuple:
                     modifiable_config_dict[candidate] = self.target[candidate]
                 modifiable_config = Configuration(self.cs, modifiable_config_dict)
-                mean, var = self._predict_over_instance_set(modifiable_config)
+                mean, var = self._predict_over_instance_set(modifiable_config)  # ... predict their performance
                 self.logger.debug('%s: %.6f' % (candidate_tuple, mean[0]))
                 round_performances.append(mean)
                 for candidate in candidate_tuple:
                     modifiable_config_dict[candidate] = self.source[candidate]
 
             best_idx = np.argmin(round_performances)
-            best_performance = round_performances[best_idx]
+            best_performance = round_performances[best_idx]  # greedy choice of parameter to fix
             improvement_in_percentage = (prev_performance - best_performance) / improvement
             prev_performance = best_performance
             modified_so_far.append(self.delta[best_idx])
@@ -96,7 +120,7 @@ class Ablation(AbstractEvaluator):
             param_str = '; '.join(self.delta[best_idx])
             self.evaluated_parameter_importance[param_str] = improvement_in_percentage
             self.predicted_parameter_performances[param_str] = best_performance
-            self.delta.pop(best_idx)
+            self.delta.pop(best_idx)  # don't forget to remove already testet parameters
         self.predicted_parameter_performances['-target-'] = best_performance
         self.evaluated_parameter_importance['-target-'] = 0
         # sum_ = 0  # Small check that sum is 1
@@ -107,30 +131,50 @@ class Ablation(AbstractEvaluator):
         return self.evaluated_parameter_importance
 
     def _predict_over_instance_set(self, config):
+        """
+        Small wrapper to predict marginalized over instances
+        Parameter
+        ---------
+        config:Configuration
+            The configuration of wich the performance across the whole instance set is to be estimated
+        Returns
+        -------
+        mean
+            the mean performance over the instance set
+        var
+            the variance over the instance set. If logged values are used, the variance might not be able to be used
+        """
         mean, var = self.model.predict_marginalized_over_instances(np.array([config.get_array()]))
         if self.logy:
             mean = np.power(10, mean)
         return mean, var
 
     def plot_result(self, name=None, title='Surrogate-Ablation', fontsize=38, lw=6):
-        self.plot_predicted_percentage(plot_name=name, title=title, fontsize=fontsize)
-        self.plot_predicted_performance(plot_name=name, title=title, fontsize=fontsize, lw=lw)
+        self.plot_predicted_percentage(plot_name=name+'percentage.png', title=title, fontsize=fontsize-5)
+        self.plot_predicted_performance(plot_name=name+'performance.png', title=title, fontsize=fontsize, lw=lw)
 
     def plot_predicted_percentage(self, title='Surrogate-Ablation', plot_name=None, fontsize=38):
+        """
+        Method to plot a barchart of individual parameter contributions of the improvement from source to target
+        """
         fig = plt.figure()  # figsize=(14, 18))
-        plt.subplots_adjust(bottom=0.25, top=0.7, left=0.05, right=.95)
-        fig.suptitle(title, fontsize=fontsize)
+        plt.subplots_adjust(bottom=0.25, top=0.9, left=0.05, right=.95)
+        # fig.suptitle(title, fontsize=fontsize)
         ax1 = fig.add_subplot(111)
 
-        ax1.bar(list(range(len(self.evaluated_parameter_importance.keys()))),
-                list(self.evaluated_parameter_importance.values()))
-
-        path = list(self.predicted_parameter_performances.keys())
+        path = list(self.evaluated_parameter_importance.keys())[1:-1]
+        performances = list(self.evaluated_parameter_importance.values())
+        performances = np.array(performances).reshape((-1, 1))
         path = np.array(path)
+        ax1.bar(list(range(len(path))),
+                performances[1:-1], width=.75)
 
-        ax1.set_xticks(list(range(len(path))))
-        ax1.set_xlim(0, len(path) - 1)
+        ax1.set_xticks(np.arange(len(path)) + 0.5)
+        ax1.set_xlim(0, len(path) - 1.25)
 
+        ax1.set_ylabel('improvement [%]', fontsize=fontsize, zorder=81)
+        ax1.set_ylim(min(performances) - .35*min(performances), max(performances) + .1*max(performances))
+        ax1.plot(list(range(-1, len(path) + 1)), [0 for _ in range(len(path) + 2)], c='r')
         ax1.set_xticklabels(path, rotation=25, ha='right')
 
         plt.tight_layout()
@@ -142,17 +186,20 @@ class Ablation(AbstractEvaluator):
 
     def plot_predicted_performance(self, title='Surrogate-Ablation', plot_name=None, lw=6,
                     fontsize=38):
+        """
+        Method to plot the ablation path using the predicted performances of parameter flips
+        """
         color = (0.45, 0.45, 0.45)
 
         fig = plt.figure()  # figsize=(14, 18))
-        fig.suptitle(title, fontsize=fontsize)
+        # fig.suptitle(title, fontsize=fontsize)
         ax1 = fig.add_subplot(111)
-        plt.subplots_adjust(bottom=0.25, top=0.7, left=0.05, right=.95)
+        plt.subplots_adjust(bottom=0.25, top=0.9, left=0.05, right=.95)
 
         path = list(self.predicted_parameter_performances.keys())
         path = np.array(path)
         performances = list(self.predicted_parameter_performances.values())
-        performances = np.array(performances).reshape((24,))
+        performances = np.array(performances).reshape((-1, 1))
 
         ax1.plot(list(range(len(performances))), performances, label='Predicted Performance',
                  color=color, ls='-', lw=lw, zorder=80)

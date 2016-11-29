@@ -188,5 +188,5 @@ class Importance(object):
         self.logger.info('Running evaluation method %s' % self.evaluator.name)
         return self.evaluator.run()
 
-    def plot_results(self):
-        self.evaluator.plot_result()
+    def plot_results(self, name=None):
+        self.evaluator.plot_result(name)

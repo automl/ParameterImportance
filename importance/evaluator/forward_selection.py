@@ -42,7 +42,7 @@ class ForwardSelector(AbstractEvaluator):
             pca = PCA(n_components=min(7, len(self.types) - len(params)))
             self.scenario.feature_array = pca.fit_transform(self.scenario.feature_array)
 
-        for _ in range(self.to_evaluate):
+        for _ in range(self.to_evaluate):  # Main Loop
             errors = []
             for idx, parameter in zip(param_ids, params):
                 self.logger.debug('Evaluating %s' % parameter)
@@ -50,7 +50,7 @@ class ForwardSelector(AbstractEvaluator):
                 self.logger.debug('Used parameters: %s' % str(used))
 
                 start = time.time()
-                self._refit_model(self.types[used], self.X[:, used], self.y)
+                self._refit_model(self.types[used], self.X[:, used], self.y)  # refit the model every round
                 errors.append(self.model.rf.out_of_bag_error())
                 used.pop()
                 self.logger.debug('Refitted RF (sec %.2f; oob: %.4f)' % (time.time() - start, errors[-1]))
@@ -69,9 +69,7 @@ class ForwardSelector(AbstractEvaluator):
             plot oob score as bar charts
             Parameters
             ----------
-            importance_tuples:list
-                list of tuples (parameter name, oob score)
-            save_fn:str
+            name
                 file name to save plot
         '''
 
