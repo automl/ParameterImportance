@@ -37,6 +37,10 @@ class CMDs(CMDReader):
         req_opts.add_argument("--verbose_level", default=logging.INFO,
                               choices=["INFO", "DEBUG"],
                               help="verbosity")
+        req_opts.add_argument("--trajectory", default=None,
+                              help="Path to trajectory file")
+        req_opts.add_argument("--num_params", default=0,
+                              help="Number of parameters to evaluate")
 
         args_, misc = parser.parse_known_args()
         self._check_args(args_)

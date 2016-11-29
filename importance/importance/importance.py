@@ -1,19 +1,21 @@
 from importance.utils import Scenario, RunHistory2EPM4LogCost, RunHistory2EPM4Cost, RunHistory
 from importance.epm import RandomForestWithInstances, RFRImputator
-from importance.configspace import CategoricalHyperparameter
+from importance.configspace import CategoricalHyperparameter, Configuration
 from importance.evaluator.ablation import Ablation
 from importance.evaluator.fanova import fANOVA
 from importance.evaluator.forward_selection import ForwardSelector
 
 import numpy as np
 import logging
+import os
+import json
 from smac.tae.execute_ta_run import StatusType
 
 
 class Importance(object):
 
     def __init__(self, scenario_file, runhistory_file, evaluation_method,
-                 parameters_to_evaluate: int=-1):
+                 parameters_to_evaluate: int=-1, traj_file=None):
         self.logger = logging.getLogger("Importance")
         self.logger.info('Reading Scenario file and files specified in the scenario')
         self.scenario = Scenario(scenario=scenario_file)
@@ -27,11 +29,39 @@ class Importance(object):
         self.y = None
         self.types = None
         self._model = None
+        self.incumbent = (None, None)
         self._convert_data()
+
+        if traj_file is not None:
+            self.incumbent = self._read_traj_file(traj_file)
+            self.logger.debug('Incumbent %s' % str(self.incumbent))
 
         self.logger.info('Setting up Evaluation Method')
         self._parameters_to_evaluate = parameters_to_evaluate
         self.evaluator = evaluation_method
+
+    def _read_traj_file(self, fn):
+        """
+        Simple method to read in a trajectory file in the json format / aclib2 format
+        :param fn:
+            file name
+        :return:
+            tuple of (incumbent [Configuration], incumbent_cost [float])
+        """
+        if not(os.path.exists(fn) and os.path.isfile(fn)):  # File existance check
+            raise FileNotFoundError('File %s not found!' % fn)
+        with open(fn, 'r') as fh:
+            for line in fh.readlines():
+                pass
+        line = line.strip()
+        incumbent_dict = json.loads(line)
+        inc_dict = {}
+        for key_val in incumbent_dict['incumbent']:  # convert string to Configuration
+            key, val = key_val.split('=')
+            inc_dict[key] = float(val.replace("'", ''))
+        incumbent = Configuration(self.scenario.cs, inc_dict)
+        incumbent_cost = incumbent_dict['cost']
+        return incumbent, incumbent_cost
 
     @property
     def evaluator(self):
@@ -144,3 +174,6 @@ class Importance(object):
     def evaluate_scenario(self):
         self.logger.info('Running evaluation method %s' % self.evaluator.name)
         return self.evaluator.run()
+
+    def plot_results(self):
+        self.evaluator.plot_result()
