@@ -3,6 +3,7 @@ from importance.configspace import Configuration
 import numpy as np
 from importance.evaluator.base_evaluator import AbstractEvaluator
 import copy
+from matplotlib import pyplot as plt
 
 
 class Ablation(AbstractEvaluator):
@@ -26,6 +27,7 @@ class Ablation(AbstractEvaluator):
         if len(self.scenario.test_insts) > 1:
             self.insts.extend(self.scenario.test_insts)
         self.target_performance = target_performance
+        self.predicted_parameter_performances = OrderedDict()
 
     def _diff_in_source_and_target(self):
         delta = []
@@ -57,11 +59,14 @@ class Ablation(AbstractEvaluator):
         modifiable_config_dict = copy.deepcopy(self.source.get_dictionary())
         modified_so_far = []
         start_delta = len(self.delta)
+        best_performance = -1
 
-        mean, var = self._predict_over_instance_set(self.source)
-        prev_performance = mean
-        mean, var = self._predict_over_instance_set(self.target)
-        improvement = prev_performance - mean
+        source_mean, var = self._predict_over_instance_set(self.source)
+        prev_performance = source_mean
+        target_mean, var = self._predict_over_instance_set(self.target)
+        improvement = prev_performance - target_mean
+        self.predicted_parameter_performances['-source-'] = source_mean
+        self.evaluated_parameter_importance['-source-'] = 0
 
         while len(self.delta) > 0:
             self.logger.debug('Round %d of %d:' % (start_delta - len(self.delta), start_delta - 1))
@@ -90,7 +95,10 @@ class Ablation(AbstractEvaluator):
                                                                   improvement_in_percentage * 100))
             param_str = '; '.join(self.delta[best_idx])
             self.evaluated_parameter_importance[param_str] = improvement_in_percentage
+            self.predicted_parameter_performances[param_str] = best_performance
             self.delta.pop(best_idx)
+        self.predicted_parameter_performances['-target-'] = best_performance
+        self.evaluated_parameter_importance['-target-'] = 0
         # sum_ = 0  # Small check that sum is 1
         # for key in self.evaluated_parameter_importance:
         #     print(key, self.evaluated_parameter_importance[key])
@@ -104,6 +112,71 @@ class Ablation(AbstractEvaluator):
             mean = np.power(10, mean)
         return mean, var
 
+    def plot_result(self, name=None, title='Surrogate-Ablation', fontsize=38, lw=6):
+        self.plot_predicted_percentage(plot_name=name, title=title, fontsize=fontsize)
+        self.plot_predicted_performance(plot_name=name, title=title, fontsize=fontsize, lw=lw)
 
-    def plot_result(self):
-        pass
+    def plot_predicted_percentage(self, title='Surrogate-Ablation', plot_name=None, fontsize=38):
+        fig = plt.figure()  # figsize=(14, 18))
+        plt.subplots_adjust(bottom=0.25, top=0.7, left=0.05, right=.95)
+        fig.suptitle(title, fontsize=fontsize)
+        ax1 = fig.add_subplot(111)
+
+        ax1.bar(list(range(len(self.evaluated_parameter_importance.keys()))),
+                list(self.evaluated_parameter_importance.values()))
+
+        path = list(self.predicted_parameter_performances.keys())
+        path = np.array(path)
+
+        ax1.set_xticks(list(range(len(path))))
+        ax1.set_xlim(0, len(path) - 1)
+
+        ax1.set_xticklabels(path, rotation=25, ha='right')
+
+        plt.tight_layout()
+
+        if plot_name is not None:
+            plt.savefig(plot_name)
+        else:
+            plt.show()
+
+    def plot_predicted_performance(self, title='Surrogate-Ablation', plot_name=None, lw=6,
+                    fontsize=38):
+        color = (0.45, 0.45, 0.45)
+
+        fig = plt.figure()  # figsize=(14, 18))
+        fig.suptitle(title, fontsize=fontsize)
+        ax1 = fig.add_subplot(111)
+        plt.subplots_adjust(bottom=0.25, top=0.7, left=0.05, right=.95)
+
+        path = list(self.predicted_parameter_performances.keys())
+        path = np.array(path)
+        performances = list(self.predicted_parameter_performances.values())
+        performances = np.array(performances).reshape((24,))
+
+        ax1.plot(list(range(len(performances))), performances, label='Predicted Performance',
+                 color=color, ls='-', lw=lw, zorder=80)
+
+        # ax1.set_xlabel(x_axis_lower_label + ' path', color=color, fontsize=fontsize)
+
+        ax1.set_xticks(list(range(len(path))))
+        ax1.set_xticklabels(path, rotation=25, ha='right', color=color)
+
+        ax1.set_xlim(0, len(path) - 1)
+
+        ax1.legend()
+        ax1.set_ylabel('runtime [sec]', fontsize=fontsize, zorder=81)
+        ax1.xaxis.grid(True)
+        gl = ax1.get_xgridlines()
+        for l in gl:
+            l.set_linewidth(5)
+        handles, labels = ax1.get_legend_handles_labels()
+
+        # reverse the order
+        ax1.legend(handles[::-1], labels[::-1])
+        plt.tight_layout()
+
+        if plot_name is not None:
+            plt.savefig(plot_name)
+        else:
+            plt.show()

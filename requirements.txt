@@ -2,3 +2,4 @@ numpy
 ConfigSpace
 smac
 sklearn
+matplotlib
