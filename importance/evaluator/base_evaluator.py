@@ -7,6 +7,9 @@ from importance.utils import Scenario
 
 
 class AbstractEvaluator(object):
+    """
+    Abstract implementation of Importance evaluator
+    """
     def __init__(self, scenario: Scenario,
                  cs: ConfigurationSpace,
                  model: RandomForestWithInstances,

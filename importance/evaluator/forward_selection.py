@@ -8,11 +8,30 @@ import numpy as np
 class ForwardSelector(AbstractEvaluator):
 
     def __init__(self, scenario, cs, model, to_evaluate: int, **kwargs):
+        '''
+        Constructor
+        :parameter:
+        scenario
+            SMAC scenario object
+        cs
+            ConfigurationSpace object
+        model
+            SMACs EPM (RF)
+        to_evaluate
+            int. Indicates for how many parameters the Importance values have to be computed
+        '''
         super().__init__(scenario, cs, model, to_evaluate, **kwargs)
         self.name = 'Forward Selection'
         self.logger = self.name
 
     def run(self) -> OrderedDict:
+        '''
+        Implementation of the forward selection loop.
+        Uses SMACs EPM (RF) wrt the configuration space to minimize the OOB error.
+        :return:
+        OrderedDict
+            dcit_keys (first key -> most important) -> OOB error
+        '''
         params = self.cs.get_hyperparameters()
         param_ids = list(range(len(params)))
         used = []
