@@ -27,21 +27,22 @@ class ForwardSelector(AbstractEvaluator):
             for idx, parameter in zip(param_ids, params):
                 self.logger.debug('Evaluating %s' % parameter)
                 used.append(idx)
+                self.logger.debug('Used parameters: %s' % str(used))
 
                 start = time.time()
                 self._refit_model(self.types[used], self.X[:, used], self.y)
                 errors.append(self.model.rf.out_of_bag_error())
+                used.pop()
                 self.logger.debug('Refitted RF (sec %.2f; oob: %.4f)' % (time.time() - start, errors[-1]))
 
             best_idx = np.argmin(errors)
             lowest_error = errors[best_idx]
             best_parameter = params.pop(best_idx)
-            used.append(param_ids.pop((best_idx)))
+            used.append(param_ids.pop(best_idx))
 
             self.logger.info('%s: %.4f (OOB)' % (best_parameter.name, lowest_error))
             self.evaluated_parameter_importance[best_parameter.name] = lowest_error
         return self.evaluated_parameter_importance
-
 
     def plot_result(self):
         pass
