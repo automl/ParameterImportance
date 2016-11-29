@@ -1,6 +1,9 @@
 from importance.utils import Scenario, RunHistory2EPM4LogCost, RunHistory2EPM4Cost, RunHistory
 from importance.epm import RandomForestWithInstances, RFRImputator
 from importance.configspace import CategoricalHyperparameter
+from importance.evaluator.ablation import Ablation
+from importance.evaluator.fanova import fANOVA
+from importance.evaluator.forward_selection import ForwardSelector
 
 import numpy as np
 from smac.tae.execute_ta_run import StatusType
@@ -8,7 +11,7 @@ from smac.tae.execute_ta_run import StatusType
 
 class Importance(object):
 
-    def __init__(self, scenario_file, runhistory_file):
+    def __init__(self, scenario_file, runhistory_file, evaluation_method, parameters_to_evaluate: int=-1):
         self.scenario = Scenario(scenario=scenario_file)
         self.runhistory = RunHistory(aggregate_func=None)
         self.runhistory.load_json(runhistory_file, self.scenario.cs)
@@ -16,6 +19,34 @@ class Importance(object):
         self.y = None
         self.types = None
         self._convert_data()
+        self._model = RandomForestWithInstances(self.types).train(self.X, self.y)
+        self._parameters_to_evaluate = parameters_to_evaluate
+        self.evaluator = evaluation_method
+
+    @property
+    def evaluator(self):
+        return self._evaluator
+
+    @evaluator.setter
+    def evaluator(self, evaluation_method):
+        if evaluation_method not in ['ablation', 'fANOVA', 'forward-selection']:
+            raise ValueError('Specified evaluation method %s does not exist!' % evaluation_method)
+        if evaluation_method == 'ablation':
+            evaluator = Ablation(scenario=self.scenario,
+                                 cs=self.scenario.cs,
+                                 model=self._model,
+                                 to_evaluate=self._parameters_to_evaluate)
+        elif evaluation_method == 'fANOVA':
+            evaluator = fANOVA(scenario=self.scenario,
+                               cs=self.scenario.cs,
+                               model=self._model,
+                               to_evaluate=self._parameters_to_evaluate)
+        else:
+            evaluator = ForwardSelector(scenario=self.scenario,
+                                        cs=self.scenario.cs,
+                                        model=self._model,
+                                        to_evaluate=self._parameters_to_evaluate)
+        self._evaluator = evaluator
 
     def _convert_data(self):  # From Marius
         '''
