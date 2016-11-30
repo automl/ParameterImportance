@@ -1,3 +1,10 @@
+__author__ = "Andre Biedenkapp"
+__copyright__ = "Copyright 2016, ML4AAD"
+__license__ = "3-clause BSD"
+__maintainer__ = "Andre Biedenkapp"
+__email__ = "biedenka@cs.uni-freiburg.de"
+
+
 from importance.importance.importance import Importance
 from importance.utils.io.cmd_reader import CMDs
 import logging

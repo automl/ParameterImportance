@@ -1,3 +1,9 @@
+__author__ = "Andre Biedenkapp"
+__copyright__ = "Copyright 2016, ML4AAD"
+__license__ = "3-clause BSD"
+__maintainer__ = "Andre Biedenkapp"
+__email__ = "biedenka@cs.uni-freiburg.de"
+
 from importance.utils import Scenario, RunHistory2EPM4LogCost, RunHistory2EPM4Cost, RunHistory
 from importance.epm import RandomForestWithInstances, RFRImputator
 from importance.configspace import CategoricalHyperparameter, FloatHyperparameter, IntegerHyperparameter, Configuration
@@ -13,7 +19,10 @@ from smac.tae.execute_ta_run import StatusType
 
 
 class Importance(object):
-
+    """
+    Importance Object. Handles the construction of the data and training of the model. Easy interface to the different
+    evaluators
+    """
     def __init__(self, scenario_file, runhistory_file, evaluation_method,
                  parameters_to_evaluate: int=-1, traj_file=None):
         self.logger = logging.getLogger("Importance")
