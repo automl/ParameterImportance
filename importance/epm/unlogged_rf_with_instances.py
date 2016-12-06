@@ -63,7 +63,8 @@ class UnloggedRandomForestWithInstances(RandomForestWithInstances):
         self.threshold = threshold
 
     def _unlogged_predict(self, X):
-        """Predict means and variances for given X.
+        """Predict means and variances for given X by first unlogging the leaf-values and then computing the mean for
+        the trees / the training batch afterwards.
 
         Parameters
         ----------
@@ -84,23 +85,29 @@ class UnloggedRandomForestWithInstances(RandomForestWithInstances):
             raise ValueError('Rows in X should have %d entries but have %d!' %
                              (self.types.shape[0], X.shape[1]))
 
-        mean_prediction_over_batch = []
-        mean_variance_over_batch = []
+        tree_mean_predictions = []
+        tree_mean_variances = []
         for x in X:
-            tmpx = np.array(list(map(lambda x_: np.power(10, x_), self.rf.all_leaf_values(x))))
-            mean_prediction_over_batch.append(list(map(lambda x_: np.mean(x_), tmpx)))
-            mean_variance_over_batch.append(list(map(lambda x_: np.var(x_), tmpx)))
+            tmpx = np.array(list(map(lambda x_: np.power(10, x_), self.rf.all_leaf_values(x))))  # unlog values
+            tree_mean_predictions.append(list(map(lambda x_: np.mean(x_), tmpx)))  # calculate mean and var
+            tree_mean_variances.append(list(map(lambda x_: np.var(x_), tmpx)))  # over individual trees
 
-        tree_mean_prediction_over_batch = np.mean(mean_prediction_over_batch, axis=0)
-        tree_var_prediction_over_batch = np.mean(mean_variance_over_batch, axis=0)
+        forest_mean_prediction_over_batch = np.mean(tree_mean_predictions, axis=0)
+        forest_var_prediction_over_batch = np.mean(tree_mean_variances, axis=0)
 
-        mean = np.mean(tree_mean_prediction_over_batch)
-        var = np.mean(tree_var_prediction_over_batch) + np.var(tree_mean_prediction_over_batch)
+        mean = np.mean(forest_mean_prediction_over_batch)
+        var = np.mean(forest_var_prediction_over_batch) + np.var(forest_mean_prediction_over_batch)
         return mean.reshape((-1, 1)), var.reshape((-1, 1))
 
     def _predict_EPAR(self, X, prediction_threshold=0):
         """
-        TODO
+        Predicting the Expected Penalized Average Runtime according to the cuttoff and par-factor specified in the
+        scenario.
+
+        Parameters
+        ----------
+        X : np.ndarray of shape = [n_samples, n_features (config + instance
+        features)]
         """
 
         mean_var = self._unlogged_predict(X=X)
@@ -162,4 +169,8 @@ class UnloggedRandomForestWithInstances(RandomForestWithInstances):
         return pred, var
 
     def predict(self, X):
+        """
+        Method to override the predict method of RandomForestWithInstances.
+        Thus it can be used in the marginalized over instances method of the RFWI class
+        """
         return self._predict_EPAR(X)

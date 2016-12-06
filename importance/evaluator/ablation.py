@@ -88,6 +88,22 @@ class Ablation(AbstractEvaluator):
         return dict_
 
     def _check_children(self, modded_dict, params, delete=False):
+        """
+        Method that checks if children are set to inactive during the current round due to condidionalities.
+
+        Parameters
+        ----------
+        modded_dict: dictionary
+            Dictionary with parameter_name -> parameter_value
+        params: list
+            list of parameters to check the child activity for
+        delete: boolean
+            allows for deletion of inactive parameters from the ablation_delta_list
+
+        Returns
+        -------
+        modded_dict, where inactive parameters have the value None
+        """
         for param in params:
             children = self.cs.get_children_of(param)
             if children:
@@ -166,7 +182,8 @@ class Ablation(AbstractEvaluator):
             self.predicted_parameter_performances[param_str] = best_performance
             self.predicted_parameter_variances[param_str] = best_variance
 
-            for winning_param in self.delta[best_idx]:
+            for winning_param in self.delta[best_idx]:  # Delete parameters that were set to inactive by the last
+                                                        # best parameter
                 prev_modifiable_config_dict[winning_param] = self.target[winning_param]
             self._check_children(prev_modifiable_config_dict, self.delta[best_idx], delete=True)
             self.delta.pop(best_idx)  # don't forget to remove already tested parameters
