@@ -6,6 +6,7 @@ __email__ = "biedenka@cs.uni-freiburg.de"
 
 from importance.utils import Scenario, RunHistory2EPM4LogCost, RunHistory2EPM4Cost, RunHistory
 from importance.epm import RandomForestWithInstances, RFRImputator
+from importance.epm.unlogged_rf_with_instances import UnloggedRandomForestWithInstances
 from importance.configspace import CategoricalHyperparameter, FloatHyperparameter, IntegerHyperparameter, Configuration
 from importance.evaluator.ablation import Ablation
 from importance.evaluator.fanova import fANOVA
@@ -79,6 +80,22 @@ class Importance(object):
         return incumbent, incumbent_cost
 
     @property
+    def model(self):
+        return self._model
+
+    @model.setter
+    def model(self, model_short_name='urfi'):
+        self.types = self._get_types_list_for_model()
+        if model_short_name not in ['urfi', 'rfi']:
+            raise ValueError('Specified model %s does not exist or not supported!' % model_short_name)
+        elif model_short_name == 'rfi':
+            self._model = RandomForestWithInstances(self.types, self.scenario.feature_array)
+        elif model_short_name == 'urfi':
+            self._model = UnloggedRandomForestWithInstances(self.types, self.scenario.feature_array,
+                                                            cutoff=self.cutoff, threshold=self.threshold)
+        self._model.rf.compute_oob_error = True
+
+    @property
     def evaluator(self):
         return self._evaluator
 
@@ -110,6 +127,21 @@ class Importance(object):
                                         to_evaluate=self._parameters_to_evaluate)
         self._evaluator = evaluator
 
+    def _get_types_list_for_model(self):
+        types = np.zeros(len(self.scenario.cs.get_hyperparameters()),
+                         dtype=np.uint)
+
+        for i, param in enumerate(self.scenario.cs.get_hyperparameters()):
+            if isinstance(param, (CategoricalHyperparameter)):
+                n_cats = len(param.choices)
+                types[i] = n_cats
+
+        if self.scenario.feature_array is not None:
+            types = np.hstack(
+                (types, np.zeros((self.scenario.feature_array.shape[1]))))
+
+        return np.array(types, dtype=np.uint)
+
     def _convert_data(self):  # From Marius
         '''
             converts data from runhistory into EPM format
@@ -131,44 +163,24 @@ class Importance(object):
                 types of X cols -- necessary to train our RF implementation
         '''
 
-        types = np.zeros(len(self.scenario.cs.get_hyperparameters()),
-                         dtype=np.uint)
-
-        for i, param in enumerate(self.scenario.cs.get_hyperparameters()):
-            if isinstance(param, (CategoricalHyperparameter)):
-                n_cats = len(param.choices)
-                types[i] = n_cats
-
-        if self.scenario.feature_array is not None:
-            types = np.hstack(
-                (types, np.zeros((self.scenario.feature_array.shape[1]))))
-
-        types = np.array(types, dtype=np.uint)
-
-        model = RandomForestWithInstances(types,
-                                          self.scenario.feature_array)
-        model.rf.compute_oob_error = True
-
         params = self.scenario.cs.get_hyperparameters()
         num_params = len(params)
 
         if self.scenario.run_obj == "runtime":
-            if self.scenario.run_obj == "runtime":
-                self.logged_y = True
-                # if we log the performance data,
-                # the RFRImputator will already get
-                # log transform data from the runhistory
-                cutoff = np.log10(self.scenario.cutoff)
-                threshold = np.log10(self.scenario.cutoff *
-                                     self.scenario.par_factor)
-            else:
-                cutoff = self.scenario.cutoff
-                threshold = self.scenario.cutoff * self.scenario.par_factor
+
+            self.logged_y = True
+            # if we log the performance data,
+            # the RFRImputator will already get
+            # log transform data from the runhistory
+            self.cutoff = np.log10(self.scenario.cutoff)
+            self.threshold = np.log10(self.scenario.cutoff *
+                                      self.scenario.par_factor)
+            self.model = 'urfi'
 
             imputor = RFRImputator(rs=np.random.RandomState(42),
-                                   cutoff=cutoff,
-                                   threshold=threshold,
-                                   model=model,
+                                   cutoff=self.cutoff,
+                                   threshold=self.threshold,
+                                   model=self.model,
                                    change_threshold=0.01,
                                    max_iter=10)
             # TODO: Adapt runhistory2EPM object based on scenario
@@ -181,6 +193,9 @@ class Importance(object):
                                                 StatusType.TIMEOUT, ],
                                             imputor=imputor)
         else:
+            self.cutoff = self.scenario.cutoff
+            self.threshold = self.scenario.cutoff * self.scenario.par_factor
+            self.model = 'rfi'
             rh2EPM = RunHistory2EPM4Cost(scenario=self.scenario,
                                          num_params=num_params,
                                          success_states=None,
@@ -190,8 +205,7 @@ class Importance(object):
 
         self.X = X
         self.y = Y
-        self.types = types
-        self._model = model.train(X, Y)
+        self.model.train(X, Y)
 
     def evaluate_scenario(self):
         self.logger.info('Running evaluation method %s' % self.evaluator.name)
