@@ -18,26 +18,28 @@ class Ablation(AbstractEvaluator):
     Implementation of Ablation via surrogates
     """
 
-    def __init__(self, scenario, cs, model, to_evaluate: int, incumbent=None, logy=True,
+    def __init__(self, scenario, cs, model, to_evaluate: int, incumbent=None,
                  target_performance=None, **kwargs):
         super().__init__(scenario, cs, model, to_evaluate, **kwargs)
         self.name = 'Ablation'
         self.logger = self.name
+        self.pop_extra = []
 
         self.target = incumbent
         self.source = self.cs.get_default_configuration()
         self.delta = self._diff_in_source_and_target()
         self._determine_combined_flipps()
+        self.inactive = []
 
         params = self.cs.get_hyperparameters()
         self.n_params = len(params)
         self.n_feats = len(self.types) - len(params)
         self.insts = copy.deepcopy(self.scenario.train_insts)
-        self.logy = logy
         if len(self.scenario.test_insts) > 1:
             self.insts.extend(self.scenario.test_insts)
         self.target_performance = target_performance
         self.predicted_parameter_performances = OrderedDict()
+        self.predicted_parameter_variances = OrderedDict()
 
     def _diff_in_source_and_target(self):
         """
@@ -50,7 +52,7 @@ class Ablation(AbstractEvaluator):
         delta = []
         for parameter in self.source:
             tmp = ' not'
-            if self.source[parameter] != self.target[parameter]:
+            if self.source[parameter] != self.target[parameter] and self.target[parameter] is not None:
                 tmp = ''
                 delta.append([parameter])
             self.logger.debug('%s was%s modified from source to target (%s, %s) [s, t]' % (parameter, tmp,
@@ -76,6 +78,32 @@ class Ablation(AbstractEvaluator):
         for idx in to_remove:
             self.delta.pop(idx)
 
+    def _check_child_conditions(self, _dict, children):
+        dict_ = {}
+        for child in children:
+            all_child_conditions_fulfilled = True
+            for condition in self.cs.get_parent_conditions_of(child):
+                all_child_conditions_fulfilled = all_child_conditions_fulfilled and condition.evaluate(_dict)
+            dict_[child.name] = all_child_conditions_fulfilled
+        return dict_
+
+    def _check_children(self, modded_dict, params, delete=False):
+        for param in params:
+            children = self.cs.get_children_of(param)
+            if children:
+                child_conditions = self._check_child_conditions(modded_dict, children)
+                for child in child_conditions:
+                    if not child_conditions[child]:
+                        modded_dict[child] = None
+                        self.logger.debug('Deactivated child %s found this round' % child)
+                        if delete and [child] in self.delta:
+                            for item in self.delta:
+                                print([child], item)
+                            self.logger.critical('Removing deactivated parameter %s' % child)
+                            self.delta.pop(self.delta.index([child]))
+        return modded_dict
+
+
     def run(self) -> OrderedDict:
         """
         Main function.
@@ -86,37 +114,47 @@ class Ablation(AbstractEvaluator):
         """
         # Minor setup
         modifiable_config_dict = copy.deepcopy(self.source.get_dictionary())
+        prev_modifiable_config_dict = copy.deepcopy(self.source.get_dictionary())
         modified_so_far = []
         start_delta = len(self.delta)
         best_performance = -1
 
         # Predict source and target performance to later use it to predict the %improvement a parameter causes
-        source_mean, var = self._predict_over_instance_set(self.source)
+        source_mean, source_var = self._predict_over_instance_set(self.source)
         prev_performance = source_mean
-        target_mean, var = self._predict_over_instance_set(self.target)
+        target_mean, target_var = self._predict_over_instance_set(self.target)
         improvement = prev_performance - target_mean
         self.predicted_parameter_performances['-source-'] = source_mean
+        self.predicted_parameter_variances['-source-'] = source_var
         self.evaluated_parameter_importance['-source-'] = 0
 
         while len(self.delta) > 0:  # Main loop. While parameters still left ...
+            modifiable_config_dict = copy.deepcopy(prev_modifiable_config_dict)
             self.logger.debug('Round %d of %d:' % (start_delta - len(self.delta), start_delta - 1))
             for param_tuple in modified_so_far:  # necessary due to combined flips
                 for parameter in param_tuple:
                     modifiable_config_dict[parameter] = self.target[parameter]
+            prev_modifiable_config_dict = copy.deepcopy(modifiable_config_dict)
 
             round_performances = []
+            round_variances = []
             for candidate_tuple in self.delta:
                 for candidate in candidate_tuple:
                     modifiable_config_dict[candidate] = self.target[candidate]
+
+                modifiable_config_dict = self._check_children(modifiable_config_dict, candidate_tuple)
+
                 modifiable_config = Configuration(self.cs, modifiable_config_dict)
+
                 mean, var = self._predict_over_instance_set(modifiable_config)  # ... predict their performance
                 self.logger.debug('%s: %.6f' % (candidate_tuple, mean[0]))
                 round_performances.append(mean)
-                for candidate in candidate_tuple:
-                    modifiable_config_dict[candidate] = self.source[candidate]
+                round_variances.append(var)
+                modifiable_config_dict = copy.deepcopy(prev_modifiable_config_dict)
 
             best_idx = np.argmin(round_performances)
             best_performance = round_performances[best_idx]  # greedy choice of parameter to fix
+            best_variance = round_variances[best_idx]
             improvement_in_percentage = (prev_performance - best_performance) / improvement
             prev_performance = best_performance
             modified_so_far.append(self.delta[best_idx])
@@ -126,8 +164,15 @@ class Ablation(AbstractEvaluator):
             param_str = '; '.join(self.delta[best_idx])
             self.evaluated_parameter_importance[param_str] = improvement_in_percentage
             self.predicted_parameter_performances[param_str] = best_performance
-            self.delta.pop(best_idx)  # don't forget to remove already testet parameters
-        self.predicted_parameter_performances['-target-'] = best_performance
+            self.predicted_parameter_variances[param_str] = best_variance
+
+            for winning_param in self.delta[best_idx]:
+                prev_modifiable_config_dict[winning_param] = self.target[winning_param]
+            self._check_children(prev_modifiable_config_dict, self.delta[best_idx], delete=True)
+            self.delta.pop(best_idx)  # don't forget to remove already tested parameters
+
+        self.predicted_parameter_performances['-target-'] = target_mean
+        self.predicted_parameter_variances['-target-'] = target_var
         self.evaluated_parameter_importance['-target-'] = 0
         # sum_ = 0  # Small check that sum is 1
         # for key in self.evaluated_parameter_importance:
@@ -151,8 +196,6 @@ class Ablation(AbstractEvaluator):
             the variance over the instance set. If logged values are used, the variance might not be able to be used
         """
         mean, var = self.model.predict_marginalized_over_instances(np.array([config.get_array()]))
-        if self.logy:
-            mean = np.power(10, mean)
         return mean, var
 
     def plot_result(self, name=None, title='Surrogate-Ablation', fontsize=38, lw=6):
@@ -179,7 +222,7 @@ class Ablation(AbstractEvaluator):
         ax1.set_xlim(0, len(path) - .25)
 
         ax1.set_ylabel('improvement [%]', fontsize=fontsize, zorder=81)
-        ax1.set_ylim(-0.025, max(performances) + .1*max(performances))
+        ax1.set_ylim(min(performances) + .1*min(performances), max(performances) + .1*max(performances))
         ax1.plot(list(range(-1, len(path) + 1)), [0 for _ in range(len(path) + 2)], c='r')
         ax1.set_xticklabels(path, rotation=25, ha='right')
 
@@ -206,11 +249,15 @@ class Ablation(AbstractEvaluator):
         path = np.array(path)
         performances = list(self.predicted_parameter_performances.values())
         performances = np.array(performances).reshape((-1, 1))
+        variances = list(self.predicted_parameter_variances.values())
+        variances = np.array(variances).reshape((-1, 1))
 
         ax1.plot(list(range(len(performances))), performances, label='Predicted Performance',
                  color=color, ls='-', lw=lw, zorder=80)
 
-        # ax1.set_xlabel(x_axis_lower_label + ' path', color=color, fontsize=fontsize)
+        upper = np.array(list(map(lambda x, y: x + np.sqrt(y), performances, variances))).flatten()
+        lower = np.array(list(map(lambda x, y: x - np.sqrt(y), performances, variances))).flatten()
+        ax1.fill_between(list(range(len(performances))), lower, upper, label='std')
 
         ax1.set_xticks(list(range(len(path))))
         ax1.set_xticklabels(path, rotation=25, ha='right', color=color)
