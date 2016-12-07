@@ -24,7 +24,7 @@ class Importance(object):
     Importance Object. Handles the construction of the data and training of the model. Easy interface to the different
     evaluators
     """
-    def __init__(self, scenario_file, runhistory_file, evaluation_method,
+    def __init__(self, scenario_file, runhistory_file,
                  parameters_to_evaluate: int=-1, traj_file=None):
         self.logger = logging.getLogger("Importance")
         self.logger.info('Reading Scenario file and files specified in the scenario')
@@ -49,7 +49,7 @@ class Importance(object):
 
         self.logger.info('Setting up Evaluation Method')
         self._parameters_to_evaluate = parameters_to_evaluate
-        self.evaluator = evaluation_method
+        # self.evaluator = evaluation_method
 
     def _read_traj_file(self, fn):
         """
@@ -207,7 +207,8 @@ class Importance(object):
         self.y = Y
         self.model.train(X, Y)
 
-    def evaluate_scenario(self):
+    def evaluate_scenario(self, evaluation_method):
+        self.evaluator = evaluation_method
         self.logger.info('Running evaluation method %s' % self.evaluator.name)
         return self.evaluator.run()
 
