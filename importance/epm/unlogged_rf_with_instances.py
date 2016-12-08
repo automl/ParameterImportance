@@ -149,11 +149,9 @@ class UnloggedRandomForestWithInstances(RandomForestWithInstances):
                     loc=mean_var[0][p],
                     scale=np.sqrt(mean_var[1][p]),
                     moments='m')
-                # We have to use unwarped values as '+' in logspace is not
-                # equal to + in non-logspace
-                upper_pred = upper_exp * np.power(10, self.threshold)
-                lower_pred = cdf * np.power(10, lower_pred)
-                pred[p] = np.log10(lower_pred + upper_pred)
+
+                upper_pred = upper_exp * self.threshold
+                pred[p] = lower_pred * cdf + upper_pred
 
                 if pred[p] > self.threshold + 10 ** -5:
                     raise ValueError("Predicted higher than possible, %g > %g"

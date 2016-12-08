@@ -24,7 +24,7 @@ class Importance(object):
     Importance Object. Handles the construction of the data and training of the model. Easy interface to the different
     evaluators
     """
-    def __init__(self, scenario_file, runhistory_file,
+    def __init__(self, scenario_file, runhistory_file, seed: int=12345,
                  parameters_to_evaluate: int=-1, traj_file=None):
         self.logger = logging.getLogger("Importance")
         self.logger.info('Reading Scenario file and files specified in the scenario')
@@ -33,6 +33,7 @@ class Importance(object):
         self.logger.info('Reading Runhistory')
         self.runhistory = RunHistory(aggregate_func=None)
         self.runhistory.load_json(runhistory_file, self.scenario.cs)
+        self.seed = seed
 
         self.logger.info('Converting Data and constructing Model')
         self.X = None
@@ -89,9 +90,9 @@ class Importance(object):
         if model_short_name not in ['urfi', 'rfi']:
             raise ValueError('Specified model %s does not exist or not supported!' % model_short_name)
         elif model_short_name == 'rfi':
-            self._model = RandomForestWithInstances(self.types, self.scenario.feature_array)
+            self._model = RandomForestWithInstances(self.types, self.scenario.feature_array, seed=self.seed)
         elif model_short_name == 'urfi':
-            self._model = UnloggedRandomForestWithInstances(self.types, self.scenario.feature_array,
+            self._model = UnloggedRandomForestWithInstances(self.types, self.scenario.feature_array, seed=self.seed,
                                                             cutoff=self.cutoff, threshold=self.threshold)
         self._model.rf.compute_oob_error = True
 
@@ -165,6 +166,9 @@ class Importance(object):
 
         params = self.scenario.cs.get_hyperparameters()
         num_params = len(params)
+        self.cutoff = self.scenario.cutoff
+        self.threshold = self.scenario.cutoff * self.scenario.par_factor
+        self.model = 'urfi'
 
         if self.scenario.run_obj == "runtime":
 
@@ -172,15 +176,15 @@ class Importance(object):
             # if we log the performance data,
             # the RFRImputator will already get
             # log transform data from the runhistory
-            self.cutoff = np.log10(self.scenario.cutoff)
-            self.threshold = np.log10(self.scenario.cutoff *
-                                      self.scenario.par_factor)
-            self.model = 'urfi'
+            cutoff = np.log10(self.scenario.cutoff)
+            threshold = np.log10(self.scenario.cutoff *
+                                 self.scenario.par_factor)
+            model = 'rfi'
 
             imputor = RFRImputator(rs=np.random.RandomState(42),
-                                   cutoff=self.cutoff,
-                                   threshold=self.threshold,
-                                   model=self.model,
+                                   cutoff=cutoff,
+                                   threshold=threshold,
+                                   model=model,
                                    change_threshold=0.01,
                                    max_iter=10)
             # TODO: Adapt runhistory2EPM object based on scenario
@@ -193,9 +197,6 @@ class Importance(object):
                                                 StatusType.TIMEOUT, ],
                                             imputor=imputor)
         else:
-            self.cutoff = self.scenario.cutoff
-            self.threshold = self.scenario.cutoff * self.scenario.par_factor
-            self.model = 'rfi'
             rh2EPM = RunHistory2EPM4Cost(scenario=self.scenario,
                                          num_params=num_params,
                                          success_states=None,

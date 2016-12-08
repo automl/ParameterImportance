@@ -25,6 +25,6 @@ if __name__ == '__main__':
     logging.basicConfig(level=args.verbose_level)
     importance = Importance(args.scenario_file, args.history,
                             parameters_to_evaluate=args.num_params,
-                            traj_file=args.trajectory)  # create importance object
+                            traj_file=args.trajectory, seed=args.seed)  # create importance object
     importance_value_dict = importance.evaluate_scenario(args.modus)
     importance.plot_results(name=args.modus)
