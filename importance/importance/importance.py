@@ -4,7 +4,7 @@ __license__ = "3-clause BSD"
 __maintainer__ = "Andre Biedenkapp"
 __email__ = "biedenka@cs.uni-freiburg.de"
 
-from importance.utils import Scenario, RunHistory2EPM4LogCost, RunHistory2EPM4Cost, RunHistory
+from importance.utils import Scenario, RunHistory2EPM4LogCost, RunHistory2EPM4Cost, RunHistory, average_cost
 from importance.epm import RandomForestWithInstances, RFRImputator
 from importance.epm.unlogged_rf_with_instances import UnloggedRandomForestWithInstances
 from importance.configspace import CategoricalHyperparameter, FloatHyperparameter, IntegerHyperparameter, Configuration
@@ -16,6 +16,7 @@ import numpy as np
 import logging
 import os
 import json
+import glob
 from smac.tae.execute_ta_run import StatusType
 
 
@@ -24,15 +25,18 @@ class Importance(object):
     Importance Object. Handles the construction of the data and training of the model. Easy interface to the different
     evaluators
     """
-    def __init__(self, scenario_file, runhistory_file, seed: int=12345,
+    def __init__(self, scenario_file, runhistory_files, seed: int=12345,
                  parameters_to_evaluate: int=-1, traj_file=None):
         self.logger = logging.getLogger("Importance")
         self.logger.info('Reading Scenario file and files specified in the scenario')
         self.scenario = Scenario(scenario=scenario_file)
 
         self.logger.info('Reading Runhistory')
-        self.runhistory = RunHistory(aggregate_func=None)
-        self.runhistory.load_json(runhistory_file, self.scenario.cs)
+        self.runhistory = RunHistory(aggregate_func=average_cost)
+
+        globed_files = glob.glob(runhistory_files)
+        for rh_file in globed_files:
+            self.runhistory.update_from_json(rh_file, self.scenario.cs)
         self.seed = seed
 
         self.logger.info('Converting Data and constructing Model')
@@ -60,7 +64,7 @@ class Importance(object):
         :return:
             tuple of (incumbent [Configuration], incumbent_cost [float])
         """
-        if not(os.path.exists(fn) and os.path.isfile(fn)):  # File existance check
+        if not(os.path.exists(fn) and os.path.isfile(fn)):  # File existence check
             raise FileNotFoundError('File %s not found!' % fn)
         with open(fn, 'r') as fh:
             for line in fh.readlines():
