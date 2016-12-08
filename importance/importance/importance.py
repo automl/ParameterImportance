@@ -17,6 +17,7 @@ import logging
 import os
 import json
 import glob
+import sys
 from smac.tae.execute_ta_run import StatusType
 
 
@@ -35,8 +36,13 @@ class Importance(object):
         self.runhistory = RunHistory(aggregate_func=average_cost)
 
         globed_files = glob.glob(runhistory_files)
-        for rh_file in globed_files:
+        if globed_files == []:
+            self.logger.error('No runhistory files found!')
+            sys.exit(1)
+        self.runhistory.load_json(globed_files[0], self.scenario.cs)
+        for rh_file in globed_files[1:]:
             self.runhistory.update_from_json(rh_file, self.scenario.cs)
+        self.logger.info('Combined number of Runhistory data points: %d' % len(self.runhistory.data))
         self.seed = seed
 
         self.logger.info('Converting Data and constructing Model')
