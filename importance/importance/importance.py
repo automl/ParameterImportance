@@ -1,9 +1,3 @@
-__author__ = "Andre Biedenkapp"
-__copyright__ = "Copyright 2016, ML4AAD"
-__license__ = "3-clause BSD"
-__maintainer__ = "Andre Biedenkapp"
-__email__ = "biedenka@cs.uni-freiburg.de"
-
 from importance.utils import Scenario, RunHistory2EPM4LogCost, RunHistory2EPM4Cost, RunHistory, average_cost
 from importance.epm import RandomForestWithInstances, RFRImputator
 from importance.epm.unlogged_rf_with_instances import UnloggedRandomForestWithInstances
@@ -20,14 +14,21 @@ import glob
 import sys
 from smac.tae.execute_ta_run import StatusType
 
+__author__ = "Andre Biedenkapp"
+__copyright__ = "Copyright 2016, ML4AAD"
+__license__ = "3-clause BSD"
+__maintainer__ = "Andre Biedenkapp"
+__email__ = "biedenka@cs.uni-freiburg.de"
+
 
 class Importance(object):
     """
     Importance Object. Handles the construction of the data and training of the model. Easy interface to the different
     evaluators
     """
-    def __init__(self, scenario_file, runhistory_files, seed: int=12345,
-                 parameters_to_evaluate: int=-1, traj_file=None):
+
+    def __init__(self, scenario_file, runhistory_files, seed: int = 12345,
+                 parameters_to_evaluate: int = -1, traj_file=None):
         self.logger = logging.getLogger("Importance")
         self.logger.info('Reading Scenario file and files specified in the scenario')
         self.scenario = Scenario(scenario=scenario_file)
@@ -36,7 +37,7 @@ class Importance(object):
         self.runhistory = RunHistory(aggregate_func=average_cost)
 
         globed_files = glob.glob(runhistory_files)
-        if globed_files == []:
+        if not globed_files:
             self.logger.error('No runhistory files found!')
             sys.exit(1)
         self.runhistory.load_json(globed_files[0], self.scenario.cs)
@@ -53,6 +54,7 @@ class Importance(object):
         self.incumbent = (None, None)
         self.logged_y = False
         self._convert_data()
+        self._evaluator = None
 
         if traj_file is not None:
             self.incumbent = self._read_traj_file(traj_file)
@@ -70,7 +72,7 @@ class Importance(object):
         :return:
             tuple of (incumbent [Configuration], incumbent_cost [float])
         """
-        if not(os.path.exists(fn) and os.path.isfile(fn)):  # File existence check
+        if not (os.path.exists(fn) and os.path.isfile(fn)):  # File existence check
             raise FileNotFoundError('File %s not found!' % fn)
         with open(fn, 'r') as fh:
             for line in fh.readlines():

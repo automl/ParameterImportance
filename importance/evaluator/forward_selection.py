@@ -1,9 +1,3 @@
-__author__ = "Andre Biedenkapp"
-__copyright__ = "Copyright 2016, ML4AAD"
-__license__ = "3-clause BSD"
-__maintainer__ = "Andre Biedenkapp"
-__email__ = "biedenka@cs.uni-freiburg.de"
-
 from collections import OrderedDict
 from sklearn.decomposition import PCA
 from importance.evaluator.base_evaluator import AbstractEvaluator
@@ -11,11 +5,17 @@ import time
 import numpy as np
 from matplotlib import pyplot as plt
 
+__author__ = "Andre Biedenkapp"
+__copyright__ = "Copyright 2016, ML4AAD"
+__license__ = "3-clause BSD"
+__maintainer__ = "Andre Biedenkapp"
+__email__ = "biedenka@cs.uni-freiburg.de"
+
 
 class ForwardSelector(AbstractEvaluator):
 
     def __init__(self, scenario, cs, model, to_evaluate: int, **kwargs):
-        '''
+        """
         Constructor
         :parameter:
         scenario
@@ -26,19 +26,19 @@ class ForwardSelector(AbstractEvaluator):
             SMACs EPM (RF)
         to_evaluate
             int. Indicates for how many parameters the Importance values have to be computed
-        '''
+        """
         super().__init__(scenario, cs, model, to_evaluate, **kwargs)
         self.name = 'Forward Selection'
         self.logger = self.name
 
     def run(self) -> OrderedDict:
-        '''
+        """
         Implementation of the forward selection loop.
         Uses SMACs EPM (RF) wrt the configuration space to minimize the OOB error.
         :return:
         OrderedDict
-            dcit_keys (first key -> most important) -> OOB error
-        '''
+            dict_keys (first key -> most important) -> OOB error
+        """
         params = self.cs.get_hyperparameters()
         param_ids = list(range(len(params)))
         used = []
@@ -71,20 +71,20 @@ class ForwardSelector(AbstractEvaluator):
         return self.evaluated_parameter_importance
 
     def plot_result(self, name=None):
-        '''
+        """
             plot oob score as bar charts
             Parameters
             ----------
             name
                 file name to save plot
-        '''
+        """
 
         fig, ax = plt.subplots()
         params = list(self.evaluated_parameter_importance.keys())
         errors = list(self.evaluated_parameter_importance.values())
 
         ind = np.arange(len(errors))
-        bar_plot = ax.bar(ind, errors, color='b')
+        ax.bar(ind, errors, color='b')
 
         ax.set_ylabel('Out-Of-Bag Error')
         ax.set_xticks(ind+0.5)

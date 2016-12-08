@@ -1,11 +1,11 @@
+from collections import OrderedDict
+from importance.evaluator.base_evaluator import AbstractEvaluator
+
 __author__ = "Andre Biedenkapp"
 __copyright__ = "Copyright 2016, ML4AAD"
 __license__ = "3-clause BSD"
 __maintainer__ = "Andre Biedenkapp"
 __email__ = "biedenka@cs.uni-freiburg.de"
-
-from collections import OrderedDict
-from importance.evaluator.base_evaluator import AbstractEvaluator
 
 
 class fANOVA(AbstractEvaluator):

@@ -1,12 +1,12 @@
+from importance.epm import RandomForestWithInstances
+from scipy import stats
+import numpy as np
+
 __author__ = "Andre Biedenkapp"
 __copyright__ = "Copyright 2016, ML4AAD"
 __license__ = "3-clause BSD"
 __maintainer__ = "Andre Biedenkapp"
 __email__ = "biedenka@cs.uni-freiburg.de"
-
-from importance.epm import RandomForestWithInstances
-from scipy import stats
-import numpy as np
 
 
 class UnloggedRandomForestWithInstances(RandomForestWithInstances):

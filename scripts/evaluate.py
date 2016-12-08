@@ -1,20 +1,20 @@
-__author__ = "Andre Biedenkapp"
-__copyright__ = "Copyright 2016, ML4AAD"
-__license__ = "3-clause BSD"
-__maintainer__ = "Andre Biedenkapp"
-__email__ = "biedenka@cs.uni-freiburg.de"
-
 import sys
 import os
 import inspect
 cmd_folder = os.path.realpath(os.path.abspath(os.path.split(inspect.getfile( inspect.currentframe() ))[0]))
 cmd_folder = os.path.realpath(os.path.join(cmd_folder, ".."))
 if cmd_folder not in sys.path:
-    sys.path.insert(0,cmd_folder)
+    sys.path.insert(0, cmd_folder)
 
 from importance.importance.importance import Importance
 from importance.utils.io.cmd_reader import CMDs
 import logging
+
+__author__ = "Andre Biedenkapp"
+__copyright__ = "Copyright 2016, ML4AAD"
+__license__ = "3-clause BSD"
+__maintainer__ = "Andre Biedenkapp"
+__email__ = "biedenka@cs.uni-freiburg.de"
 
 if __name__ == '__main__':
     """

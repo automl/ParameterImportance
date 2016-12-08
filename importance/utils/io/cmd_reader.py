@@ -1,12 +1,12 @@
+import logging
+from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter, SUPPRESS
+from smac.utils.io.cmd_reader import CMDReader
+
 __author__ = "Andre Biedenkapp"
 __copyright__ = "Copyright 2016, ML4AAD"
 __license__ = "3-clause BSD"
 __maintainer__ = "Andre Biedenkapp"
 __email__ = "biedenka@cs.uni-freiburg.de"
-
-import logging
-from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter, SUPPRESS
-from smac.utils.io.cmd_reader import CMDReader
 
 
 class CMDs(CMDReader):

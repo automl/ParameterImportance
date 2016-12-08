@@ -1,15 +1,15 @@
-__author__ = "Andre Biedenkapp"
-__copyright__ = "Copyright 2016, ML4AAD"
-__license__ = "3-clause BSD"
-__maintainer__ = "Andre Biedenkapp"
-__email__ = "biedenka@cs.uni-freiburg.de"
-
 import abc
 import logging
 from collections import OrderedDict
 from importance.epm import RandomForestWithInstances
 from importance.configspace import ConfigurationSpace
 from importance.utils import Scenario
+
+__author__ = "Andre Biedenkapp"
+__copyright__ = "Copyright 2016, ML4AAD"
+__license__ = "3-clause BSD"
+__maintainer__ = "Andre Biedenkapp"
+__email__ = "biedenka@cs.uni-freiburg.de"
 
 
 class AbstractEvaluator(object):
@@ -20,6 +20,7 @@ class AbstractEvaluator(object):
                  cs: ConfigurationSpace,
                  model: RandomForestWithInstances,
                  to_evaluate: int, **kwargs):
+        self._logger = None
         self.scenario = scenario
         self.cs = cs
         self.model = model  # SMAC model
