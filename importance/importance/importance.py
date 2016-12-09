@@ -198,7 +198,7 @@ class Importance(object):
                                  self.scenario.par_factor)
             model = 'rfi'
 
-            imputor = RFRImputator(rs=np.random.RandomState(42),
+            imputor = RFRImputator(rs=np.random.RandomState(self.seed),
                                    cutoff=cutoff,
                                    threshold=threshold,
                                    model=model,

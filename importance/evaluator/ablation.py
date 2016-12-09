@@ -301,13 +301,7 @@ class Ablation(AbstractEvaluator):
         ax1.legend()
         ax1.set_ylabel('runtime [sec]', zorder=81, **self.LABEL_FONT)
         ax1.xaxis.grid(True)
-        gl = ax1.get_xgridlines()
-        for l in gl:
-            l.set_linewidth(2.5)
         ax1.yaxis.grid(True)
-        gl = ax1.get_ygridlines()
-        for l in gl:
-            l.set_linewidth(2.5)
         plt.tight_layout()
 
         if plot_name is not None:
