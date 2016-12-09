@@ -64,7 +64,7 @@ class UnloggedRandomForestWithInstances(RandomForestWithInstances):
 
     def _unlogged_predict(self, X):
         """Predict means and variances for given X by first unlogging the leaf-values and then computing the mean for
-        the trees / the training batch afterwards.
+        the trees NOT the training batch afterwards. The mean for the whole batch is handled by the parent class!
 
         Parameters
         ----------
@@ -92,11 +92,9 @@ class UnloggedRandomForestWithInstances(RandomForestWithInstances):
             tree_mean_predictions.append(list(map(lambda x_: np.mean(x_), tmpx)))  # calculate mean and var
             tree_mean_variances.append(list(map(lambda x_: np.var(x_), tmpx)))  # over individual trees
 
-        forest_mean_prediction_over_batch = np.mean(tree_mean_predictions, axis=0)
-        forest_var_prediction_over_batch = np.mean(tree_mean_variances, axis=0)
+        mean = np.mean(tree_mean_predictions, axis=0)
+        var = np.mean(tree_mean_variances, axis=0)
 
-        mean = np.mean(forest_mean_prediction_over_batch)
-        var = np.mean(forest_var_prediction_over_batch) + np.var(forest_mean_prediction_over_batch)
         return mean.reshape((-1, 1)), var.reshape((-1, 1))
 
     def _predict_EPAR(self, X, prediction_threshold=0):
