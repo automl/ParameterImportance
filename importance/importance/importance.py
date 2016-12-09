@@ -1,11 +1,3 @@
-from importance.utils import Scenario, RunHistory2EPM4LogCost, RunHistory2EPM4Cost, RunHistory, average_cost
-from importance.epm import RandomForestWithInstances, RFRImputator
-from importance.epm.unlogged_rf_with_instances import UnloggedRandomForestWithInstances
-from importance.configspace import CategoricalHyperparameter, FloatHyperparameter, IntegerHyperparameter, Configuration
-from importance.evaluator.ablation import Ablation
-from importance.evaluator.fanova import fANOVA
-from importance.evaluator.forward_selection import ForwardSelector
-
 import numpy as np
 import logging
 import os
@@ -15,6 +7,15 @@ import sys
 import matplotlib
 # Force matplotlib to not use any Xwindows backend.
 matplotlib.use('Agg')
+
+
+from importance.utils import Scenario, RunHistory2EPM4LogCost, RunHistory2EPM4Cost, RunHistory, average_cost
+from importance.epm import RandomForestWithInstances, RFRImputator
+from importance.epm.unlogged_rf_with_instances import UnloggedRandomForestWithInstances
+from importance.configspace import CategoricalHyperparameter, FloatHyperparameter, IntegerHyperparameter, Configuration
+from importance.evaluator.ablation import Ablation
+from importance.evaluator.fanova import fANOVA
+from importance.evaluator.forward_selection import ForwardSelector
 
 from smac.tae.execute_ta_run import StatusType
 
