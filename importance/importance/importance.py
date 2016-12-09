@@ -12,6 +12,10 @@ import os
 import json
 import glob
 import sys
+import matplotlib
+# Force matplotlib to not use any Xwindows backend.
+matplotlib.use('Agg')
+
 from smac.tae.execute_ta_run import StatusType
 
 __author__ = "Andre Biedenkapp"
