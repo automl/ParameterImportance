@@ -14,7 +14,7 @@ class UnloggedRandomForestWithInstances(RandomForestWithInstances):
     def __init__(self, types, instance_features=None, num_trees=30, do_bootstrapping=True, n_points_per_tree=0,
                  ratio_features=5. / 6., min_samples_split=3, min_samples_leaf=3, max_depth=20, eps_purity=1e-8,
                  max_num_nodes=1000, seed=42, cutoff=0, threshold=0):
-        '''
+        """
         Interface to the random forest that takes instance features
         into account.
 
@@ -53,7 +53,7 @@ class UnloggedRandomForestWithInstances(RandomForestWithInstances):
 
         threshold:
             Maximal possible value
-        '''
+        """
         super().__init__(types=types, instance_features=instance_features, num_trees=num_trees,
                          do_bootstrapping=do_bootstrapping, n_points_per_tree=n_points_per_tree,
                          ratio_features=ratio_features, min_samples_split=min_samples_split,
@@ -124,7 +124,7 @@ class UnloggedRandomForestWithInstances(RandomForestWithInstances):
 
             # Calc cdf from -inf to cutoff
             cdf = stats.norm.cdf(x=self.cutoff, loc=mean_var[0][p],
-                                       scale=np.sqrt(mean_var[1][p]))
+                                 scale=np.sqrt(mean_var[1][p]))
 
             # Probability mass > cutoff
             upper_exp = 1 - cdf
