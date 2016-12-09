@@ -215,33 +215,46 @@ class Ablation(AbstractEvaluator):
         mean, var = self.model.predict_marginalized_over_instances(np.array([config.get_array()]))
         return mean, var
 
-    def plot_result(self, name=None, title='Surrogate-Ablation', fontsize=38, lw=6):
-        self.plot_predicted_percentage(plot_name=name+'percentage.png', title=title, fontsize=fontsize-5)
-        self.plot_predicted_performance(plot_name=name+'performance.png', title=title, fontsize=fontsize, lw=lw)
+    def plot_result(self, name=None):
+        self.plot_predicted_percentage(plot_name=name+'percentage.png')
+        self.plot_predicted_performance(plot_name=name+'performance.png')
+        self.logger.info('Saved plots as %s[percentage|performance].png' % name)
 
-    def plot_predicted_percentage(self, title='Surrogate-Ablation', plot_name=None, fontsize=38):
+    def plot_predicted_percentage(self, plot_name=None):
         """
         Method to plot a barchart of individual parameter contributions of the improvement from source to target
         """
-        fig = plt.figure()  # figsize=(14, 18))
+        fig = plt.figure()
         plt.subplots_adjust(bottom=0.25, top=0.9, left=0.05, right=.95)
-        # fig.suptitle(title, fontsize=fontsize)
         ax1 = fig.add_subplot(111)
 
         path = list(self.evaluated_parameter_importance.keys())[1:-1]
         performances = list(self.evaluated_parameter_importance.values())
-        performances = np.array(performances).reshape((-1, 1))
+        performances = 100 * np.array(performances).reshape((-1, 1))
         path = np.array(path)
         ax1.bar(list(range(len(path))),
-                performances[1:-1], width=.75)
+                performances[1:-1], width=.75, color=self.area_color)
 
-        ax1.set_xticks(np.arange(len(path)) + 0.5)
+        ax1.set_xticks(np.arange(len(path)) + 0.375)
         ax1.set_xlim(0, len(path) - .25)
+        ax1.set_ylim(min(performances) - max(2, min(performances)*0.1),
+                     max(performances) + min(2, max(performances)*.1))
 
-        ax1.set_ylabel('improvement [%]', fontsize=fontsize, zorder=81)
-        ax1.set_ylim(min(performances) + .1*min(performances), max(performances) + .1*max(performances))
-        ax1.plot(list(range(-1, len(path) + 1)), [0 for _ in range(len(path) + 2)], c='r')
-        ax1.set_xticklabels(path, rotation=25, ha='right')
+        ax1.set_ylabel('improvement [%]', zorder=81, **self.LABEL_FONT)
+        ax1.plot(list(range(-1, len(path) + 1)),
+                 [self.IMPORTANCE_THRESHOLD*100 for _ in range(len(path) + 2)], c='r', linestyle='--')
+        ax1.plot(list(range(-1, len(path) + 1)),
+                 [-self.IMPORTANCE_THRESHOLD*100 for _ in range(len(path) + 2)], c='r', linestyle='--')
+        ax1.set_xticklabels(path, rotation=25, ha='right', **self.AXIS_FONT)
+
+        for idx, t in enumerate(ax1.xaxis.get_ticklabels()):
+            color_ = (0.45, 0.45, 0.45)
+            if self.evaluated_parameter_importance[path[idx]] > self.IMPORTANCE_THRESHOLD:
+                color_ = (0., 0., 0.)
+            t.set_color(color_)
+
+        ax1.xaxis.grid(True)
+        ax1.yaxis.grid(True)
 
         plt.tight_layout()
 
@@ -250,15 +263,12 @@ class Ablation(AbstractEvaluator):
         else:
             plt.show()
 
-    def plot_predicted_performance(self, title='Surrogate-Ablation', plot_name=None, lw=6,
-                    fontsize=38):
+    def plot_predicted_performance(self, plot_name=None):
         """
         Method to plot the ablation path using the predicted performances of parameter flips
         """
-        color = (0.45, 0.45, 0.45)
 
-        fig = plt.figure()  # figsize=(14, 18))
-        # fig.suptitle(title, fontsize=fontsize)
+        fig = plt.figure()
         ax1 = fig.add_subplot(111)
         plt.subplots_adjust(bottom=0.25, top=0.9, left=0.05, right=.95)
 
@@ -269,28 +279,35 @@ class Ablation(AbstractEvaluator):
         variances = list(self.predicted_parameter_variances.values())
         variances = np.array(variances).reshape((-1, 1))
 
-        ax1.plot(list(range(len(performances))), performances, label='Predicted Performance',
-                 color=color, ls='-', lw=lw, zorder=80)
+        ax1.plot(list(range(len(performances))), performances, label='Predicted Performance', ls='-', zorder=80,
+                 **self.LINE_FONT)
 
         upper = np.array(list(map(lambda x, y: x + np.sqrt(y), performances, variances))).flatten()
         lower = np.array(list(map(lambda x, y: x - np.sqrt(y), performances, variances))).flatten()
-        ax1.fill_between(list(range(len(performances))), lower, upper, label='std')
+        ax1.fill_between(list(range(len(performances))), lower, upper, label='std', color=self.area_color)
 
         ax1.set_xticks(list(range(len(path))))
-        ax1.set_xticklabels(path, rotation=25, ha='right', color=color)
+        ax1.set_xticklabels(path, rotation=25, ha='right', **self.AXIS_FONT)
+        percentages = list(self.evaluated_parameter_importance.values())
+        for idx, t in enumerate(ax1.xaxis.get_ticklabels()):
+            color_ = (0.45, 0.45, 0.45)
+            if percentages[idx] > self.IMPORTANCE_THRESHOLD:
+                color_ = (0., 0., 0.)
+            t.set_color(color_)
 
         ax1.set_xlim(0, len(path) - 1)
+        ax1.set_ylim(min(lower) - max(.1 * min(lower), 0.1), max(upper) + .1 * max(upper))
 
         ax1.legend()
-        ax1.set_ylabel('runtime [sec]', fontsize=fontsize, zorder=81)
+        ax1.set_ylabel('runtime [sec]', zorder=81, **self.LABEL_FONT)
         ax1.xaxis.grid(True)
         gl = ax1.get_xgridlines()
         for l in gl:
-            l.set_linewidth(5)
-        handles, labels = ax1.get_legend_handles_labels()
-
-        # reverse the order
-        ax1.legend(handles[::-1], labels[::-1])
+            l.set_linewidth(2.5)
+        ax1.yaxis.grid(True)
+        gl = ax1.get_ygridlines()
+        for l in gl:
+            l.set_linewidth(2.5)
         plt.tight_layout()
 
         if plot_name is not None:

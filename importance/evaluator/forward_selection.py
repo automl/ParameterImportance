@@ -70,7 +70,7 @@ class ForwardSelector(AbstractEvaluator):
             self.evaluated_parameter_importance[best_parameter.name] = lowest_error
         return self.evaluated_parameter_importance
 
-    def plot_result(self, name=None):
+    def _plot_result(self, name, bar=True):
         """
             plot oob score as bar charts
             Parameters
@@ -84,15 +84,29 @@ class ForwardSelector(AbstractEvaluator):
         errors = list(self.evaluated_parameter_importance.values())
 
         ind = np.arange(len(errors))
-        ax.bar(ind, errors, color='b')
+        if bar:
+            ax.bar(ind, errors, color=self.area_color)
+        else:
+            ax.plot(ind, errors, **self.LINE_FONT)
 
-        ax.set_ylabel('Out-Of-Bag Error')
-        ax.set_xticks(ind+0.5)
-        ax.set_xticklabels(params, rotation=30, ha='right')
-        ax.set_xlim(0, len(errors) - 1.25)
+        ax.set_ylabel('Out-Of-Bag Error', **self.LABEL_FONT)
+        if bar:
+            ax.set_xticks(ind+0.375)
+            ax.set_xlim(0, len(errors) - 1.25)
+        else:
+            ax.set_xticks(ind)
+            ax.set_xlim(0, len(errors) - 1)
+        ax.set_xticklabels(params, rotation=30, ha='right', **self.AXIS_FONT)
+        ax.xaxis.grid(True)
+        ax.yaxis.grid(True)
 
         plt.tight_layout()
         if name is not None:
             fig.savefig(name)
         else:
             plt.show()
+
+    def plot_result(self, name=None):
+        self._plot_result(name + '-barplot.png', True)
+        self._plot_result(name + '-chng.png', False)
+        self.logger.info('Saved plot as %s-[barplot|chng].png' % name)

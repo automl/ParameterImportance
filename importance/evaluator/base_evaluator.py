@@ -44,6 +44,15 @@ class AbstractEvaluator(object):
         self.evaluated_parameter_importance = OrderedDict()
         self.name = 'Base'
 
+        self.IMPORTANCE_THRESHOLD = 0.05
+        self.AXIS_FONT = {'size': '10',
+                          'family': 'monospace'}
+        self.LABEL_FONT = {'size': '32',
+                           'family': 'sans-serif'}
+        self.LINE_FONT = {'lw': 4,
+                          'color': (0.125, 0.125, 0.125)}
+        self.area_color = (0.25, 0.25, 0.45)
+
     @abc.abstractclassmethod
     def run(self) -> OrderedDict:
         raise NotImplementedError
