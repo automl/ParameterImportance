@@ -13,11 +13,12 @@ class fANOVA(AbstractEvaluator):
 
     def __init__(self, scenario, cs, model, to_evaluate: int, **kwargs):
         super().__init__(scenario, cs, model, to_evaluate, **kwargs)
+        self.name = 'fANOVA'
+        self.logger = self.name
         # This way the instance features in X are ignored and a new forest is constructed
         # TODO figure out if an already trained forest from the model can be reused!
         self.evaluator = fanova_pyrfr(X=model.X[:, :model.X.shape[1] - len(model.instance_features[0])],
                                       Y=model.y, cs=cs)
-        self.name = 'fANOVA'
 
     def plot_result(self, name=None):
         vis = Visualizer(self.evaluator, self.cs)
