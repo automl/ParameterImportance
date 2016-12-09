@@ -1,8 +1,8 @@
+import time
+import numpy as np
 from collections import OrderedDict
 from sklearn.decomposition import PCA
 from importance.evaluator.base_evaluator import AbstractEvaluator
-import time
-import numpy as np
 from matplotlib import pyplot as plt
 
 __author__ = "Andre Biedenkapp"

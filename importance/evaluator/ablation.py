@@ -1,9 +1,9 @@
-from collections import OrderedDict
-from importance.configspace import Configuration
 import numpy as np
-from importance.evaluator.base_evaluator import AbstractEvaluator
 import copy
+from collections import OrderedDict
 from matplotlib import pyplot as plt
+from importance.configspace import Configuration
+from importance.evaluator.base_evaluator import AbstractEvaluator
 
 __author__ = "Andre Biedenkapp"
 __copyright__ = "Copyright 2016, ML4AAD"

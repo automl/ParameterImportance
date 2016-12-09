@@ -1,6 +1,6 @@
-from importance.epm import RandomForestWithInstances
-from scipy import stats
 import numpy as np
+from scipy import stats
+from importance.epm import RandomForestWithInstances
 
 __author__ = "Andre Biedenkapp"
 __copyright__ = "Copyright 2016, ML4AAD"
