@@ -23,7 +23,6 @@ class Ablation(AbstractEvaluator):
         super().__init__(scenario, cs, model, to_evaluate, **kwargs)
         self.name = 'Ablation'
         self.logger = self.name
-        self.pop_extra = []
 
         self.target = incumbent
         self.source = self.cs.get_default_configuration()

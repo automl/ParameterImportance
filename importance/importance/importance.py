@@ -16,6 +16,7 @@ from importance.configspace import CategoricalHyperparameter, FloatHyperparamete
 from importance.evaluator.ablation import Ablation
 from importance.evaluator.fanova import fANOVA
 from importance.evaluator.forward_selection import ForwardSelector
+from importance.evaluator.influence_models import InfluenceModel
 
 from smac.tae.execute_ta_run import StatusType
 
@@ -33,7 +34,7 @@ class Importance(object):
     """
 
     def __init__(self, scenario_file, runhistory_files, seed: int = 12345,
-                 parameters_to_evaluate: int = -1, traj_file=None):
+                 parameters_to_evaluate: int = -1, traj_file=None, threshold=None, margin=None):
         self.logger = logging.getLogger("Importance")
         self.logger.info('Reading Scenario file and files specified in the scenario')
         self.scenario = Scenario(scenario=scenario_file)
@@ -67,6 +68,8 @@ class Importance(object):
 
         self.logger.info('Setting up Evaluation Method')
         self._parameters_to_evaluate = parameters_to_evaluate
+        self.margin = margin
+        self.threshold = threshold
         # self.evaluator = evaluation_method
 
     def _read_traj_file(self, fn):
@@ -119,7 +122,7 @@ class Importance(object):
 
     @evaluator.setter
     def evaluator(self, evaluation_method):
-        if evaluation_method not in ['ablation', 'fANOVA', 'forward-selection']:
+        if evaluation_method not in ['ablation', 'fANOVA', 'forward-selection', 'influence-model']:
             raise ValueError('Specified evaluation method %s does not exist!' % evaluation_method)
         if evaluation_method == 'ablation':
             if self.incumbent[0] is None:
@@ -133,6 +136,13 @@ class Importance(object):
                                  incumbent=self.incumbent[0],
                                  logy=self.logged_y,
                                  target_performance=self.incumbent[1])
+        elif evaluation_method == 'influence-model':
+            evaluator = InfluenceModel(scenario=self.scenario,
+                                       cs=self.scenario.cs,
+                                       model=self._model,
+                                       to_evaluate=self._parameters_to_evaluate,
+                                       margin=self.margin,
+                                       threshold=self.threshold)
         elif evaluation_method == 'fANOVA':
             evaluator = fANOVA(scenario=self.scenario,
                                cs=self.scenario.cs,
