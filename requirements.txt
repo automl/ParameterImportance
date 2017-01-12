@@ -3,4 +3,3 @@ ConfigSpace
 smac
 sklearn
 matplotlib
-fanova
