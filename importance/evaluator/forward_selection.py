@@ -14,7 +14,7 @@ __email__ = "biedenka@cs.uni-freiburg.de"
 
 class ForwardSelector(AbstractEvaluator):
 
-    def __init__(self, scenario, cs, model, to_evaluate: int, **kwargs):
+    def __init__(self, scenario, cs, model, to_evaluate: int, feature_imp: bool=False, **kwargs):
         """
         Constructor
         :parameter:
@@ -30,6 +30,7 @@ class ForwardSelector(AbstractEvaluator):
         super().__init__(scenario, cs, model, to_evaluate, **kwargs)
         self.name = 'Forward Selection'
         self.logger = self.name
+        self.feature_importance = feature_imp
 
     def run(self) -> OrderedDict:
         """
@@ -41,17 +42,28 @@ class ForwardSelector(AbstractEvaluator):
         """
         params = self.cs.get_hyperparameters()
         param_ids = list(range(len(params)))
+        feature_ids = list(range(len(params), len(self.types)))
         used = []
-        used.extend(range(len(params), len(self.model.types)))  # we don't want to evaluate the feature importance
+        if self.feature_importance:
+            used.extend(range(0, len(params)))
+            names = list(map(lambda x: str(len(feature_ids) + x - len(self.types)), feature_ids))
+            ids = feature_ids
+            if self.to_evaluate > len(feature_ids):
+                self.to_evaluate = len(feature_ids)
+        else:
+            used.extend(range(len(params), len(self.model.types)))  # we don't want to evaluate the feature importance
+            names = params
+            ids = param_ids
+
         num_feats = len(self.types) - len(params)
-        if num_feats > 0:
-            pca = PCA(n_components=min(7, len(self.types) - len(params)))
+        if not self.feature_importance and num_feats > 0:
+            pca = PCA(n_components=min(7, num_feats))
             self.scenario.feature_array = pca.fit_transform(self.scenario.feature_array)
 
         for _ in range(self.to_evaluate):  # Main Loop
             errors = []
-            for idx, parameter in zip(param_ids, params):
-                self.logger.debug('Evaluating %s' % parameter)
+            for idx, name in zip(ids, names):
+                self.logger.debug('Evaluating %s' % name)
                 used.append(idx)
                 self.logger.debug('Used parameters: %s' % str(used))
 
@@ -63,11 +75,15 @@ class ForwardSelector(AbstractEvaluator):
 
             best_idx = np.argmin(errors)
             lowest_error = errors[best_idx]
-            best_parameter = params.pop(best_idx)
-            used.append(param_ids.pop(best_idx))
+            best_parameter = names.pop(best_idx)
+            used.append(ids.pop(best_idx))
 
-            self.logger.info('%s: %.4f (OOB)' % (best_parameter.name, lowest_error))
-            self.evaluated_parameter_importance[best_parameter.name] = lowest_error
+            if self.feature_importance:
+                self.logger.info('%s: %.4f (OOB)' % (best_parameter, lowest_error))
+                self.evaluated_parameter_importance[best_parameter] = lowest_error
+            else:
+                self.logger.info('%s: %.4f (OOB)' % (best_parameter.name, lowest_error))
+                self.evaluated_parameter_importance[best_parameter.name] = lowest_error
         return self.evaluated_parameter_importance
 
     def _plot_result(self, name, bar=True):
@@ -92,7 +108,7 @@ class ForwardSelector(AbstractEvaluator):
         ax.set_ylabel('Out-Of-Bag Error', **self.LABEL_FONT)
         if bar:
             ax.set_xticks(ind+0.375)
-            ax.set_xlim(0, len(errors) - 1.25)
+            ax.set_xlim(-.25, len(errors) + 0.125)
         else:
             ax.set_xticks(ind)
             ax.set_xlim(0, len(errors) - 1)
