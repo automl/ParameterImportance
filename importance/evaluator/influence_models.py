@@ -28,7 +28,6 @@ class InfluenceModel(AbstractEvaluator):
         self.all_X = copy.deepcopy(self.X)
         self.all_y = copy.deepcopy(self.y)
 
-
         # TODO better splitting
         self.testX = self.X[:int(len(self.X) * .1), :]
         self.X = self.X[int(len(self.X) * .1):, :]
