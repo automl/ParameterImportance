@@ -25,16 +25,17 @@ class AbstractEvaluator(object):
         self.cs = cs
         self.model = model  # SMAC model
 
-        if 'X' in kwargs and 'y' in kwargs:
-            self._train_model(kwargs['X'], kwargs['y'], **kwargs)
-        if 'features' in kwargs:
-            self.features = kwargs['features']
-        else:
-            self.features = self.model.instance_features
+        if self.model is not None:
+            if 'X' in kwargs and 'y' in kwargs:
+                self._train_model(kwargs['X'], kwargs['y'], **kwargs)
+            if 'features' in kwargs:
+                self.features = kwargs['features']
+            else:
+                self.features = self.model.instance_features
 
-        self.X = self.model.X
-        self.y = self.model.y
-        self.types = self.model.types
+            self.X = self.model.X
+            self.y = self.model.y
+            self.types = self.model.types
 
         if to_evaluate <= 0:
             self.to_evaluate = len(self.cs.get_hyperparameters())
