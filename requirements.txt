@@ -1,5 +1,5 @@
 numpy
-ConfigSpace
-smac
 sklearn
 matplotlib
+ConfigSpace
+smac>=0.2.3
