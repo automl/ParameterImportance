@@ -218,7 +218,7 @@ class Importance(object):
             rh2EPM = RunHistory2EPM4LogCost(scenario=self.scenario,
                                             num_params=num_params,
                                             success_states=[
-                                                StatusType.SUCCESS.value, ],
+                                                StatusType.SUCCESS, ],
                                             impute_censored_data=False,
                                             impute_state=[
                                                 StatusType.TIMEOUT, ],
