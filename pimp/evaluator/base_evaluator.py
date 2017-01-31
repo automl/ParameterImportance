@@ -53,6 +53,7 @@ class AbstractEvaluator(object):
         self.LINE_FONT = {'lw': 4,
                           'color': (0.125, 0.125, 0.125)}
         self.area_color = (0.25, 0.25, 0.45)
+        self.unimportant_area_color = (0.125, 0.125, 0.225)
 
     @abc.abstractclassmethod
     def run(self) -> OrderedDict:

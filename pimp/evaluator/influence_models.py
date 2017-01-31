@@ -2,9 +2,11 @@ import time
 import copy
 import random
 from collections import OrderedDict
-from pimp.evaluator.base_evaluator import AbstractEvaluator
+import numpy as np
+from matplotlib import pyplot as plt
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics.regression import mean_squared_error
+from pimp.evaluator.base_evaluator import AbstractEvaluator
 
 __author__ = "Andre Biedenkapp"
 __copyright__ = "Copyright 2016, ML4AAD"
@@ -134,4 +136,32 @@ class InfluenceModel(AbstractEvaluator):
 
     def plot_result(self, name=None):
         # TODO find out what a sensible way of plotting this would be.
-        raise NotImplementedError
+        # get sort index
+        ids = [i[0] for i in sorted(enumerate(self.evaluated_parameter_importance.values()), key=lambda x: x[1])]
+
+        fig, ax = plt.subplots()
+        params = np.array(list(self.evaluated_parameter_importance.keys()))[ids]
+        weights = np.array(list(self.evaluated_parameter_importance.values()))[ids]
+
+        max_weight = max(weights) + abs(min(weights))
+        tmp = np.arange(len(weights))
+        bars = ax.bar(tmp, weights, color=self.area_color)
+
+        for b, t in zip(enumerate(bars), ax.xaxis.get_ticklabels()):
+            if (abs(weights[b[0]]) / max_weight) < 2*self.IMPORTANCE_THRESHOLD:
+                b[1].set_color(self.unimportant_area_color)
+                t.set_color((0.45, 0.45, 0.45))
+
+        ax.set_ylabel('Weights', **self.LABEL_FONT)
+        ax.set_xticks(tmp + 0.375)
+        ax.set_xticklabels(params, rotation=30, ha='right', **self.AXIS_FONT)
+        ax.xaxis.grid(True)
+        ax.yaxis.grid(True)
+
+        plt.ylim((-1*(abs(min(weights)) + .1*abs(min(weights))), abs(max(weights)) + .1*abs(max(weights))))
+
+        plt.tight_layout()
+        if name is not None:
+            fig.savefig(name)
+        else:
+            plt.show()
