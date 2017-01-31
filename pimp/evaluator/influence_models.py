@@ -2,7 +2,7 @@ import time
 import copy
 import random
 from collections import OrderedDict
-from importance.evaluator.base_evaluator import AbstractEvaluator
+from pimp.evaluator.base_evaluator import AbstractEvaluator
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics.regression import mean_squared_error
 

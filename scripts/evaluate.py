@@ -6,8 +6,8 @@ cmd_folder = os.path.realpath(os.path.join(cmd_folder, ".."))
 if cmd_folder not in sys.path:
     sys.path.insert(0, cmd_folder)
 
-from importance.importance.importance import Importance
-from importance.utils.io.cmd_reader import CMDs
+from pimp.importance.importance import Importance
+from pimp.utils.io.cmd_reader import CMDs
 import logging
 
 __author__ = "Andre Biedenkapp"

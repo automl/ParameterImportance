@@ -2,7 +2,7 @@ import time
 import numpy as np
 from collections import OrderedDict
 from sklearn.decomposition import PCA
-from importance.evaluator.base_evaluator import AbstractEvaluator
+from pimp.evaluator.base_evaluator import AbstractEvaluator
 from matplotlib import pyplot as plt
 
 __author__ = "Andre Biedenkapp"

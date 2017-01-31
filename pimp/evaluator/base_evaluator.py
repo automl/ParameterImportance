@@ -1,9 +1,9 @@
 import abc
 import logging
 from collections import OrderedDict
-from importance.epm import RandomForestWithInstances
-from importance.configspace import ConfigurationSpace
-from importance.utils import Scenario
+from pimp.epm import RandomForestWithInstances
+from pimp.configspace import ConfigurationSpace
+from pimp.utils import Scenario
 
 __author__ = "Andre Biedenkapp"
 __copyright__ = "Copyright 2016, ML4AAD"

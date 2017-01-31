@@ -2,8 +2,8 @@ import numpy as np
 import copy
 from collections import OrderedDict
 from matplotlib import pyplot as plt
-from importance.configspace import Configuration
-from importance.evaluator.base_evaluator import AbstractEvaluator
+from pimp.configspace import Configuration
+from pimp.evaluator.base_evaluator import AbstractEvaluator
 
 __author__ = "Andre Biedenkapp"
 __copyright__ = "Copyright 2016, ML4AAD"

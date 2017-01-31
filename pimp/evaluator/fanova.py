@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from importance.evaluator.base_evaluator import AbstractEvaluator
+from pimp.evaluator.base_evaluator import AbstractEvaluator
 # from importance.evaluator import fanova_pyrfr, Visualizer
 
 __author__ = "Andre Biedenkapp"

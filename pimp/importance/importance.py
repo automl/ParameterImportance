@@ -9,14 +9,14 @@ import matplotlib
 matplotlib.use('Agg')
 
 
-from importance.utils import Scenario, RunHistory2EPM4LogCost, RunHistory2EPM4Cost, RunHistory, average_cost
-from importance.epm import RandomForestWithInstances, RFRImputator
-from importance.epm.unlogged_rf_with_instances import UnloggedRandomForestWithInstances
-from importance.configspace import CategoricalHyperparameter, FloatHyperparameter, IntegerHyperparameter, Configuration
-from importance.evaluator.ablation import Ablation
-from importance.evaluator.fanova import fANOVA
-from importance.evaluator.forward_selection import ForwardSelector
-from importance.evaluator.influence_models import InfluenceModel
+from pimp.utils import Scenario, RunHistory2EPM4LogCost, RunHistory2EPM4Cost, RunHistory, average_cost
+from pimp.epm import RandomForestWithInstances, RFRImputator
+from pimp.epm.unlogged_rf_with_instances import UnloggedRandomForestWithInstances
+from pimp.configspace import CategoricalHyperparameter, FloatHyperparameter, IntegerHyperparameter, Configuration
+from pimp.evaluator.ablation import Ablation
+from pimp.evaluator.fanova import fANOVA
+from pimp.evaluator.forward_selection import ForwardSelector
+from pimp.evaluator.influence_models import InfluenceModel
 
 from smac.tae.execute_ta_run import StatusType
 
