@@ -33,7 +33,8 @@ class CMDs(CMDReader):
         req_opts.add_argument("--scenario_file", required=True,
                               help="scenario file in AClib format")
         req_opts.add_argument("--modus", required=True,
-                              help='Analysis method to use', choices=['ablation', 'forward-selection', 'fANOVA', 'influence-model'])
+                              help='Analysis method to use', choices=['ablation', 'forward-selection',
+                                                                      'influence-model'])
         req_opts.add_argument("--history", required=True,
                               help="runhistory file")
 

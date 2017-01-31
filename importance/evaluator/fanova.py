@@ -8,6 +8,14 @@ __license__ = "3-clause BSD"
 __maintainer__ = "Andre Biedenkapp"
 __email__ = "biedenka@cs.uni-freiburg.de"
 
+# TODO This is a Placeholder
+# TODO This is a Placeholder
+# TODO This is a Placeholder
+# TODO This is a Placeholder
+# TODO This is a Placeholder
+# TODO This is a Placeholder
+# TODO This is a Placeholder
+# TODO Currently fANOVA is not supported
 
 class fANOVA(AbstractEvaluator):
 
