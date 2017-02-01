@@ -1,6 +1,10 @@
+import logging
 import sys
 import os
 import inspect
+import datetime
+import time
+import json
 cmd_folder = os.path.realpath(os.path.abspath(os.path.split(inspect.getfile( inspect.currentframe() ))[0]))
 cmd_folder = os.path.realpath(os.path.join(cmd_folder, ".."))
 if cmd_folder not in sys.path:
@@ -8,7 +12,6 @@ if cmd_folder not in sys.path:
 
 from pimp.importance.importance import Importance
 from pimp.utils.io.cmd_reader import CMDs
-import logging
 
 __author__ = "Andre Biedenkapp"
 __copyright__ = "Copyright 2016, ML4AAD"
@@ -28,3 +31,7 @@ if __name__ == '__main__':
                             traj_file=args.trajectory, seed=args.seed)  # create importance object
     importance_value_dict = importance.evaluate_scenario(args.modus)
     importance.plot_results(name=args.modus)
+    ts = time.time()
+    ts = datetime.datetime.fromtimestamp(ts).strftime('%Y_%m_%d_%H:%M:%S')
+    with open('pimp_values_%s_%s.json' % (args.modus, ts), 'w') as out_file:
+        json.dump(importance_value_dict, out_file)
