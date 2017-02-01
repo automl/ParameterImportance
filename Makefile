@@ -233,7 +233,7 @@ gh-pages:
 	git checkout master docs
 	make html
 	git reset HEAD
-	mv -fv docs/_build/html/* ./"
-	rm -rf docs/_build
+	mv -fv _build/html/* ./"
+	rm -rf _build
 	git add -A
 	git ci -m "Generated gh-pages for `git log master -1 --pretty=short --abbrev-commit`" && git push origin gh-pages ; git checkout master
