@@ -5,7 +5,7 @@ Installation
 
 Installing the Requirenments
 ----------------------------
-| To install PIMPs requirenments from command line, please type the following commands on the command line
+| To install PIMPs requirenments from command line, please type the following commands on the command line in PIMPs root directory.
 
 .. code-block:: bash
 

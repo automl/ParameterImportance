@@ -109,7 +109,10 @@
       <div class="col-md-3">
         <div id="sidebar" class="bs-sidenav" role="complementary"><ul>
 <li><a class="reference internal" href="#">Manual</a><ul>
-<li><a class="reference internal" href="#quick-start">Quick Start</a></li>
+<li><a class="reference internal" href="#quick-start">Quick Start</a><ul>
+<li><a class="reference internal" href="#usage">Usage</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -121,9 +124,59 @@
   <div class="section" id="manual">
 <h1>Manual<a class="headerlink" href="#manual" title="Permalink to this headline">¶</a></h1>
 <p>In the following we will show how to use <strong>PIMP</strong>.</p>
+<p>Before proceeding with this Quick-Start guide, you sould make sure you have all requirenment installed (see <a class="reference internal" href="installation.html"><span class="doc">Installation</span></a>).
+PIMP is developed for <strong>python3.5</strong> and above!</p>
 <div class="section" id="quick-start">
 <span id="quick"></span><h2>Quick Start<a class="headerlink" href="#quick-start" title="Permalink to this headline">¶</a></h2>
-<p>TODO</p>
+<p>To show you how easy it is to use <em>PIMP</em> we will do it by example.
+In the examples folder you&#8217;ll find the folder spear_qcp.</p>
+<p>First navigate to this folder.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">cd</span> examples/spear_qcp
+</pre></div>
+</div>
+<p>It contains all the necessary files, to optimize <em>Spear</em> using <em>SMAC3</em>.
+To see a detailed description of what each file is used for, we refer to <em>SMACs</em> <a class="reference external" href="https://automl.github.io/SMAC3/stable/manual.html#spear-qcp">manual</a>. All the files are provided so you can run SMAC for yourself to create new output to use with <em>PIMP</em></p>
+<p>The folder <em>smac-output</em> contains the <em>runhistory</em> and <em>trajectory</em> files of a 10 minute
+SMAC run for the specified scenario.</p>
+<p>To use <strong>PIMP</strong> simply execute the following call in the spear_qcp folder:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>python ~/git/importance/scripts/evaluate.py --scenario_file scenario.txt --history <span class="s1">&#39;./*/runhistory.json&#39;</span> --modus forward-selection
+</pre></div>
+</div>
+<p>With this call, PIMP will read in the scenarios info and all runhistories in this folder and evaluate the parameter importances,
+using forward selection (see <a class="reference internal" href="algorithms.html"><span class="doc">Algorithms</span></a>).</p>
+<p>PIMP will create a json file that contains the names and importance values of all parameters that the analysis algorithm
+checked. You can easily load this file using pythons json module.</p>
+<p>Further, every algorithm will create one ore more plots in the same directory in which the evaluate script was called.</p>
+<p>This is all you need to have in order to determine the parameter importance of your algorithm.</p>
+<div class="section" id="usage">
+<span id="opts"></span><h3>Usage<a class="headerlink" href="#usage" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>usage: evaluate.py <span class="o">[</span>-h<span class="o">]</span> --scenario_file SCENARIO_FILE --modus
+               <span class="o">{</span>ablation,forward-selection,influence-model<span class="o">}</span> --history
+               HISTORY <span class="o">[</span>--seed SEED<span class="o">]</span> <span class="o">[</span>--verbose_level <span class="o">{</span>INFO,DEBUG<span class="o">}]</span>
+               <span class="o">[</span>--trajectory TRAJECTORY<span class="o">]</span> <span class="o">[</span>--num_params NUM_PARAMS<span class="o">]</span>
+optional arguments:
+  -h, --help            show this <span class="nb">help</span> message and <span class="nb">exit</span>
+Required Options:
+  --scenario_file SCENARIO_FILE
+                        scenario file in AClib format <span class="o">(</span>default: None<span class="o">)</span>
+  --modus <span class="o">{</span>ablation,forward-selection,influence-model<span class="o">}</span>
+                        Analysis method to use <span class="o">(</span>default: None<span class="o">)</span>
+  --history HISTORY     runhistory file <span class="o">(</span>default: None<span class="o">)</span>
+Optional Options:
+  --seed SEED           random seed <span class="o">(</span>default: 12345<span class="o">)</span>
+  --verbose_level <span class="o">{</span>INFO,DEBUG<span class="o">}</span>
+                        verbosity <span class="o">(</span>default: 20<span class="o">)</span>
+  --trajectory TRAJECTORY
+                        Path to trajectory file <span class="o">(</span>default: None<span class="o">)</span>
+  --num_params NUM_PARAMS
+                        Number of parameters to evaluate <span class="o">(</span>default: 0<span class="o">)</span>
+</pre></div>
+</div>
+<p>The trajectory file is only needed for <strong>local analysis methods</strong> such as <em>ablation</em>.</p>
+<p>num_params determines how many parameters have to be evaluated. It is useful if you are only interested in the <em>n</em> most
+important parameters. If it is not set or below 1 or above the maximum number of parameters to evaluate, it will evaluate
+all possible parameters.</p>
+</div>
 </div>
 </div>
 
