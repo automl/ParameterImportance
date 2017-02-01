@@ -230,7 +230,7 @@ dummy:
 gh-pages:
 	git checkout gh-pages
 	rm -rf *
-	git checkout master docs
+	git checkout master docs Makefile
 	make html
 	git reset HEAD
 	mv -fv _build/html/* ./"
