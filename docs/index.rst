@@ -18,5 +18,6 @@ Contents:
 
    installation
    manual
+   algorithms
    contact
    license

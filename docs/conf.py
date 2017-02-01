@@ -137,8 +137,9 @@ html_theme_options = {
         ('Start', 'index'),
         ('Installation', 'installation'),
         ('Manual', 'manual'),
+        ('Algorithms', 'algorithms'),
         ('Contact', 'contact'),
-	('License', 'license'),
+        ('License', 'license'),
     ],
 
     # Render the next and previous page links in navbar. (Default: true)
