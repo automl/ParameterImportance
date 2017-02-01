@@ -126,11 +126,21 @@
 analysis and are implemented as part of <strong>PIMP</strong>.</p>
 <div class="section" id="ablation">
 <span id="id1"></span><h2>Ablation<a class="headerlink" href="#ablation" title="Permalink to this headline">¶</a></h2>
-<p>TODO</p>
+<p><a class="reference external" href="https://link.springer.com/article/10.1007/s10732-014-9275-9">Ablation</a> is a lokal method that determines parameter importances between two given configurations. It thereby looks
+which parameter contributed most in a lokal part of the Configuration Space.
+It is an iterative method that changes, in each round, one parameter from the starting configuration to that of the
+target configuration. The parameter that resulted in the highest improvement is kept as this rounds most important
+parameter. The order determines which parameters are deemed most important and the percentage of improvement tells us
+how much influence a parameter has.</p>
+<p>In PIMP we implemented an efficient <a class="reference external" href="http://aad.informatik.uni-freiburg.de/papers/17-AAAI-Surrogate-Ablation.pdf">variant of ablation</a>, which replaces costly algorithm runs with cheap to evaluate
+surrogates.</p>
 </div>
 <div class="section" id="forward-selection">
 <span id="forwards"></span><h2>Forward-Selection<a class="headerlink" href="#forward-selection" title="Permalink to this headline">¶</a></h2>
-<p>TODO</p>
+<p>Forward-Selection is an iterative method. In each iteration it constructs models that only consider parts of all
+available parameters and keeps the one parameter that results in the lowest prediction error for the next round.
+The order determines which parameters are deemed most important.</p>
+<p>For more details we refer to the original <a class="reference external" href="https://link.springer.com/chapter/10.1007/978-3-642-44973-4_40">paper</a>.</p>
 </div>
 <div class="section" id="influence-models">
 <span id="im"></span><h2>Influence Models<a class="headerlink" href="#influence-models" title="Permalink to this headline">¶</a></h2>
