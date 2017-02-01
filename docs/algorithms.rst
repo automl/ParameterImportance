@@ -15,14 +15,26 @@ analysis and are implemented as part of **PIMP**.
 Ablation
 --------
 
-TODO
+`Ablation <https://link.springer.com/article/10.1007/s10732-014-9275-9>`_ is a lokal method that determines parameter importances between two given configurations. It thereby looks
+which parameter contributed most in a lokal part of the Configuration Space.
+It is an iterative method that changes, in each round, one parameter from the starting configuration to that of the
+target configuration. The parameter that resulted in the highest improvement is kept as this rounds most important
+parameter. The order determines which parameters are deemed most important and the percentage of improvement tells us
+how much influence a parameter has.
+
+In PIMP we implemented an efficient `variant of ablation <http://aad.informatik.uni-freiburg.de/papers/17-AAAI-Surrogate-Ablation.pdf>`_, which replaces costly algorithm runs with cheap to evaluate
+surrogates.
 
 .. _forwards:
 
 Forward-Selection
 -----------------
 
-TODO
+Forward-Selection is an iterative method. In each iteration it constructs models that only consider parts of all
+available parameters and keeps the one parameter that results in the lowest prediction error for the next round.
+The order determines which parameters are deemed most important.
+
+For more details we refer to the original `paper <https://link.springer.com/chapter/10.1007/978-3-642-44973-4_40>`_.
 
 .. _im:
 
