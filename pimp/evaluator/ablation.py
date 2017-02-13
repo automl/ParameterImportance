@@ -139,8 +139,8 @@ class Ablation(AbstractEvaluator):
         prev_performance = source_mean
         target_mean, target_var = self._predict_over_instance_set(self.target)
         improvement = prev_performance - target_mean
-        self.predicted_parameter_performances['-source-'] = source_mean
-        self.predicted_parameter_variances['-source-'] = source_var
+        self.predicted_parameter_performances['-source-'] = source_mean.flatten()[0]
+        self.predicted_parameter_variances['-source-'] = source_var.flatten()[0]
         self.evaluated_parameter_importance['-source-'] = 0
 
         while len(self.delta) > 0:  # Main loop. While parameters still left ...
@@ -177,8 +177,8 @@ class Ablation(AbstractEvaluator):
                                                                   str(self.delta[best_idx]),
                                                                   improvement_in_percentage * 100))
             param_str = '; '.join(self.delta[best_idx])
-            self.evaluated_parameter_importance[param_str] = improvement_in_percentage
-            self.predicted_parameter_performances[param_str] = best_performance
+            self.evaluated_parameter_importance[param_str] = improvement_in_percentage.flatten()[0]
+            self.predicted_parameter_performances[param_str] = best_performance.flatten()[0]
             self.predicted_parameter_variances[param_str] = best_variance
 
             for winning_param in self.delta[best_idx]:  # Delete parameters that were set to inactive by the last
@@ -187,8 +187,8 @@ class Ablation(AbstractEvaluator):
             self._check_children(prev_modifiable_config_dict, self.delta[best_idx], delete=True)
             self.delta.pop(best_idx)  # don't forget to remove already tested parameters
 
-        self.predicted_parameter_performances['-target-'] = target_mean
-        self.predicted_parameter_variances['-target-'] = target_var
+        self.predicted_parameter_performances['-target-'] = target_mean.flatten()[0]
+        self.predicted_parameter_variances['-target-'] = target_var.flatten()[0]
         self.evaluated_parameter_importance['-target-'] = 0
         # sum_ = 0  # Small check that sum is 1
         # for key in self.evaluated_parameter_importance:

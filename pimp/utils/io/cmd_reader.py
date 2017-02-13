@@ -46,7 +46,7 @@ class CMDs(CMDReader):
                               help="verbosity")
         req_opts.add_argument("--trajectory", default=None,
                               help="Path to trajectory file")
-        req_opts.add_argument("--num_params", default=0,
+        req_opts.add_argument("--num_params", default=0, type=int,
                               help="Number of parameters to evaluate")
 
         args_, misc = parser.parse_known_args()
