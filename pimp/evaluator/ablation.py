@@ -70,9 +70,9 @@ class Ablation(AbstractEvaluator):
             for child in children:
                 for condition in self.cs.get_parent_conditions_of(child):
                     if condition.evaluate(self.target) and not condition.evaluate(self.source):
-                        self.delta[idx].append(child)  # Now at idx delta has two combined entries
-                        if [child] in self.delta:
-                            to_remove.append(self.delta.index([child]))
+                        self.delta[idx].append(child.name)  # Now at idx delta has two combined entries
+                        if [child.name] in self.delta:
+                            to_remove.append(self.delta.index([child.name]))
         to_remove = sorted(to_remove, reverse=True)  # reverse sort necessary to not delete the wrong items
         for idx in to_remove:
             self.delta.pop(idx)
@@ -154,12 +154,14 @@ class Ablation(AbstractEvaluator):
             round_performances = []
             round_variances = []
             for candidate_tuple in self.delta:
+
                 for candidate in candidate_tuple:
                     modifiable_config_dict[candidate] = self.target[candidate]
 
                 modifiable_config_dict = self._check_children(modifiable_config_dict, candidate_tuple)
 
                 modifiable_config = Configuration(self.cs, modifiable_config_dict)
+
 
                 mean, var = self._predict_over_instance_set(modifiable_config)  # ... predict their performance
                 self.logger.debug('%s: %.6f' % (candidate_tuple, mean[0]))
@@ -183,6 +185,7 @@ class Ablation(AbstractEvaluator):
 
             for winning_param in self.delta[best_idx]:  # Delete parameters that were set to inactive by the last
                                                         # best parameter
+
                 prev_modifiable_config_dict[winning_param] = self.target[winning_param]
             self._check_children(prev_modifiable_config_dict, self.delta[best_idx], delete=True)
             self.delta.pop(best_idx)  # don't forget to remove already tested parameters
