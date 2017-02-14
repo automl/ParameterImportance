@@ -107,9 +107,11 @@ class Ablation(AbstractEvaluator):
                 if key in forbidden_clause:
                     at_ = forbidden_clause.index(key) + 1
                     if modifiable_config[key] == forbidden_clause[at_]:
-                        sum_forbidden += 1
+                        sum_forbidden += 2
             not_forbidden = not_forbidden and not (sum_forbidden == len(forbidden_clause))
-        return not_forbidden
+            if not not_forbidden:
+                return False
+        return True
 
     def _check_child_conditions(self, _dict, children):
         dict_ = {}
@@ -147,7 +149,7 @@ class Ablation(AbstractEvaluator):
                         self.logger.debug('Deactivated child %s found this round' % child)
                         if delete and [child] in self.delta:
                             for item in self.delta:
-                                print([child], item)
+                                self.logger.debug('%s, %s' % (str([child]), str(item)))
                             self.logger.critical('Removing deactivated parameter %s' % child)
                             self.delta.pop(self.delta.index([child]))
         return modded_dict
@@ -197,16 +199,16 @@ class Ablation(AbstractEvaluator):
                 modifiable_config_dict = self._check_children(modifiable_config_dict, candidate_tuple)
 
                 not_forbidden = self.check_not_forbidden(forbidden_name_value_pairs, modifiable_config_dict)
-                if not_forbidden:
-                    modifiable_config = Configuration(self.cs, modifiable_config_dict)
-
-                    mean, var = self._predict_over_instance_set(modifiable_config)  # ... predict their performance
-                    self.logger.debug('%s: %.6f' % (candidate_tuple, mean[0]))
-                    round_performances.append(mean)
-                    round_variances.append(var)
-                    modifiable_config_dict = copy.deepcopy(prev_modifiable_config_dict)
-                else:
+                if not not_forbidden:
+                    self.logger.critical('FOUND FORBIDDEN!!!!! SKIPPING!!!')
                     continue
+                modifiable_config = Configuration(self.cs, modifiable_config_dict)
+
+                mean, var = self._predict_over_instance_set(modifiable_config)  # ... predict their performance
+                self.logger.debug('%s: %.6f' % (candidate_tuple, mean[0]))
+                round_performances.append(mean)
+                round_variances.append(var)
+                modifiable_config_dict = copy.deepcopy(prev_modifiable_config_dict)
 
             best_idx = np.argmin(round_performances)
             best_performance = round_performances[best_idx]  # greedy choice of parameter to fix
