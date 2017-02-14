@@ -94,14 +94,8 @@ class Ablation(AbstractEvaluator):
             children = self.cs.get_children_of(parameter[0])
             for child in children:
                 for condition in self.cs.get_parent_conditions_of(child):
-                    try:
-                        target_conditions_met = condition.evaluate(self.target)
-                    except ValueEriror:
-                        target_conditions_met = False
-                    try:
-                        source_conditions_met = condition.evaluate(self.source)
-                    except ValueError:
-                        source_conditions_met = False
+                    target_conditions_met = condition.evaluate(self.target)
+                    source_conditions_met = condition.evaluate(self.source)
                     if target_conditions_met and not source_conditions_met:
                         if child.name not in self.delta[idx]:
                             self.delta[idx].append(child.name)  # Now at idx delta has two combined entries
@@ -200,9 +194,6 @@ class Ablation(AbstractEvaluator):
 
         forbidden_name_value_pairs = self.determine_forbidden()
         
-        for i in self.delta:
-            print(i)
-
         while len(self.delta) > 0:  # Main loop. While parameters still left ...
             modifiable_config_dict = copy.deepcopy(prev_modifiable_config_dict)
             self.logger.debug('Round %d of %d:' % (start_delta - len(self.delta), start_delta - 1))
@@ -225,22 +216,6 @@ class Ablation(AbstractEvaluator):
                 if not not_forbidden:  # othwerise skipp it
                     self.logger.critical('FOUND FORBIDDEN!!!!! SKIPPING!!!')
                     continue
-                try:
-                    print(modifiable_config_dict['rer-rn'])
-                except KeyError:
-                    print()
-                try:
-                    print(modifiable_config_dict['rer-l'])
-                except KeyError:
-                    print()
-                try:
-                    print(modifiable_config_dict['rer-f'])
-                except KeyError:
-                    print()
-                try:
-                    print(modifiable_config_dict['rer'])
-                except KeyError:
-                    print()
                 modifiable_config = Configuration(self.cs, modifiable_config_dict)
 
                 mean, var = self._predict_over_instance_set(modifiable_config)  # ... predict their performance
