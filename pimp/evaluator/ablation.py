@@ -2,7 +2,7 @@ import numpy as np
 import copy
 from collections import OrderedDict
 from matplotlib import pyplot as plt
-from pimp.configspace import Configuration, impute_inactive_values
+from pimp.configspace import Configuration 
 from pimp.evaluator.base_evaluator import AbstractEvaluator
 
 __author__ = "Andre Biedenkapp"
@@ -24,9 +24,10 @@ class Ablation(AbstractEvaluator):
         self.name = 'Ablation'
         self.logger = self.name
 
-        self.target = impute_inactive_values(incumbent)
-        self.source = impute_inactive_values(self.cs.get_default_configuration())
+        self.target = incumbent
+        self.source = self.cs.get_default_configuration()
         self.delta = self._diff_in_source_and_target()
+        self.default = self.cs.get_default_configuration()
         self._determine_combined_flipps()
         self.inactive = []
 
@@ -88,13 +89,24 @@ class Ablation(AbstractEvaluator):
         Uses the methods provided by Config space to easily check conditions
         """
         to_remove = []
+        ignore = []
         for idx, parameter in enumerate(self.delta):
             children = self.cs.get_children_of(parameter[0])
             for child in children:
                 for condition in self.cs.get_parent_conditions_of(child):
-                    if condition.evaluate(self.target) and not condition.evaluate(self.source):
-                        self.delta[idx].append(child.name)  # Now at idx delta has two combined entries
-                        if [child.name] in self.delta:
+                    try:
+                        target_conditions_met = condition.evaluate(self.target)
+                    except ValueEriror:
+                        target_conditions_met = False
+                    try:
+                        source_conditions_met = condition.evaluate(self.source)
+                    except ValueError:
+                        source_conditions_met = False
+                    if target_conditions_met and not source_conditions_met:
+                        if child.name not in self.delta[idx]:
+                            self.delta[idx].append(child.name)  # Now at idx delta has two combined entries
+                        tmp_idx = self.delta.index([child.name])
+                        if [child.name] in self.delta and tmp_idx not in to_remove:
                             to_remove.append(self.delta.index([child.name]))
         to_remove = sorted(to_remove, reverse=True)  # reverse sort necessary to not delete the wrong items
         for idx in to_remove:
@@ -134,11 +146,29 @@ class Ablation(AbstractEvaluator):
                     if not child_conditions[child]:
                         modded_dict[child] = None
                         self.logger.debug('Deactivated child %s found this round' % child)
+                        modded_dict = self._set_child_of_child_to_none(child, modded_dict)
                         if delete and [child] in self.delta:
                             for item in self.delta:
                                 self.logger.debug('%s, %s' % (str([child]), str(item)))
                             self.logger.critical('Removing deactivated parameter %s' % child)
                             self.delta.pop(self.delta.index([child]))
+        return modded_dict
+
+    def _set_child_of_child_to_none(self, child, modded_dict):
+        children_of_child = self.cs.get_children_of(child)
+        if children_of_child:
+            modded_dict[child] = self.target[child]
+            try:
+                conditions = self._check_child_conditions(modded_dict, children_of_child)
+            except ValueError:
+                modded_dict[child] = None
+                return modded_dict
+            modded_dict[child] = None
+            for c in conditions:
+                if not conditions[c] and c in list(modded_dict.keys()):
+                    modded_dict[c] = None
+                    self.logger.debug('Deactivated sub-child %s found this round' % c)
+                    modded_dict = self._set_child_of_child_to_none(c, modded_dict)
         return modded_dict
 
 ########################################################################################################################
@@ -169,6 +199,9 @@ class Ablation(AbstractEvaluator):
         self.evaluated_parameter_importance['-source-'] = 0
 
         forbidden_name_value_pairs = self.determine_forbidden()
+        
+        for i in self.delta:
+            print(i)
 
         while len(self.delta) > 0:  # Main loop. While parameters still left ...
             modifiable_config_dict = copy.deepcopy(prev_modifiable_config_dict)
@@ -192,6 +225,22 @@ class Ablation(AbstractEvaluator):
                 if not not_forbidden:  # othwerise skipp it
                     self.logger.critical('FOUND FORBIDDEN!!!!! SKIPPING!!!')
                     continue
+                try:
+                    print(modifiable_config_dict['rer-rn'])
+                except KeyError:
+                    print()
+                try:
+                    print(modifiable_config_dict['rer-l'])
+                except KeyError:
+                    print()
+                try:
+                    print(modifiable_config_dict['rer-f'])
+                except KeyError:
+                    print()
+                try:
+                    print(modifiable_config_dict['rer'])
+                except KeyError:
+                    print()
                 modifiable_config = Configuration(self.cs, modifiable_config_dict)
 
                 mean, var = self._predict_over_instance_set(modifiable_config)  # ... predict their performance
