@@ -79,8 +79,8 @@ class Ablation(AbstractEvaluator):
 
     def determine_forbidden(self):
         """
-        Method to determine forbidden clauses.
-        :return: list of lists [[pname, pvalue, pname2, pvalue2]]
+        Method to determine forbidden clauses, and saves them in a simple to check format.
+        return: list of lists [[pname, pvalue, pname2, pvalue2]]
         """
         forbidden_clauses = self.cs.forbidden_clauses
         forbidden_descendants = map(lambda x: x.get_descendant_literal_clauses(), forbidden_clauses)
@@ -96,9 +96,9 @@ class Ablation(AbstractEvaluator):
     def check_not_forbidden(self, forbidden_name_value_pairs, modifiable_config):
         """
         Helper method to determine if a current configuration dictionary is forbidden or not
-        :param forbidden_name_value_pairs: list of lists of forbidden parameter settings
-        :param modifiable_config: dict param_name -> param_value
-        :return: boolean. not_forbidden (True)
+        forbidden_name_value_pairs: list of lists of forbidden parameter settings
+        modifiable_config: dict param_name -> param_value
+        return: boolean. True if the current configuration is not forbidden, False otherwise.
         """
         not_forbidden = True
         for forbidden_clause in forbidden_name_value_pairs:
@@ -197,8 +197,8 @@ class Ablation(AbstractEvaluator):
 
                 modifiable_config_dict = self._check_children(modifiable_config_dict, candidate_tuple)
 
-                not_forbidden = self.check_not_forbidden(forbidden_name_value_pairs, modifiable_config_dict)
-                if not not_forbidden:
+                not_forbidden = self.check_not_forbidden(forbidden_name_value_pairs, modifiable_config_dict)  # Check if current config is allowed
+                if not not_forbidden:  # othwerise skipp it
                     self.logger.critical('FOUND FORBIDDEN!!!!! SKIPPING!!!')
                     continue
                 modifiable_config = Configuration(self.cs, modifiable_config_dict)
