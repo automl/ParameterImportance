@@ -77,6 +77,40 @@ class Ablation(AbstractEvaluator):
         for idx in to_remove:
             self.delta.pop(idx)
 
+    def determine_forbidden(self):
+        """
+        Method to determine forbidden clauses.
+        :return: list of lists [[pname, pvalue, pname2, pvalue2]]
+        """
+        forbidden_clauses = self.cs.forbidden_clauses
+        forbidden_descendants = map(lambda x: x.get_descendant_literal_clauses(), forbidden_clauses)
+        forbidden_names_value_paris = list()
+        for forbidden_literals in forbidden_descendants:
+            elem = []
+            for literal in forbidden_literals:
+                elem.append(literal.hyperparameter.name)
+                elem.append(literal.value)
+            forbidden_names_value_paris.append(elem)
+        return forbidden_names_value_paris
+
+    def check_not_forbidden(self, forbidden_name_value_pairs, modifiable_config):
+        """
+        Helper method to determine if a current configuration dictionary is forbidden or not
+        :param forbidden_name_value_pairs: list of lists of forbidden parameter settings
+        :param modifiable_config: dict param_name -> param_value
+        :return: boolean. not_forbidden (True)
+        """
+        not_forbidden = True
+        for forbidden_clause in forbidden_name_value_pairs:
+            sum_forbidden = 0
+            for key in modifiable_config:
+                if key in forbidden_clause:
+                    at_ = forbidden_clause.index(key) + 1
+                    if modifiable_config[key] == forbidden_clause[at_]:
+                        sum_forbidden += 1
+            not_forbidden = not_forbidden and not (sum_forbidden == len(forbidden_clause))
+        return not_forbidden
+
     def _check_child_conditions(self, _dict, children):
         dict_ = {}
         for child in children:
@@ -143,6 +177,8 @@ class Ablation(AbstractEvaluator):
         self.predicted_parameter_variances['-source-'] = source_var.flatten()[0]
         self.evaluated_parameter_importance['-source-'] = 0
 
+        forbidden_name_value_pairs = self.determine_forbidden()
+
         while len(self.delta) > 0:  # Main loop. While parameters still left ...
             modifiable_config_dict = copy.deepcopy(prev_modifiable_config_dict)
             self.logger.debug('Round %d of %d:' % (start_delta - len(self.delta), start_delta - 1))
@@ -160,14 +196,17 @@ class Ablation(AbstractEvaluator):
 
                 modifiable_config_dict = self._check_children(modifiable_config_dict, candidate_tuple)
 
-                modifiable_config = Configuration(self.cs, modifiable_config_dict)
+                not_forbidden = self.check_not_forbidden(forbidden_name_value_pairs, modifiable_config_dict)
+                if not_forbidden:
+                    modifiable_config = Configuration(self.cs, modifiable_config_dict)
 
-
-                mean, var = self._predict_over_instance_set(modifiable_config)  # ... predict their performance
-                self.logger.debug('%s: %.6f' % (candidate_tuple, mean[0]))
-                round_performances.append(mean)
-                round_variances.append(var)
-                modifiable_config_dict = copy.deepcopy(prev_modifiable_config_dict)
+                    mean, var = self._predict_over_instance_set(modifiable_config)  # ... predict their performance
+                    self.logger.debug('%s: %.6f' % (candidate_tuple, mean[0]))
+                    round_performances.append(mean)
+                    round_variances.append(var)
+                    modifiable_config_dict = copy.deepcopy(prev_modifiable_config_dict)
+                else:
+                    continue
 
             best_idx = np.argmin(round_performances)
             best_performance = round_performances[best_idx]  # greedy choice of parameter to fix
