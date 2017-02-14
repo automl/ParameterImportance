@@ -154,7 +154,6 @@ class Ablation(AbstractEvaluator):
                             self.delta.pop(self.delta.index([child]))
         return modded_dict
 
-
     def run(self) -> OrderedDict:
         """
         Main function.

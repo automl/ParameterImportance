@@ -3,3 +3,4 @@ sklearn
 matplotlib
 ConfigSpace
 smac>=0.2.3
+scipy

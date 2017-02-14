@@ -30,11 +30,11 @@ if __name__ == '__main__':
                             parameters_to_evaluate=args.num_params,
                             traj_file=args.trajectory, seed=args.seed)  # create importance object
     importance_value_dict = importance.evaluate_scenario(args.modus)
-#    importance.plot_results(name=args.modus)
+
     ts = time.time()
     ts = datetime.datetime.fromtimestamp(ts).strftime('%Y_%m_%d_%H:%M:%S')
     with open('pimp_values_%s_%s.json' % (args.modus, ts), 'w') as out_file:
         json.dump(importance_value_dict, out_file)
-    
+
     importance.plot_results(name=args.modus)
 
