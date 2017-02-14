@@ -40,43 +40,9 @@ class Ablation(AbstractEvaluator):
         self.predicted_parameter_performances = OrderedDict()
         self.predicted_parameter_variances = OrderedDict()
 
-    def _diff_in_source_and_target(self):
-        """
-        Helper Method to determine which parameters might lie on an ablation path
-        Return
-        ------
-        delta:list
-            List of parameters that are modified from the source to the target
-        """
-        delta = []
-        for parameter in self.source:
-            tmp = ' not'
-            if self.source[parameter] != self.target[parameter] and self.target[parameter] is not None:
-                tmp = ''
-                delta.append([parameter])
-            self.logger.debug('%s was%s modified from source to target (%s, %s) [s, t]' % (parameter, tmp,
-                                                                                           self.source[parameter],
-                                                                                           self.target[parameter]))
-        return delta
-
-    def _determine_combined_flipps(self):
-        """
-        Method to determine parameters that have to be jointly flipped with their parents.
-        Uses the methods provided by Config space to easily check conditions
-        """
-        to_remove = []
-        for idx, parameter in enumerate(self.delta):
-            children = self.cs.get_children_of(parameter[0])
-            for child in children:
-                for condition in self.cs.get_parent_conditions_of(child):
-                    if condition.evaluate(self.target) and not condition.evaluate(self.source):
-                        self.delta[idx].append(child.name)  # Now at idx delta has two combined entries
-                        if [child.name] in self.delta:
-                            to_remove.append(self.delta.index([child.name]))
-        to_remove = sorted(to_remove, reverse=True)  # reverse sort necessary to not delete the wrong items
-        for idx in to_remove:
-            self.delta.pop(idx)
-
+########################################################################################################################
+    # HANDLING FORBIDDENS # HANDLING FORBIDDENS # HANDLING FORBIDDENS # HANDLING FORBIDDENS # HANDLING FORBIDDENS
+########################################################################################################################
     def determine_forbidden(self):
         """
         Method to determine forbidden clauses, and saves them in a simple to check format.
@@ -112,6 +78,27 @@ class Ablation(AbstractEvaluator):
             if not not_forbidden:
                 return False
         return True
+
+########################################################################################################################
+    # HANDLING CONDITIONALITIES # HANDLING CONDITIONALITIES # HANDLING CONDITIONALITIES # HANDLING CONDITIONALITIES
+########################################################################################################################
+    def _determine_combined_flipps(self):
+        """
+        Method to determine parameters that have to be jointly flipped with their parents.
+        Uses the methods provided by Config space to easily check conditions
+        """
+        to_remove = []
+        for idx, parameter in enumerate(self.delta):
+            children = self.cs.get_children_of(parameter[0])
+            for child in children:
+                for condition in self.cs.get_parent_conditions_of(child):
+                    if condition.evaluate(self.target) and not condition.evaluate(self.source):
+                        self.delta[idx].append(child.name)  # Now at idx delta has two combined entries
+                        if [child.name] in self.delta:
+                            to_remove.append(self.delta.index([child.name]))
+        to_remove = sorted(to_remove, reverse=True)  # reverse sort necessary to not delete the wrong items
+        for idx in to_remove:
+            self.delta.pop(idx)
 
     def _check_child_conditions(self, _dict, children):
         dict_ = {}
@@ -154,6 +141,9 @@ class Ablation(AbstractEvaluator):
                             self.delta.pop(self.delta.index([child]))
         return modded_dict
 
+########################################################################################################################
+    # MAIN METHOD # MAIN METHOD # MAIN METHOD # MAIN METHOD # MAIN METHOD # MAIN METHOD # MAIN METHOD # MAIN METHOD
+########################################################################################################################
     def run(self) -> OrderedDict:
         """
         Main function.
@@ -197,7 +187,8 @@ class Ablation(AbstractEvaluator):
 
                 modifiable_config_dict = self._check_children(modifiable_config_dict, candidate_tuple)
 
-                not_forbidden = self.check_not_forbidden(forbidden_name_value_pairs, modifiable_config_dict)  # Check if current config is allowed
+                # Check if current config is allowed
+                not_forbidden = self.check_not_forbidden(forbidden_name_value_pairs, modifiable_config_dict)
                 if not not_forbidden:  # othwerise skipp it
                     self.logger.critical('FOUND FORBIDDEN!!!!! SKIPPING!!!')
                     continue
@@ -240,6 +231,9 @@ class Ablation(AbstractEvaluator):
         # print(sum_)
         return self.evaluated_parameter_importance
 
+########################################################################################################################
+# HELPER METHODS # HELPER METHODS # HELPER METHODS # HELPER METHODS # HELPER METHODS # HELPER METHODS # HELPER METHODS
+########################################################################################################################
     def _predict_over_instance_set(self, config):
         """
         Small wrapper to predict marginalized over instances
@@ -257,6 +251,28 @@ class Ablation(AbstractEvaluator):
         mean, var = self.model.predict_marginalized_over_instances(np.array([config.get_array()]))
         return mean, var
 
+    def _diff_in_source_and_target(self):
+        """
+        Helper Method to determine which parameters might lie on an ablation path
+        Return
+        ------
+        delta:list
+            List of parameters that are modified from the source to the target
+        """
+        delta = []
+        for parameter in self.source:
+            tmp = ' not'
+            if self.source[parameter] != self.target[parameter] and self.target[parameter] is not None:
+                tmp = ''
+                delta.append([parameter])
+            self.logger.debug('%s was%s modified from source to target (%s, %s) [s, t]' % (parameter, tmp,
+                                                                                           self.source[parameter],
+                                                                                           self.target[parameter]))
+        return delta
+
+########################################################################################################################
+# PLOTTING # PLOTTING # PLOTTING # PLOTTING # PLOTTING # PLOTTING # PLOTTING # PLOTTING # PLOTTING # PLOTTING # PLOTTING
+########################################################################################################################
     def plot_result(self, name=None):
         self.plot_predicted_percentage(plot_name=name+'percentage.png')
         self.plot_predicted_performance(plot_name=name+'performance.png')
