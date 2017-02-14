@@ -2,7 +2,7 @@ import numpy as np
 import copy
 from collections import OrderedDict
 from matplotlib import pyplot as plt
-from pimp.configspace import Configuration
+from pimp.configspace import Configuration, impute_inactive_values
 from pimp.evaluator.base_evaluator import AbstractEvaluator
 
 __author__ = "Andre Biedenkapp"
@@ -24,8 +24,8 @@ class Ablation(AbstractEvaluator):
         self.name = 'Ablation'
         self.logger = self.name
 
-        self.target = incumbent
-        self.source = self.cs.get_default_configuration()
+        self.target = impute_inactive_values(incumbent)
+        self.source = impute_inactive_values(self.cs.get_default_configuration())
         self.delta = self._diff_in_source_and_target()
         self._determine_combined_flipps()
         self.inactive = []
