@@ -2,7 +2,7 @@ import numpy as np
 import copy
 from collections import OrderedDict
 from matplotlib import pyplot as plt
-from pimp.configspace import Configuration 
+from pimp.configspace import Configuration, AndConjunction, OrConjunction
 from pimp.evaluator.base_evaluator import AbstractEvaluator
 
 __author__ = "Andre Biedenkapp"
@@ -83,25 +83,57 @@ class Ablation(AbstractEvaluator):
 ########################################################################################################################
     # HANDLING CONDITIONALITIES # HANDLING CONDITIONALITIES # HANDLING CONDITIONALITIES # HANDLING CONDITIONALITIES
 ########################################################################################################################
+    def _helper(self, modified_delta):
+        to_remove = []
+        indices_to_check = [i for i in range(len(modified_delta))]
+        for at, idx in enumerate(indices_to_check):
+            parameters = modified_delta[idx]
+            for p in parameters:
+                children = self.cs.get_children_of(p)
+                for child in children:
+                    if child.name not in modified_delta[idx]:
+                        for condition in self.cs.get_parent_conditions_of(child):
+                            if type(condition) in [AndConjunction, OrConjunction]:  # Case where parents of parents are not
+                                                                                    # set get checked here
+                                skip_this = False
+                                for component in condition.components:
+                                    if self.source.get(component.parent.name) is None:
+                                        if [child.name] in modified_delta:
+                                            if modified_delta.index([child.name]) not in to_remove:
+                                                to_remove.append(modified_delta.index([child.name]))
+                                        for tmp_idx, d in enumerate(modified_delta):
+                                            if component.parent.name in d and child.name not in d:
+                                                modified_delta[tmp_idx].append(child.name)
+                                                indices_to_check.append(tmp_idx)
+                                        skip_this = True
+                                    if self.target.get(component.parent.name) is None:
+                                        if [child.name] in modified_delta:
+                                            if modified_delta.index([child.name]) not in to_remove:
+                                                to_remove.append(modified_delta.index([child.name]))
+                                        for tmp_idx, d in enumerate(modified_delta):
+                                            if component.parent.name in d and child.name not in d:
+                                                modified_delta[tmp_idx].append(child.name)
+                                                indices_to_check.append(tmp_idx)
+                                        skip_this = True
+                                if skip_this:
+                                    continue
+                            source_conditions_met = condition.evaluate(self.source)
+                            target_conditions_met = condition.evaluate(self.target)
+                            if target_conditions_met and not source_conditions_met:
+                                if child.name not in modified_delta[idx]:
+                                    modified_delta[idx].append(child.name)  # Now at idx delta has two combined entries
+                                    indices_to_check.append(idx)
+                                tmp_idx = modified_delta.index([child.name])
+                                if [child.name] in modified_delta and tmp_idx not in to_remove:
+                                    to_remove.append(modified_delta.index([child.name]))
+        return to_remove, modified_delta
+
     def _determine_combined_flipps(self):
         """
         Method to determine parameters that have to be jointly flipped with their parents.
         Uses the methods provided by Config space to easily check conditions
         """
-        to_remove = []
-        ignore = []
-        for idx, parameter in enumerate(self.delta):
-            children = self.cs.get_children_of(parameter[0])
-            for child in children:
-                for condition in self.cs.get_parent_conditions_of(child):
-                    target_conditions_met = condition.evaluate(self.target)
-                    source_conditions_met = condition.evaluate(self.source)
-                    if target_conditions_met and not source_conditions_met:
-                        if child.name not in self.delta[idx]:
-                            self.delta[idx].append(child.name)  # Now at idx delta has two combined entries
-                        tmp_idx = self.delta.index([child.name])
-                        if [child.name] in self.delta and tmp_idx not in to_remove:
-                            to_remove.append(self.delta.index([child.name]))
+        to_remove, self.delta = self._helper(self.delta)
         to_remove = sorted(to_remove, reverse=True)  # reverse sort necessary to not delete the wrong items
         for idx in to_remove:
             self.delta.pop(idx)
@@ -193,7 +225,7 @@ class Ablation(AbstractEvaluator):
         self.evaluated_parameter_importance['-source-'] = 0
 
         forbidden_name_value_pairs = self.determine_forbidden()
-        
+
         while len(self.delta) > 0:  # Main loop. While parameters still left ...
             modifiable_config_dict = copy.deepcopy(prev_modifiable_config_dict)
             self.logger.debug('Round %d of %d:' % (start_delta - len(self.delta), start_delta - 1))
@@ -337,8 +369,10 @@ class Ablation(AbstractEvaluator):
 
         ax1.xaxis.grid(True)
         ax1.yaxis.grid(True)
-
-        plt.tight_layout()
+        try:
+            plt.tight_layout()
+        except ValueError:
+            pass
 
         if plot_name is not None:
             plt.savefig(plot_name)
@@ -384,7 +418,10 @@ class Ablation(AbstractEvaluator):
         ax1.set_ylabel('runtime [sec]', zorder=81, **self.LABEL_FONT)
         ax1.xaxis.grid(True)
         ax1.yaxis.grid(True)
-        plt.tight_layout()
+        try:
+            plt.tight_layout()
+        except ValueError:
+            pass
 
         if plot_name is not None:
             plt.savefig(plot_name)
