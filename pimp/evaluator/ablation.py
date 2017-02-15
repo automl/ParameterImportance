@@ -225,10 +225,11 @@ class Ablation(AbstractEvaluator):
         self.evaluated_parameter_importance['-source-'] = 0
 
         forbidden_name_value_pairs = self.determine_forbidden()
+        length_ = len(self.delta) - min(len(self.delta), self.to_evaluate)
 
-        while len(self.delta) > 0:  # Main loop. While parameters still left ...
+        while len(self.delta) > length_:  # Main loop. While parameters still left ...
             modifiable_config_dict = copy.deepcopy(prev_modifiable_config_dict)
-            self.logger.debug('Round %d of %d:' % (start_delta - len(self.delta), start_delta - 1))
+            self.logger.debug('Round %d of %d:' % (start_delta - len(self.delta) + 1, min(start_delta, self.to_evaluate)))
             for param_tuple in modified_so_far:  # necessary due to combined flips
                 for parameter in param_tuple:
                     modifiable_config_dict[parameter] = self.target[parameter]
@@ -262,7 +263,7 @@ class Ablation(AbstractEvaluator):
             improvement_in_percentage = (prev_performance - best_performance) / improvement
             prev_performance = best_performance
             modified_so_far.append(self.delta[best_idx])
-            self.logger.info('Round %2d winner(s): (%s, %.4f)' % (start_delta - len(self.delta),
+            self.logger.info('Round %2d winner(s): (%s, %.4f)' % (start_delta - len(self.delta) + 1,
                                                                   str(self.delta[best_idx]),
                                                                   improvement_in_percentage * 100))
             param_str = '; '.join(self.delta[best_idx])
@@ -343,14 +344,24 @@ class Ablation(AbstractEvaluator):
         ax1 = fig.add_subplot(111)
 
         path = list(self.evaluated_parameter_importance.keys())[1:-1]
+        true_path = np.array(copy.deepcopy(path))
+        for idx, p in enumerate(path):
+            if len(p) >= 20:
+                p = p[:18] + '...'
+                path[idx] = p
         performances = list(self.evaluated_parameter_importance.values())
         performances = 100 * np.array(performances).reshape((-1, 1))
         path = np.array(path)
-        ax1.bar(list(range(len(path))),
-                performances[1:-1], width=.75, color=self.area_color)
+        max_to_plot = min(len(path), self.MAX_PARAMS_TO_PLOT)
+        try:
+            ax1.bar(list(range(len(path))),
+                    performances[1:-1], width=.75, color=self.area_color)
+        except TypeError as e:
+            self.logger.debug(e)
+            self.logger.debug('pyplot encountered a strange error which however does not affect the plots')
 
-        ax1.set_xticks(np.arange(len(path)) + 0.375)
-        ax1.set_xlim(0, len(path) - .25)
+        ax1.set_xticks(np.arange(len(path)))
+        ax1.set_xlim(-0.5, max_to_plot - .25)
         ax1.set_ylim(min(performances) - max(2, min(performances)*0.1),
                      max(performances) + min(2, max(performances)*.1))
 
@@ -363,7 +374,7 @@ class Ablation(AbstractEvaluator):
 
         for idx, t in enumerate(ax1.xaxis.get_ticklabels()):
             color_ = (0.45, 0.45, 0.45)
-            if self.evaluated_parameter_importance[path[idx]] > self.IMPORTANCE_THRESHOLD:
+            if self.evaluated_parameter_importance[true_path[idx]] > self.IMPORTANCE_THRESHOLD:
                 color_ = (0., 0., 0.)
             t.set_color(color_)
 
@@ -389,7 +400,12 @@ class Ablation(AbstractEvaluator):
         plt.subplots_adjust(bottom=0.25, top=0.9, left=0.05, right=.95)
 
         path = list(self.predicted_parameter_performances.keys())
+        for idx, p in enumerate(path):
+            if len(p) >= 20:
+                p = p[:18] + '...'
+                path[idx] = p
         path = np.array(path)
+        max_to_plot = min(len(path), self.MAX_PARAMS_TO_PLOT)
         performances = list(self.predicted_parameter_performances.values())
         performances = np.array(performances).reshape((-1, 1))
         variances = list(self.predicted_parameter_variances.values())
@@ -411,7 +427,7 @@ class Ablation(AbstractEvaluator):
                 color_ = (0., 0., 0.)
             t.set_color(color_)
 
-        ax1.set_xlim(0, len(path) - 1)
+        ax1.set_xlim(0, max_to_plot - 1)
         ax1.set_ylim(min(lower) - max(.1 * min(lower), 0.1), max(upper) + .1 * max(upper))
 
         ax1.legend()

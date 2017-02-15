@@ -98,6 +98,7 @@ class ForwardSelector(AbstractEvaluator):
         fig, ax = plt.subplots()
         params = list(self.evaluated_parameter_importance.keys())
         errors = list(self.evaluated_parameter_importance.values())
+        max_to_plot = min(len(errors), self.MAX_PARAMS_TO_PLOT)
 
         ind = np.arange(len(errors))
         if bar:
@@ -107,11 +108,11 @@ class ForwardSelector(AbstractEvaluator):
 
         ax.set_ylabel('Out-Of-Bag Error', **self.LABEL_FONT)
         if bar:
-            ax.set_xticks(ind+0.375)
-            ax.set_xlim(-.25, len(errors) + 0.125)
+            ax.set_xticks(ind)
+            ax.set_xlim(-.5, max_to_plot - 0.5)
         else:
             ax.set_xticks(ind)
-            ax.set_xlim(0, len(errors) - 1)
+            ax.set_xlim(0, max_to_plot - 1)
         ax.set_xticklabels(params, rotation=30, ha='right', **self.AXIS_FONT)
         ax.xaxis.grid(True)
         ax.yaxis.grid(True)

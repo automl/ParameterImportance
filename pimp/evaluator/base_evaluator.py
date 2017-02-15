@@ -39,6 +39,8 @@ class AbstractEvaluator(object):
 
         if to_evaluate <= 0:
             self.to_evaluate = len(self.cs.get_hyperparameters())
+        elif to_evaluate >= len(self.cs.get_hyperparameters()):
+            self.to_evaluate = len(self.cs.get_hyperparameters())
         else:
             self.to_evaluate = to_evaluate  # num of parameters to evaluate
 
@@ -54,6 +56,7 @@ class AbstractEvaluator(object):
                           'color': (0.125, 0.125, 0.125)}
         self.area_color = (0.25, 0.25, 0.45)
         self.unimportant_area_color = (0.125, 0.125, 0.225)
+        self.MAX_PARAMS_TO_PLOT = 15
 
     @abc.abstractclassmethod
     def run(self) -> OrderedDict:
