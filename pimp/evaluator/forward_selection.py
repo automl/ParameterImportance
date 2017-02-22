@@ -1,9 +1,11 @@
 import time
-import numpy as np
 from collections import OrderedDict
-from sklearn.decomposition import PCA
-from pimp.evaluator.base_evaluator import AbstractEvaluator
+
+import numpy as np
 from matplotlib import pyplot as plt
+from sklearn.decomposition import PCA
+
+from pimp.evaluator.base_evaluator import AbstractEvaluator
 
 __author__ = "Andre Biedenkapp"
 __copyright__ = "Copyright 2016, ML4AAD"

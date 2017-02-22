@@ -1,10 +1,11 @@
-import logging
-import sys
-import os
-import inspect
 import datetime
-import time
+import inspect
 import json
+import logging
+import os
+import sys
+import time
+
 cmd_folder = os.path.realpath(os.path.abspath(os.path.split(inspect.getfile( inspect.currentframe() ))[0]))
 cmd_folder = os.path.realpath(os.path.join(cmd_folder, ".."))
 if cmd_folder not in sys.path:
@@ -37,4 +38,3 @@ if __name__ == '__main__':
         json.dump(importance_value_dict, out_file)
 
     importance.plot_results(name=args.modus)
-

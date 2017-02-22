@@ -1,24 +1,27 @@
-import numpy as np
+import glob
+import json
 import logging
 import os
-import json
-import glob
 import sys
+
 import matplotlib
-# Force matplotlib to not use any Xwindows backend.
-matplotlib.use('Agg')
+import numpy as np
 
-
-from pimp.utils import Scenario, RunHistory2EPM4LogCost, RunHistory2EPM4Cost, RunHistory, average_cost
+from pimp.configspace import CategoricalHyperparameter, Configuration, FloatHyperparameter, IntegerHyperparameter
 from pimp.epm import RandomForestWithInstances, RFRImputator
 from pimp.epm.unlogged_rf_with_instances import UnloggedRandomForestWithInstances
-from pimp.configspace import CategoricalHyperparameter, FloatHyperparameter, IntegerHyperparameter, Configuration
 from pimp.evaluator.ablation import Ablation
 from pimp.evaluator.fanova import fANOVA
 from pimp.evaluator.forward_selection import ForwardSelector
 from pimp.evaluator.influence_models import InfluenceModel
-
+from pimp.utils import RunHistory, RunHistory2EPM4Cost, RunHistory2EPM4LogCost, Scenario, average_cost
 from smac.tae.execute_ta_run import StatusType
+
+# Force matplotlib to not use any Xwindows backend.
+matplotlib.use('Agg')
+
+
+
 
 __author__ = "Andre Biedenkapp"
 __copyright__ = "Copyright 2016, ML4AAD"

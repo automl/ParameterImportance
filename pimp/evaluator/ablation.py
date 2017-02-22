@@ -1,8 +1,10 @@
-import numpy as np
 import copy
 from collections import OrderedDict
+
+import numpy as np
 from matplotlib import pyplot as plt
-from pimp.configspace import Configuration, AndConjunction, OrConjunction
+
+from pimp.configspace import AndConjunction, Configuration, OrConjunction
 from pimp.evaluator.base_evaluator import AbstractEvaluator
 
 __author__ = "Andre Biedenkapp"

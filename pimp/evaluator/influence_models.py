@@ -1,11 +1,13 @@
-import time
 import copy
 import random
+import time
 from collections import OrderedDict
+
 import numpy as np
 from matplotlib import pyplot as plt
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics.regression import mean_squared_error
+
 from pimp.evaluator.base_evaluator import AbstractEvaluator
 
 __author__ = "Andre Biedenkapp"

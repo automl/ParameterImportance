@@ -1,5 +1,6 @@
 import logging
-from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter, SUPPRESS
+from argparse import SUPPRESS, ArgumentDefaultsHelpFormatter, ArgumentParser
+
 from smac.utils.io.cmd_reader import CMDReader
 
 __author__ = "Andre Biedenkapp"
