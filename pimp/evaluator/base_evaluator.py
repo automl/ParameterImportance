@@ -37,6 +37,7 @@ class AbstractEvaluator(object):
             self.X = self.model.X
             self.y = self.model.y
             self.types = self.model.types
+            self.bounds = self.model.bounds
 
         if to_evaluate <= 0:
             self.to_evaluate = len(self.cs.get_hyperparameters())
@@ -86,7 +87,7 @@ class AbstractEvaluator(object):
     def logger(self, value):
         self._logger = logging.getLogger(value)
 
-    def _refit_model(self, types, X, y):
+    def _refit_model(self, types, bounds, X, y):
         """
         Easily allows for refitting of the model.
         Parameters
@@ -98,6 +99,6 @@ class AbstractEvaluator(object):
         y:ndarray
             corresponding y vector
         """
-        self.model = RandomForestWithInstances(types)
+        self.model = RandomForestWithInstances(types, bounds)
         self.model.rf.compute_oob_error = True
         self.model.train(X, y)

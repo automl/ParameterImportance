@@ -70,7 +70,8 @@ class ForwardSelector(AbstractEvaluator):
                 self.logger.debug('Used parameters: %s' % str(used))
 
                 start = time.time()
-                self._refit_model(self.types[used], self.X[:, used], self.y)  # refit the model every round
+                self._refit_model(self.types[used], self.bounds[used],
+                                  self.X[:, used], self.y)  # refit the model every round
                 errors.append(self.model.rf.out_of_bag_error())
                 used.pop()
                 self.logger.debug('Refitted RF (sec %.2f; oob: %.4f)' % (time.time() - start, errors[-1]))

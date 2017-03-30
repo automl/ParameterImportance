@@ -5,7 +5,13 @@ import os
 import sys
 
 import matplotlib
+# Force matplotlib to not use any Xwindows backend.
+matplotlib.use('Agg')
+
 import numpy as np
+
+from smac.utils.util_funcs import get_types
+from smac.tae.execute_ta_run import StatusType
 
 from pimp.configspace import CategoricalHyperparameter, Configuration, FloatHyperparameter, IntegerHyperparameter
 from pimp.epm import RandomForestWithInstances, RFRImputator
@@ -15,12 +21,6 @@ from pimp.evaluator.fanova import fANOVA
 from pimp.evaluator.forward_selection import ForwardSelector
 from pimp.evaluator.influence_models import InfluenceModel
 from pimp.utils import RunHistory, RunHistory2EPM4Cost, RunHistory2EPM4LogCost, Scenario, average_cost
-from smac.tae.execute_ta_run import StatusType
-
-# Force matplotlib to not use any Xwindows backend.
-matplotlib.use('Agg')
-
-
 
 
 __author__ = "Andre Biedenkapp"
@@ -59,6 +59,7 @@ class Importance(object):
         self.X = None
         self.y = None
         self.types = None
+        self.bounds = None
         self._model = None
         self.incumbent = (None, None)
         self.logged_y = False
@@ -109,15 +110,17 @@ class Importance(object):
 
     @model.setter
     def model(self, model_short_name='urfi'):
-        self.types = self._get_types_list_for_model()
+        self.types, self.bounds = get_types(self.scenario.cs, self.scenario.feature_array)
         if model_short_name not in ['urfi', 'rfi']:
             raise ValueError('Specified model %s does not exist or not supported!' % model_short_name)
         elif model_short_name == 'rfi':
-            self._model = RandomForestWithInstances(self.types, self.scenario.feature_array, seed=self.seed)
+            self._model = RandomForestWithInstances(self.types, self.bounds,
+                                                    self.scenario.feature_array, seed=self.seed)
         elif model_short_name == 'urfi':
-            self._model = UnloggedRandomForestWithInstances(self.types, self.scenario.feature_array, seed=self.seed,
+            self._model = UnloggedRandomForestWithInstances(self.types, self.bounds,
+                                                            self.scenario.feature_array, seed=self.seed,
                                                             cutoff=self.cutoff, threshold=self.threshold)
-        self._model.rf.compute_oob_error = True
+        self._model.rf_opts.compute_oob_error = True
 
     @property
     def evaluator(self):
@@ -157,21 +160,6 @@ class Importance(object):
                                         model=self._model,
                                         to_evaluate=self._parameters_to_evaluate)
         self._evaluator = evaluator
-
-    def _get_types_list_for_model(self):
-        types = np.zeros(len(self.scenario.cs.get_hyperparameters()),
-                         dtype=np.uint)
-
-        for i, param in enumerate(self.scenario.cs.get_hyperparameters()):
-            if isinstance(param, (CategoricalHyperparameter)):
-                n_cats = len(param.choices)
-                types[i] = n_cats
-
-        if self.scenario.feature_array is not None:
-            types = np.hstack(
-                (types, np.zeros((self.scenario.feature_array.shape[1]))))
-
-        return np.array(types, dtype=np.uint)
 
     def _convert_data(self):  # From Marius
         '''
