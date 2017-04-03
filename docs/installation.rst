@@ -3,9 +3,9 @@ Installation
 
 .. _manual_installation:
 
-Installing the Requirenments
+Installing the Requirements
 ----------------------------
-| To install PIMPs requirenments from command line, please type the following commands on the command line in PIMPs root directory.
+| To install PIMPs requirements from command line, please type the following commands on the command line in PIMPs root directory.
 
 .. code-block:: bash
 
