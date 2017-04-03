@@ -18,18 +18,20 @@
         VERSION:     '0.0.1',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
-        HAS_SOURCE:  true
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
       };
     </script>
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <script type="text/javascript" src="_static/js/jquery-1.11.0.min.js"></script>
     <script type="text/javascript" src="_static/js/jquery-fix.js"></script>
     <script type="text/javascript" src="_static/bootstrap-3.3.6/js/bootstrap.min.js"></script>
     <script type="text/javascript" src="_static/bootstrap-sphinx.js"></script>
-    <link rel="top" title="PIMP 0.0.1 documentation" href="index.html" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Algorithms" href="algorithms.html" />
     <link rel="prev" title="Installation" href="installation.html" />
 <meta charset='utf-8'>
@@ -139,7 +141,7 @@ To see a detailed description of what each file is used for, we refer to <em>SMA
 <p>The folder <em>smac-output</em> contains the <em>runhistory</em> and <em>trajectory</em> files of a 10 minute
 SMAC run for the specified scenario.</p>
 <p>To use <strong>PIMP</strong> simply execute the following call in the spear_qcp folder:</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>python ~/git/importance/scripts/evaluate.py --scenario_file scenario.txt --history <span class="s1">&#39;./*/runhistory.json&#39;</span> --modus forward-selection
+<div class="highlight-bash"><div class="highlight"><pre><span></span>python ../../scripts/evaluate.py --scenario_file scenario.txt --history <span class="s1">&#39;./*/runhistory.json&#39;</span> --modus forward-selection
 </pre></div>
 </div>
 <p>With this call, PIMP will read in the scenarios info and all runhistories in this folder and evaluate the parameter importances,
@@ -163,13 +165,13 @@ Required Options:
                         Analysis method to use <span class="o">(</span>default: None<span class="o">)</span>
   --history HISTORY     runhistory file <span class="o">(</span>default: None<span class="o">)</span>
 Optional Options:
-  --seed SEED           random seed <span class="o">(</span>default: 12345<span class="o">)</span>
+  --seed SEED           random seed <span class="o">(</span>default: <span class="m">12345</span><span class="o">)</span>
   --verbose_level <span class="o">{</span>INFO,DEBUG<span class="o">}</span>
-                        verbosity <span class="o">(</span>default: 20<span class="o">)</span>
+                        verbosity <span class="o">(</span>default: <span class="m">20</span><span class="o">)</span>
   --trajectory TRAJECTORY
                         Path to trajectory file <span class="o">(</span>default: None<span class="o">)</span>
   --num_params NUM_PARAMS
-                        Number of parameters to evaluate <span class="o">(</span>default: 0<span class="o">)</span>
+                        Number of parameters to evaluate <span class="o">(</span>default: <span class="m">0</span><span class="o">)</span>
 </pre></div>
 </div>
 <p>The trajectory file is only needed for <strong>local analysis methods</strong> such as <em>ablation</em>.</p>
@@ -193,14 +195,14 @@ all possible parameters.</p>
         <br/>
         
 <div id="sourcelink">
-  <a href="_sources/manual.txt"
+  <a href="_sources/manual.rst.txt"
      rel="nofollow">Source</a>
 </div>
       
     </p>
     <p>
         &copy; Copyright 2017-2017, André Biedenkapp.<br/>
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.6.<br/>
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.5.<br/>
     </p>
   </div>
 </footer>
