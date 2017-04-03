@@ -1,0 +1,1 @@
+python ../../scripts/evaluate.py --scenario branin_scenario.txt --verbose_level DEBUG --history smac3-out/runhistory.json --modus forward-selection

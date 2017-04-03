@@ -5,6 +5,9 @@ import os
 import sys
 
 import matplotlib
+# Force matplotlib to not use any Xwindows backend.
+matplotlib.use('Agg')
+
 import numpy as np
 
 from pimp.configspace import CategoricalHyperparameter, Configuration, FloatHyperparameter, IntegerHyperparameter
@@ -17,8 +20,6 @@ from pimp.evaluator.influence_models import InfluenceModel
 from pimp.utils import RunHistory, RunHistory2EPM4Cost, RunHistory2EPM4LogCost, Scenario, average_cost
 from smac.tae.execute_ta_run import StatusType
 
-# Force matplotlib to not use any Xwindows backend.
-matplotlib.use('Agg')
 
 
 
@@ -196,12 +197,12 @@ class Importance(object):
 
         params = self.scenario.cs.get_hyperparameters()
         num_params = len(params)
-        self.cutoff = self.scenario.cutoff
-        self.threshold = self.scenario.cutoff * self.scenario.par_factor
-        self.model = 'urfi'
 
         if self.scenario.run_obj == "runtime":
 
+            self.model = 'urfi'
+            self.cutoff = self.scenario.cutoff
+            self.threshold = self.scenario.cutoff * self.scenario.par_factor
             self.logged_y = True
             # if we log the performance data,
             # the RFRImputator will already get
@@ -227,6 +228,7 @@ class Importance(object):
                                                 StatusType.TIMEOUT, ],
                                             imputor=imputor)
         else:
+            self.model = 'rfi'
             rh2EPM = RunHistory2EPM4Cost(scenario=self.scenario,
                                          num_params=num_params,
                                          success_states=None,
