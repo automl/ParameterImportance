@@ -103,7 +103,7 @@ class InfluenceModel(AbstractEvaluator):
                     params.pop(best_idx)
                     used.append(param_ids.pop(best_idx))
                     self.logger.info('%s: %.4f (error)' % (best.name, error))
-                    self.evaluated_parameter_importance[best.name] = self.model.coef_[0, -1]
+                    self.evaluated_parameter_importance[best.name] = self.model.coef_[0: -1]
                     best = None
                     best_idx = None
         remove = 0
