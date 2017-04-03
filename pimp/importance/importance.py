@@ -200,9 +200,9 @@ class Importance(object):
 
         if self.scenario.run_obj == "runtime":
 
-            self.model = 'urfi'
             self.cutoff = self.scenario.cutoff
             self.threshold = self.scenario.cutoff * self.scenario.par_factor
+            self.model = 'urfi'
             self.logged_y = True
             # if we log the performance data,
             # the RFRImputator will already get
