@@ -155,7 +155,7 @@ class InfluenceModel(AbstractEvaluator):
                 t.set_color((0.45, 0.45, 0.45))
 
         ax.set_ylabel('Weights', **self.LABEL_FONT)
-        ax.set_xticks(tmp + 0.375)
+        ax.set_xticks(tmp)
         ax.set_xticklabels(params, rotation=30, ha='right', **self.AXIS_FONT)
         ax.xaxis.grid(True)
         ax.yaxis.grid(True)

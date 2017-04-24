@@ -37,10 +37,11 @@ class Importance(object):
     """
 
     def __init__(self, scenario_file, runhistory_files, seed: int = 12345,
-                 parameters_to_evaluate: int = -1, traj_file=None, threshold=None, margin=None):
+                 parameters_to_evaluate: int = -1, traj_file=None, threshold=None, margin=None,
+                 save_folder='PIMP'):
         self.logger = logging.getLogger("Importance")
         self.logger.info('Reading Scenario file and files specified in the scenario')
-        self.scenario = Scenario(scenario=scenario_file)
+        self.scenario = Scenario(scenario=scenario_file, cmd_args={'output_dir': save_folder})
 
         self.logger.info('Reading Runhistory')
         self.runhistory = RunHistory(aggregate_func=average_cost)
