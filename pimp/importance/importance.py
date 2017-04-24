@@ -228,10 +228,24 @@ class Importance(object):
         self.y = Y
         self.model.train(X, Y)
 
-    def evaluate_scenario(self, evaluation_method):
-        self.evaluator = evaluation_method
-        self.logger.info('Running evaluation method %s' % self.evaluator.name)
-        return self.evaluator.run()
+    def evaluate_scenario(self, evaluation_method='all'):
+        if evaluation_method == 'all':
+            results = []
+            evaluators = []
+            methods = ['ablation', 'influence-model', 'forward-selection']
+            for method in methods:
+                self.evaluator = method
+                results.append(self.evaluator.run())
+                evaluators.append(self.evaluator)
+            return {'methods': methods, 'results': results, 'evaluators': evaluators}
+        else:
+            self.evaluator = evaluation_method
+            self.logger.info('Running evaluation method %s' % self.evaluator.name)
+            return self.evaluator.run()
 
-    def plot_results(self, name=None):
-        self.evaluator.plot_result(name)
+    def plot_results(self, name=None, evaluators=None):
+        if evaluators:
+            for eval, name_ in zip(evaluators, name):
+                eval.plot_result(name_)
+        else:
+            self.evaluator.plot_result(name)

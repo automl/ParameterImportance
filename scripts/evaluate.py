@@ -1,3 +1,4 @@
+import copy
 import datetime
 import inspect
 import json
@@ -35,8 +36,18 @@ if __name__ == '__main__':
                             parameters_to_evaluate=args.num_params,
                             traj_file=args.trajectory, seed=args.seed,
                             save_folder=save_folder)  # create importance object
-    importance_value_dict = importance.evaluate_scenario(args.modus)
-    with open(os.path.join(save_folder, 'pimp_values_%s.json' % args.modus), 'w') as out_file:
-        json.dump(importance_value_dict, out_file)
+    result = importance.evaluate_scenario(args.modus)
 
-    importance.plot_results(name=os.path.join(save_folder, args.modus))
+    if args.modus == 'all':
+        tmp_res = result['evaluators']
+        result['evaluators'] = None
+        with open(os.path.join(save_folder, 'pimp_values_%s.json' % args.modus), 'w') as out_file:
+            json.dump(result, out_file)
+        result['evaluators'] = tmp_res
+        importance.plot_results(list(map(lambda x: os.path.join(save_folder, x), result['methods'])),
+                                result['evaluators'])
+    else:
+        with open(os.path.join(save_folder, 'pimp_values_%s.json' % args.modus), 'w') as out_file:
+            json.dump(result, out_file)
+
+        importance.plot_results(name=os.path.join(save_folder, args.modus))

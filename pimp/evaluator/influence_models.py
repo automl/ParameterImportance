@@ -165,5 +165,6 @@ class InfluenceModel(AbstractEvaluator):
         plt.tight_layout()
         if name is not None:
             fig.savefig(name)
+            self.logger.info('Saved plot as %s.png' % name)
         else:
             plt.show()
