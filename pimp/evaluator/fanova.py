@@ -2,7 +2,7 @@ from collections import OrderedDict
 
 from pimp.evaluator.base_evaluator import AbstractEvaluator
 
-# from importance.evaluator import fanova_pyrfr, Visualizer
+from importance.evaluator import fanova_pyrfr, Visualizer
 
 __author__ = "Andre Biedenkapp"
 __copyright__ = "Copyright 2016, ML4AAD"
@@ -10,14 +10,6 @@ __license__ = "3-clause BSD"
 __maintainer__ = "Andre Biedenkapp"
 __email__ = "biedenka@cs.uni-freiburg.de"
 
-# TODO This is a Placeholder
-# TODO This is a Placeholder
-# TODO This is a Placeholder
-# TODO This is a Placeholder
-# TODO This is a Placeholder
-# TODO This is a Placeholder
-# TODO This is a Placeholder
-# TODO Currently fANOVA is not supported
 
 class fANOVA(AbstractEvaluator):
 
