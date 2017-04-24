@@ -99,6 +99,6 @@ class AbstractEvaluator(object):
         y:ndarray
             corresponding y vector
         """
-        self.model = RandomForestWithInstances(types, bounds)
-        self.model.rf.compute_oob_error = True
+        self.model = RandomForestWithInstances(types, bounds, do_bootstrapping=True)
+        self.model.rf_opts.compute_oob_error = True
         self.model.train(X, y)

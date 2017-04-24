@@ -46,8 +46,10 @@ class ForwardSelector(AbstractEvaluator):
         param_ids = list(range(len(params)))
         feature_ids = list(range(len(params), len(self.types)))
         used = []
+        used_bounds = []
         if self.feature_importance:
             used.extend(range(0, len(params)))
+            used_bounds.extend(range(0, len(params)))
             names = list(map(lambda x: str(len(feature_ids) + x - len(self.types)), feature_ids))
             ids = feature_ids
             if self.to_evaluate > len(feature_ids):
@@ -67,25 +69,32 @@ class ForwardSelector(AbstractEvaluator):
             for idx, name in zip(ids, names):
                 self.logger.debug('Evaluating %s' % name)
                 used.append(idx)
+                used_bounds.append(idx)
                 self.logger.debug('Used parameters: %s' % str(used))
+                self.logger.debug('Used bounds of parameters: %s' % str(used_bounds))
 
                 start = time.time()
-                self._refit_model(self.types[used], self.bounds[used],  # TODO Only use bounds of used parameters!
-                                  self.X[:, used], self.y)  # refit the model every round
-                errors.append(self.model.rf.out_of_bag_error())
+                self._refit_model(self.types[sorted(used)], self.bounds[sorted(used_bounds)],
+                                  self.X[:, sorted(used)], self.y)  # refit the model every round
+                # print(self.model.rf_opts.compute_oob_error)
+                # self.model.rf.compute_out_of_bag_error = True
+                errors.append(np.sqrt(
+                    np.mean((self.model.predict(self.X[:, sorted(used)])[0].flatten() - self.y) ** 2)))
                 used.pop()
-                self.logger.debug('Refitted RF (sec %.2f; oob: %.4f)' % (time.time() - start, errors[-1]))
+                used_bounds.pop()
+                self.logger.debug('Refitted RF (sec %.2f; error: %.4f)' % (time.time() - start, errors[-1]))
 
             best_idx = np.argmin(errors)
             lowest_error = errors[best_idx]
             best_parameter = names.pop(best_idx)
             used.append(ids.pop(best_idx))
+            used_bounds.append(used[-1])
 
             if self.feature_importance:
-                self.logger.info('%s: %.4f (OOB)' % (best_parameter, lowest_error))
+                self.logger.info('%s: %.4f' % (best_parameter, lowest_error))
                 self.evaluated_parameter_importance[best_parameter] = lowest_error
             else:
-                self.logger.info('%s: %.4f (OOB)' % (best_parameter.name, lowest_error))
+                self.logger.info('%s: %.4f' % (best_parameter.name, lowest_error))
                 self.evaluated_parameter_importance[best_parameter.name] = lowest_error
         return self.evaluated_parameter_importance
 

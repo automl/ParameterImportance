@@ -115,11 +115,12 @@ class Importance(object):
             raise ValueError('Specified model %s does not exist or not supported!' % model_short_name)
         elif model_short_name == 'rfi':
             self._model = RandomForestWithInstances(self.types, self.bounds,
-                                                    self.scenario.feature_array, seed=self.seed)
+                                                    self.scenario.feature_array, seed=self.seed, do_bootstrapping=True)
         elif model_short_name == 'urfi':
             self._model = UnloggedRandomForestWithInstances(self.types, self.bounds,
                                                             self.scenario.feature_array, seed=self.seed,
-                                                            cutoff=self.cutoff, threshold=self.threshold)
+                                                            cutoff=self.cutoff, threshold=self.threshold,
+                                                            do_bootstrapping=True)
         self._model.rf_opts.compute_oob_error = True
 
     @property
