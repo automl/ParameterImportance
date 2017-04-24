@@ -36,6 +36,9 @@ if __name__ == '__main__':
                             parameters_to_evaluate=args.num_params,
                             traj_file=args.trajectory, seed=args.seed,
                             save_folder=save_folder)  # create importance object
+    # print(args.__dict__)
+    with open(os.path.join(save_folder, 'pimp_args.json'), 'w') as out_file:
+        json.dump(args.__dict__, out_file)
     result = importance.evaluate_scenario(args.modus)
 
     if args.modus == 'all':
