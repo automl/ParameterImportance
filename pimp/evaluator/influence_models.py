@@ -168,3 +168,4 @@ class InfluenceModel(AbstractEvaluator):
             self.logger.info('Saved plot as %s.png' % name)
         else:
             plt.show()
+        plt.clf()

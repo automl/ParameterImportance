@@ -336,6 +336,7 @@ class Ablation(AbstractEvaluator):
         self.plot_predicted_percentage(plot_name=name+'percentage.png')
         self.plot_predicted_performance(plot_name=name+'performance.png')
         self.logger.info('Saved plots as %s[percentage|performance].png' % name)
+        plt.clf()
 
     def plot_predicted_percentage(self, plot_name=None):
         """

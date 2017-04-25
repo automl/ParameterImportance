@@ -232,7 +232,7 @@ class Importance(object):
         if evaluation_method == 'all':
             results = []
             evaluators = []
-            methods = ['ablation', 'influence-model', 'forward-selection']
+            methods = ['ablation', 'influence-model', 'forward-selection', 'fanova']
             for method in methods:
                 self.evaluator = method
                 results.append(self.evaluator.run())

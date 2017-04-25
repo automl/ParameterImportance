@@ -138,4 +138,5 @@ class ForwardSelector(AbstractEvaluator):
     def plot_result(self, name=None):
         self._plot_result(name + '-barplot.png', True)
         self._plot_result(name + '-chng.png', False)
+        plt.clf()
         self.logger.info('Saved plot as %s-[barplot|chng].png' % name)

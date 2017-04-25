@@ -1,6 +1,9 @@
 from collections import OrderedDict
 
+import os
 import numpy as np
+from matplotlib import pyplot as plt
+
 from fanova.fanova import fANOVA as fanova_pyrfr
 from fanova.visualizer import Visualizer
 
@@ -54,9 +57,26 @@ class fANOVA(AbstractEvaluator):
 
         self.logger.info('Finished Preprocessing')
 
-    def plot_result(self, name=None):
+    def plot_result(self, name='fANOVA'):
         vis = Visualizer(self.evaluator, self.cs)
-        vis.create_all_plots('.')
+        if not os.path.exists(name):
+            os.mkdir(name)
+        plt.clf()
+        vis.create_all_plots(name)
 
     def run(self) -> OrderedDict:
-        print(self.evaluator.quantify_importance(1))
+        params = self.cs.get_hyperparameters()
+
+        tmp_res = []
+        for idx, param in enumerate(params):
+            self.logger.debug('{:>02d} {:<30s}: {:>02.4f}' .format(
+                idx, param.name, self.evaluator.quantify_importance([idx])[(idx, )]['total importance']))
+            tmp_res.append(self.evaluator.quantify_importance([idx])[(idx, )]['total importance'])
+
+        tmp_res_sort_keys = [i[0] for i in sorted(enumerate(tmp_res), key=lambda x:x[1], reverse=True)]
+        self.logger.debug(tmp_res_sort_keys)
+        for idx in tmp_res_sort_keys:
+            self.logger.debug('{:>02d} {:<30s}: {:>02.4f}'.format(idx, params[idx].name, tmp_res[idx]))
+            self.evaluated_parameter_importance[params[idx].name] = tmp_res[idx]
+
+        return self.evaluated_parameter_importance
