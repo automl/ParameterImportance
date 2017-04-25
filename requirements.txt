@@ -3,3 +3,4 @@ sklearn
 matplotlib
 ConfigSpace
 scipy
+git+https://github.com/automl/fanova/tree/pyrfr_reimplementation

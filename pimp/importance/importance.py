@@ -130,7 +130,7 @@ class Importance(object):
 
     @evaluator.setter
     def evaluator(self, evaluation_method):
-        if evaluation_method not in ['ablation', 'fANOVA', 'forward-selection', 'influence-model']:
+        if evaluation_method not in ['ablation', 'fanova', 'forward-selection', 'influence-model']:
             raise ValueError('Specified evaluation method %s does not exist!' % evaluation_method)
         if evaluation_method == 'ablation':
             if self.incumbent[0] is None:
@@ -151,7 +151,7 @@ class Importance(object):
                                        to_evaluate=self._parameters_to_evaluate,
                                        margin=self.margin,
                                        threshold=self.threshold)
-        elif evaluation_method == 'fANOVA':
+        elif evaluation_method == 'fanova':
             evaluator = fANOVA(scenario=self.scenario,
                                cs=self.scenario.cs,
                                model=self._model,
