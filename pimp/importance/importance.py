@@ -186,12 +186,12 @@ class Importance(object):
 
         params = self.scenario.cs.get_hyperparameters()
         num_params = len(params)
-        self.cutoff = self.scenario.cutoff
-        self.threshold = self.scenario.cutoff * self.scenario.par_factor
-        self.model = 'urfi'
 
         if self.scenario.run_obj == "runtime":
 
+            self.cutoff = self.scenario.cutoff
+            self.threshold = self.scenario.cutoff * self.scenario.par_factor
+            self.model = 'urfi'
             self.logged_y = True
             # if we log the performance data,
             # the RFRImputator will already get
@@ -217,6 +217,7 @@ class Importance(object):
                                                 StatusType.TIMEOUT, ],
                                             imputor=imputor)
         else:
+            self.model = 'rfi'
             rh2EPM = RunHistory2EPM4Cost(scenario=self.scenario,
                                          num_params=num_params,
                                          success_states=None,

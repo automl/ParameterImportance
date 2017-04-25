@@ -260,6 +260,7 @@ class Ablation(AbstractEvaluator):
                 modifiable_config_dict = copy.deepcopy(prev_modifiable_config_dict)
 
             best_idx = np.argmin(round_performances)
+            assert 0 <= best_idx < len(round_performances), 'No improving parameter found!'
             best_performance = round_performances[best_idx]  # greedy choice of parameter to fix
             best_variance = round_variances[best_idx]
             improvement_in_percentage = (prev_performance - best_performance) / improvement

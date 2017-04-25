@@ -1,0 +1,15 @@
+runcount_limit = 500.0
+abort_on_first_run_crash = True
+execdir = .
+maxR = 2000
+initial_incumbent = DEFAULT
+paramfile = smac3-output_2017-04-03_17:27:18/branin_pcs.pcs
+wallclock_limit = inf
+intensification_percentage = 0.5
+shared_model = False
+deterministic = True
+algo = python branin.py
+overall_obj = par10
+minR = 1
+run_obj = quality
+tuner-timeout = inf

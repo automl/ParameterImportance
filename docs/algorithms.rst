@@ -15,8 +15,8 @@ analysis and are implemented as part of **PIMP**.
 Ablation
 --------
 
-`Ablation <https://link.springer.com/article/10.1007/s10732-014-9275-9>`_ is a lokal method that determines parameter importances between two given configurations. It thereby looks
-which parameter contributed most in a lokal part of the Configuration Space.
+`Ablation <https://link.springer.com/article/10.1007/s10732-014-9275-9>`_ is a local method that determines parameter importances between two given configurations. It thereby looks
+which parameter contributed most in a local part of the Configuration Space.
 It is an iterative method that changes, in each round, one parameter from the starting configuration to that of the
 target configuration. The parameter that resulted in the highest improvement is kept as this rounds most important
 parameter. The order determines which parameters are deemed most important and the percentage of improvement tells us

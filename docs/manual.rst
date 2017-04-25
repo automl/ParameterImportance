@@ -33,7 +33,7 @@ To use **PIMP** simply execute the following call in the spear_qcp folder:
 
 .. code-block:: bash
 
-    python ~/git/importance/scripts/evaluate.py --scenario_file scenario.txt --history './*/runhistory.json' --modus forward-selection
+    python ../../scripts/evaluate.py --scenario_file scenario.txt --history './*/runhistory.json' --modus forward-selection
 
 With this call, PIMP will read in the scenarios info and all runhistories in this folder and evaluate the parameter importances,
 using forward selection (see :doc:`algorithms`).
