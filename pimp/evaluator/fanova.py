@@ -24,7 +24,10 @@ class fANOVA(AbstractEvaluator):
         self.name = 'fANOVA'
         self.logger = self.name
         # This way the instance features in X are ignored and a new forest is constructed
-        self._preprocess(self.X)
+        if self.model.instance_features is None:
+            self.logger.debug('No preprocessing necessary')
+        else:
+            self._preprocess(self.X)
         self.evaluator = fanova_pyrfr(X=self.X, Y=self.y.flatten(), config_space=cs, config_on_hypercube=True)
 
     def _preprocess(self, X):
