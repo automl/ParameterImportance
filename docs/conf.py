@@ -16,7 +16,7 @@ import datetime
 import sys
 import os
 import shlex
-import sphinx-bootstrap-theme
+import sphinx_bootstrap_theme
 
 sys.path.insert(0, '..')
 
@@ -188,7 +188,7 @@ html_theme_options = {
 }
 
 # Add any paths that contain custom themes here, relative to this directory.
-html_theme_path = sphinx-bootstrap-theme.get_html_theme_path()
+html_theme_path = sphinx_bootstrap_theme.get_html_theme_path()
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
