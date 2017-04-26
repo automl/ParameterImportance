@@ -337,7 +337,7 @@ class Ablation(AbstractEvaluator):
         self.plot_predicted_percentage(plot_name=name+'percentage.png')
         self.plot_predicted_performance(plot_name=name+'performance.png')
         self.logger.info('Saved plots as %s[percentage|performance].png' % name)
-        plt.clf()
+        plt.close('all')
 
     def plot_predicted_percentage(self, plot_name=None):
         """
@@ -435,7 +435,10 @@ class Ablation(AbstractEvaluator):
         ax1.set_ylim(min(lower) - max(.1 * min(lower), 0.1), max(upper) + .1 * max(upper))
 
         ax1.legend()
-        ax1.set_ylabel('runtime [sec]', zorder=81, **self.LABEL_FONT)
+        if self.scenario.run_obj == 'runtime':
+            ax1.set_ylabel('runtime [sec]', zorder=81, **self.LABEL_FONT)
+        else:
+            ax1.set_ylabel('%s' % self.scenario.run_obj, zorder=81, **self.LABEL_FONT)
         ax1.xaxis.grid(True)
         ax1.yaxis.grid(True)
         try:

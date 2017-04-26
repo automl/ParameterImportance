@@ -118,7 +118,7 @@ class ForwardSelector(AbstractEvaluator):
         else:
             ax.plot(ind, errors, **self.LINE_FONT)
 
-        ax.set_ylabel('Out-Of-Bag Error', **self.LABEL_FONT)
+        ax.set_ylabel('error', **self.LABEL_FONT)
         if bar:
             ax.set_xticks(ind)
             ax.set_xlim(-.5, max_to_plot - 0.5)
@@ -138,5 +138,5 @@ class ForwardSelector(AbstractEvaluator):
     def plot_result(self, name=None):
         self._plot_result(name + '-barplot.png', True)
         self._plot_result(name + '-chng.png', False)
-        plt.clf()
+        plt.close('all')
         self.logger.info('Saved plot as %s-[barplot|chng].png' % name)

@@ -160,10 +160,10 @@ class UnloggedRandomForestWithInstances(RandomForestWithInstances):
 
                 # This can happen and if it happens, set prediction to cutoff
                 if not np.isfinite(pred[p]):
-                    self.logger.critical("Prediction is not finite cdf %g, "
-                                         "lower_pred %g; Setting %g to %g" %
-                                         (cdf, lower_pred, pred[p],
-                                          self.cutoff + 10 ** -5))
+                    self.logger.debug("Prediction is not finite cdf %g, "
+                                      "lower_pred %g; Setting %g to %g" %
+                                      (cdf, lower_pred, pred[p],
+                                       self.cutoff + 10 ** -5))
                     pred[p] = self.cutoff + 10 ** -5
         return pred, var
 
