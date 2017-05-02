@@ -37,19 +37,16 @@ if __name__ == '__main__':
                             save_folder=save_folder)  # create importance object
     # print(args.__dict__)
     with open(os.path.join(save_folder, 'pimp_args.json'), 'w') as out_file:
-        json.dump(args.__dict__, out_file)
+        json.dump(args.__dict__, out_file, sort_keys=True, indent=4, separators=(',', ': '))
     result = importance.evaluate_scenario(args.modus)
 
     if args.modus == 'all':
-        tmp_res = result['evaluators']
-        result['evaluators'] = None
         with open(os.path.join(save_folder, 'pimp_values_%s.json' % args.modus), 'w') as out_file:
-            json.dump(result, out_file)
-        result['evaluators'] = tmp_res
-        importance.plot_results(list(map(lambda x: os.path.join(save_folder, x), result['methods'])),
-                                result['evaluators'])
+            json.dump(result[0], out_file, sort_keys=True, indent=4, separators=(',', ': '))
+        importance.plot_results(list(map(lambda x: os.path.join(save_folder, x.name.lower()), result[1])),
+                                result[1])
     else:
         with open(os.path.join(save_folder, 'pimp_values_%s.json' % args.modus), 'w') as out_file:
-            json.dump(result, out_file)
+            json.dump(result, out_file, sort_keys=True, indent=4, separators=(',', ': '))
 
         importance.plot_results(name=os.path.join(save_folder, args.modus))

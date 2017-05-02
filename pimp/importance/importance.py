@@ -231,18 +231,18 @@ class Importance(object):
 
     def evaluate_scenario(self, evaluation_method='all'):
         if evaluation_method == 'all':
-            results = []
             evaluators = []
             methods = ['ablation', 'influence-model', 'forward-selection', 'fanova']
+            dict_ = {}
             for method in methods:
                 self.evaluator = method
-                results.append(self.evaluator.run())
+                dict_[method] = self.evaluator.run()
                 evaluators.append(self.evaluator)
-            return {'methods': methods, 'results': results, 'evaluators': evaluators}
+            return dict_, evaluators
         else:
             self.evaluator = evaluation_method
             self.logger.info('Running evaluation method %s' % self.evaluator.name)
-            return self.evaluator.run()
+            return {evaluation_method: self.evaluator.run()}
 
     def plot_results(self, name=None, evaluators=None):
         if evaluators:
