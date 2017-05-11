@@ -24,3 +24,4 @@ python scripts/evaluate.py --scenario_file scenario.txt --history smac-output/ru
 Results in two plots:
 ![](examples/Ablationpercentage.png)
 ![](examples/Ablationperformance.png)
+

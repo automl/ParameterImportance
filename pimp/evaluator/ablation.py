@@ -4,7 +4,7 @@ from collections import OrderedDict
 import numpy as np
 from matplotlib import pyplot as plt
 
-from pimp.configspace import AndConjunction, Configuration, OrConjunction
+from pimp.configspace import AndConjunction, Configuration, OrConjunction, impute_inactive_values
 from pimp.evaluator.base_evaluator import AbstractEvaluator
 
 __author__ = "Andre Biedenkapp"
@@ -218,9 +218,9 @@ class Ablation(AbstractEvaluator):
         best_performance = -1
 
         # Predict source and target performance to later use it to predict the %improvement a parameter causes
-        source_mean, source_var = self._predict_over_instance_set(self.source)
+        source_mean, source_var = self._predict_over_instance_set(impute_inactive_values(self.source))
         prev_performance = source_mean
-        target_mean, target_var = self._predict_over_instance_set(self.target)
+        target_mean, target_var = self._predict_over_instance_set(impute_inactive_values(self.target))
         improvement = prev_performance - target_mean
         self.predicted_parameter_performances['-source-'] = source_mean.flatten()[0]
         self.predicted_parameter_variances['-source-'] = source_var.flatten()[0]
@@ -253,7 +253,7 @@ class Ablation(AbstractEvaluator):
                     continue
                 modifiable_config = Configuration(self.cs, modifiable_config_dict)
 
-                mean, var = self._predict_over_instance_set(modifiable_config)  # ... predict their performance
+                mean, var = self._predict_over_instance_set(impute_inactive_values(modifiable_config))  # ... predict their performance
                 self.logger.debug('%s: %.6f' % (candidate_tuple, mean[0]))
                 round_performances.append(mean)
                 round_variances.append(var)
@@ -337,6 +337,7 @@ class Ablation(AbstractEvaluator):
         self.plot_predicted_percentage(plot_name=name+'percentage.png')
         self.plot_predicted_performance(plot_name=name+'performance.png')
         self.logger.info('Saved plots as %s[percentage|performance].png' % name)
+        plt.close('all')
 
     def plot_predicted_percentage(self, plot_name=None):
         """
@@ -434,7 +435,10 @@ class Ablation(AbstractEvaluator):
         ax1.set_ylim(min(lower) - max(.1 * min(lower), 0.1), max(upper) + .1 * max(upper))
 
         ax1.legend()
-        ax1.set_ylabel('runtime [sec]', zorder=81, **self.LABEL_FONT)
+        if self.scenario.run_obj == 'runtime':
+            ax1.set_ylabel('runtime [sec]', zorder=81, **self.LABEL_FONT)
+        else:
+            ax1.set_ylabel('%s' % self.scenario.run_obj, zorder=81, **self.LABEL_FONT)
         ax1.xaxis.grid(True)
         ax1.yaxis.grid(True)
         try:

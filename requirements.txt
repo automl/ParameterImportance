@@ -2,5 +2,7 @@ numpy
 sklearn
 matplotlib
 ConfigSpace
-smac>=0.2.3
 scipy
+pyrfr>=0.4.0
+git+http://github.com/automl/fanova@952c9bd46b47cde87036c00f974629c9e5819565
+smac>=0.5.0

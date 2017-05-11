@@ -2,8 +2,9 @@ import abc
 import logging
 from collections import OrderedDict
 
+from smac.epm.rf_with_instances import RandomForestWithInstances
+
 from pimp.configspace import ConfigurationSpace
-from pimp.epm import RandomForestWithInstances
 from pimp.utils import Scenario
 
 __author__ = "Andre Biedenkapp"
@@ -37,6 +38,7 @@ class AbstractEvaluator(object):
             self.X = self.model.X
             self.y = self.model.y
             self.types = self.model.types
+            self.bounds = self.model.bounds
 
         if to_evaluate <= 0:
             self.to_evaluate = len(self.cs.get_hyperparameters())
@@ -51,7 +53,7 @@ class AbstractEvaluator(object):
         self.IMPORTANCE_THRESHOLD = 0.05
         self.AXIS_FONT = {'size': '10',
                           'family': 'monospace'}
-        self.LABEL_FONT = {'size': '32',
+        self.LABEL_FONT = {'size': '24',
                            'family': 'sans-serif'}
         self.LINE_FONT = {'lw': 4,
                           'color': (0.125, 0.125, 0.125)}
@@ -86,7 +88,7 @@ class AbstractEvaluator(object):
     def logger(self, value):
         self._logger = logging.getLogger(value)
 
-    def _refit_model(self, types, X, y):
+    def _refit_model(self, types, bounds, X, y):
         """
         Easily allows for refitting of the model.
         Parameters
@@ -98,6 +100,6 @@ class AbstractEvaluator(object):
         y:ndarray
             corresponding y vector
         """
-        self.model = RandomForestWithInstances(types)
-        self.model.rf.compute_oob_error = True
+        self.model = RandomForestWithInstances(types, bounds, do_bootstrapping=True)
+        self.model.rf_opts.compute_oob_error = True
         self.model.train(X, y)
