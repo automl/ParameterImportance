@@ -103,7 +103,7 @@ class InfluenceModel(AbstractEvaluator):
                     params.pop(best_idx)
                     used.append(param_ids.pop(best_idx))
                     self.logger.info('%s: %.4f (error)' % (best.name, error))
-                    self.evaluated_parameter_importance[best.name] = self.model.coef_[0: -1]
+                    self.evaluated_parameter_importance[best.name] = self.model.coef_[-1]
                     best = None
                     best_idx = None
         remove = 0
@@ -154,7 +154,7 @@ class InfluenceModel(AbstractEvaluator):
                 b[1].set_color(self.unimportant_area_color)
                 t.set_color((0.45, 0.45, 0.45))
 
-        ax.set_ylabel('Weights', **self.LABEL_FONT)
+        ax.set_ylabel('weights', **self.LABEL_FONT)
         ax.set_xticks(tmp)
         ax.set_xlim(-.5, len(tmp) - 0.5)
         ax.set_xticklabels(params, rotation=30, ha='right', **self.AXIS_FONT)
@@ -166,5 +166,7 @@ class InfluenceModel(AbstractEvaluator):
         plt.tight_layout()
         if name is not None:
             fig.savefig(name)
+            self.logger.info('Saved plot as %s.png' % name)
         else:
             plt.show()
+        plt.close('all')

@@ -27,14 +27,26 @@ if __name__ == '__main__':
     cmd_reader = CMDs()
     args, misc_ = cmd_reader.read_cmd()  # read cmd args
     logging.basicConfig(level=args.verbose_level)
-    importance = Importance(args.scenario_file, args.history,
-                            parameters_to_evaluate=args.num_params,
-                            traj_file=args.trajectory, seed=args.seed)  # create importance object
-    importance_value_dict = importance.evaluate_scenario(args.modus)
-
     ts = time.time()
     ts = datetime.datetime.fromtimestamp(ts).strftime('%Y_%m_%d_%H:%M:%S')
-    with open('pimp_values_%s_%s.json' % (args.modus, ts), 'w') as out_file:
-        json.dump(importance_value_dict, out_file)
+    save_folder = 'PIMP_%s_%s' % (args.modus, ts)
 
-    importance.plot_results(name=args.modus)
+    importance = Importance(args.scenario_file, args.history,
+                            parameters_to_evaluate=args.num_params,
+                            traj_file=args.trajectory, seed=args.seed,
+                            save_folder=save_folder)  # create importance object
+    save_folder += '_run1'
+    with open(os.path.join(save_folder, 'pimp_args.json'), 'w') as out_file:
+        json.dump(args.__dict__, out_file, sort_keys=True, indent=4, separators=(',', ': '))
+    result = importance.evaluate_scenario(args.modus)
+
+    if args.modus == 'all':
+        with open(os.path.join(save_folder, 'pimp_values_%s.json' % args.modus), 'w') as out_file:
+            json.dump(result[0], out_file, sort_keys=True, indent=4, separators=(',', ': '))
+        importance.plot_results(list(map(lambda x: os.path.join(save_folder, x.name.lower()), result[1])),
+                                result[1])
+    else:
+        with open(os.path.join(save_folder, 'pimp_values_%s.json' % args.modus), 'w') as out_file:
+            json.dump(result, out_file, sort_keys=True, indent=4, separators=(',', ': '))
+
+        importance.plot_results(name=os.path.join(save_folder, args.modus))

@@ -1,7 +1,7 @@
 import numpy as np
 from scipy import stats
 
-from pimp.epm import RandomForestWithInstances
+from smac.epm.rf_with_instances import RandomForestWithInstances as SMACrfi
 
 __author__ = "Andre Biedenkapp"
 __copyright__ = "Copyright 2016, ML4AAD"
@@ -10,9 +10,9 @@ __maintainer__ = "Andre Biedenkapp"
 __email__ = "biedenka@cs.uni-freiburg.de"
 
 
-class UnloggedRandomForestWithInstances(RandomForestWithInstances):
+class UnloggedRandomForestWithInstances(SMACrfi):
 
-    def __init__(self, types, instance_features=None, num_trees=30, do_bootstrapping=True, n_points_per_tree=0,
+    def __init__(self, types, bounds, instance_features=None, num_trees=30, do_bootstrapping=True, n_points_per_tree=0,
                  ratio_features=5. / 6., min_samples_split=3, min_samples_leaf=3, max_depth=20, eps_purity=1e-8,
                  max_num_nodes=1000, seed=42, cutoff=0, threshold=0):
         """
@@ -27,6 +27,8 @@ class UnloggedRandomForestWithInstances(RandomForestWithInstances):
             2 dimension where the first dimension consists of 3 different
             categorical choices and the second dimension is continuous than we
             have to pass np.array([2, 0]). Note that we count starting from 0.
+        bounds: np.ndarray (D)
+            Specifies the bounds
         instance_features: np.ndarray (I, K)
             Contains the K dimensional instance features
             of the I different instances
@@ -55,7 +57,7 @@ class UnloggedRandomForestWithInstances(RandomForestWithInstances):
         threshold:
             Maximal possible value
         """
-        super().__init__(types=types, instance_features=instance_features, num_trees=num_trees,
+        super().__init__(types=types, bounds=bounds, instance_features=instance_features, num_trees=num_trees,
                          do_bootstrapping=do_bootstrapping, n_points_per_tree=n_points_per_tree,
                          ratio_features=ratio_features, min_samples_split=min_samples_split,
                          min_samples_leaf=min_samples_leaf, max_depth=max_depth,
@@ -158,10 +160,10 @@ class UnloggedRandomForestWithInstances(RandomForestWithInstances):
 
                 # This can happen and if it happens, set prediction to cutoff
                 if not np.isfinite(pred[p]):
-                    self.logger.critical("Prediction is not finite cdf %g, "
-                                         "lower_pred %g; Setting %g to %g" %
-                                         (cdf, lower_pred, pred[p],
-                                          self.cutoff + 10 ** -5))
+                    self.logger.debug("Prediction is not finite cdf %g, "
+                                      "lower_pred %g; Setting %g to %g" %
+                                      (cdf, lower_pred, pred[p],
+                                       self.cutoff + 10 ** -5))
                     pred[p] = self.cutoff + 10 ** -5
         return pred, var
 

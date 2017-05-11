@@ -10,18 +10,18 @@ matplotlib.use('Agg')
 
 import numpy as np
 
+from smac.utils.util_funcs import get_types
+from smac.tae.execute_ta_run import StatusType
+from smac.epm.rfr_imputator import RFRImputator
+from smac.epm.rf_with_instances import RandomForestWithInstances
+
 from pimp.configspace import CategoricalHyperparameter, Configuration, FloatHyperparameter, IntegerHyperparameter
-from pimp.epm import RandomForestWithInstances, RFRImputator
 from pimp.epm.unlogged_rf_with_instances import UnloggedRandomForestWithInstances
 from pimp.evaluator.ablation import Ablation
 from pimp.evaluator.fanova import fANOVA
 from pimp.evaluator.forward_selection import ForwardSelector
 from pimp.evaluator.influence_models import InfluenceModel
 from pimp.utils import RunHistory, RunHistory2EPM4Cost, RunHistory2EPM4LogCost, Scenario, average_cost
-from smac.tae.execute_ta_run import StatusType
-
-
-
 
 
 __author__ = "Andre Biedenkapp"
@@ -38,10 +38,11 @@ class Importance(object):
     """
 
     def __init__(self, scenario_file, runhistory_files, seed: int = 12345,
-                 parameters_to_evaluate: int = -1, traj_file=None, threshold=None, margin=None):
+                 parameters_to_evaluate: int = -1, traj_file=None, threshold=None, margin=None,
+                 save_folder='PIMP'):
         self.logger = logging.getLogger("Importance")
         self.logger.info('Reading Scenario file and files specified in the scenario')
-        self.scenario = Scenario(scenario=scenario_file)
+        self.scenario = Scenario(scenario=scenario_file, cmd_args={'output_dir': save_folder}, run_id=1)
 
         self.logger.info('Reading Runhistory')
         self.runhistory = RunHistory(aggregate_func=average_cost)
@@ -60,6 +61,7 @@ class Importance(object):
         self.X = None
         self.y = None
         self.types = None
+        self.bounds = None
         self._model = None
         self.incumbent = (None, None)
         self.logged_y = False
@@ -110,15 +112,19 @@ class Importance(object):
 
     @model.setter
     def model(self, model_short_name='urfi'):
-        self.types = self._get_types_list_for_model()
+        self.types, self.bounds = get_types(self.scenario.cs, self.scenario.feature_array)
         if model_short_name not in ['urfi', 'rfi']:
             raise ValueError('Specified model %s does not exist or not supported!' % model_short_name)
         elif model_short_name == 'rfi':
-            self._model = RandomForestWithInstances(self.types, self.scenario.feature_array, seed=self.seed)
+            self._model = RandomForestWithInstances(self.types, self.bounds,
+                                                    instance_features=self.scenario.feature_array,
+                                                    seed=self.seed, do_bootstrapping=True)
         elif model_short_name == 'urfi':
-            self._model = UnloggedRandomForestWithInstances(self.types, self.scenario.feature_array, seed=self.seed,
-                                                            cutoff=self.cutoff, threshold=self.threshold)
-        self._model.rf.compute_oob_error = True
+            self._model = UnloggedRandomForestWithInstances(self.types, self.bounds,
+                                                            self.scenario.feature_array, seed=self.seed,
+                                                            cutoff=self.cutoff, threshold=self.threshold,
+                                                            do_bootstrapping=True)
+        self._model.rf_opts.compute_oob_error = True
 
     @property
     def evaluator(self):
@@ -126,7 +132,7 @@ class Importance(object):
 
     @evaluator.setter
     def evaluator(self, evaluation_method):
-        if evaluation_method not in ['ablation', 'fANOVA', 'forward-selection', 'influence-model']:
+        if evaluation_method not in ['ablation', 'fanova', 'forward-selection', 'influence-model']:
             raise ValueError('Specified evaluation method %s does not exist!' % evaluation_method)
         if evaluation_method == 'ablation':
             if self.incumbent[0] is None:
@@ -147,7 +153,7 @@ class Importance(object):
                                        to_evaluate=self._parameters_to_evaluate,
                                        margin=self.margin,
                                        threshold=self.threshold)
-        elif evaluation_method == 'fANOVA':
+        elif evaluation_method == 'fanova':
             evaluator = fANOVA(scenario=self.scenario,
                                cs=self.scenario.cs,
                                model=self._model,
@@ -158,21 +164,6 @@ class Importance(object):
                                         model=self._model,
                                         to_evaluate=self._parameters_to_evaluate)
         self._evaluator = evaluator
-
-    def _get_types_list_for_model(self):
-        types = np.zeros(len(self.scenario.cs.get_hyperparameters()),
-                         dtype=np.uint)
-
-        for i, param in enumerate(self.scenario.cs.get_hyperparameters()):
-            if isinstance(param, (CategoricalHyperparameter)):
-                n_cats = len(param.choices)
-                types[i] = n_cats
-
-        if self.scenario.feature_array is not None:
-            types = np.hstack(
-                (types, np.zeros((self.scenario.feature_array.shape[1]))))
-
-        return np.array(types, dtype=np.uint)
 
     def _convert_data(self):  # From Marius
         '''
@@ -240,10 +231,24 @@ class Importance(object):
         self.y = Y
         self.model.train(X, Y)
 
-    def evaluate_scenario(self, evaluation_method):
-        self.evaluator = evaluation_method
-        self.logger.info('Running evaluation method %s' % self.evaluator.name)
-        return self.evaluator.run()
+    def evaluate_scenario(self, evaluation_method='all'):
+        if evaluation_method == 'all':
+            evaluators = []
+            methods = ['ablation', 'influence-model', 'forward-selection', 'fanova']
+            dict_ = {}
+            for method in methods:
+                self.evaluator = method
+                dict_[method] = self.evaluator.run()
+                evaluators.append(self.evaluator)
+            return dict_, evaluators
+        else:
+            self.evaluator = evaluation_method
+            self.logger.info('Running evaluation method %s' % self.evaluator.name)
+            return {evaluation_method: self.evaluator.run()}
 
-    def plot_results(self, name=None):
-        self.evaluator.plot_result(name)
+    def plot_results(self, name=None, evaluators=None):
+        if evaluators:
+            for eval, name_ in zip(evaluators, name):
+                eval.plot_result(name_)
+        else:
+            self.evaluator.plot_result(name)
