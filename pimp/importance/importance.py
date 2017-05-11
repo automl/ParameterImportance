@@ -12,9 +12,10 @@ import numpy as np
 
 from smac.utils.util_funcs import get_types
 from smac.tae.execute_ta_run import StatusType
+from smac.epm.rfr_imputator import RFRImputator
+from smac.epm.rf_with_instances import RandomForestWithInstances
 
 from pimp.configspace import CategoricalHyperparameter, Configuration, FloatHyperparameter, IntegerHyperparameter
-from pimp.epm import RandomForestWithInstances, RFRImputator
 from pimp.epm.unlogged_rf_with_instances import UnloggedRandomForestWithInstances
 from pimp.evaluator.ablation import Ablation
 from pimp.evaluator.fanova import fANOVA
@@ -41,7 +42,7 @@ class Importance(object):
                  save_folder='PIMP'):
         self.logger = logging.getLogger("Importance")
         self.logger.info('Reading Scenario file and files specified in the scenario')
-        self.scenario = Scenario(scenario=scenario_file, cmd_args={'output_dir': save_folder})
+        self.scenario = Scenario(scenario=scenario_file, cmd_args={'output_dir': save_folder}, run_id=1)
 
         self.logger.info('Reading Runhistory')
         self.runhistory = RunHistory(aggregate_func=average_cost)
@@ -116,7 +117,8 @@ class Importance(object):
             raise ValueError('Specified model %s does not exist or not supported!' % model_short_name)
         elif model_short_name == 'rfi':
             self._model = RandomForestWithInstances(self.types, self.bounds,
-                                                    self.scenario.feature_array, seed=self.seed, do_bootstrapping=True)
+                                                    instance_features=self.scenario.feature_array,
+                                                    seed=self.seed, do_bootstrapping=True)
         elif model_short_name == 'urfi':
             self._model = UnloggedRandomForestWithInstances(self.types, self.bounds,
                                                             self.scenario.feature_array, seed=self.seed,

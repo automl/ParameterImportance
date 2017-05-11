@@ -1,7 +1,7 @@
 import numpy as np
 from scipy import stats
 
-from pimp.epm import RandomForestWithInstances
+from smac.epm.rf_with_instances import RandomForestWithInstances as SMACrfi
 
 __author__ = "Andre Biedenkapp"
 __copyright__ = "Copyright 2016, ML4AAD"
@@ -10,7 +10,7 @@ __maintainer__ = "Andre Biedenkapp"
 __email__ = "biedenka@cs.uni-freiburg.de"
 
 
-class UnloggedRandomForestWithInstances(RandomForestWithInstances):
+class UnloggedRandomForestWithInstances(SMACrfi):
 
     def __init__(self, types, bounds, instance_features=None, num_trees=30, do_bootstrapping=True, n_points_per_tree=0,
                  ratio_features=5. / 6., min_samples_split=3, min_samples_leaf=3, max_depth=20, eps_purity=1e-8,

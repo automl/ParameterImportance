@@ -2,8 +2,9 @@ import abc
 import logging
 from collections import OrderedDict
 
+from smac.epm.rf_with_instances import RandomForestWithInstances
+
 from pimp.configspace import ConfigurationSpace
-from pimp.epm import RandomForestWithInstances
 from pimp.utils import Scenario
 
 __author__ = "Andre Biedenkapp"
