@@ -114,6 +114,7 @@
 <li><a class="reference internal" href="#ablation">Ablation</a></li>
 <li><a class="reference internal" href="#forward-selection">Forward-Selection</a></li>
 <li><a class="reference internal" href="#influence-models">Influence Models</a></li>
+<li><a class="reference internal" href="#fanova">fANOVA</a></li>
 </ul>
 </li>
 </ul>
@@ -151,6 +152,13 @@ weights of the linear model. However it does not necessarily look at all possibl
 the performance when adding them to the linear model in a forward step. Additionally, it performs one (or more) backwards
 steps, in which it checks if parameters have become unimportant due to conditionalities in the Parameter Space.
 For more details we refer to the original <a class="reference external" href="https://dl.acm.org/citation.cfm?doid=2786805.2786845">paper</a>.</p>
+</div>
+<div class="section" id="fanova">
+<span id="fa"></span><h2>fANOVA<a class="headerlink" href="#fanova" title="Permalink to this headline">¶</a></h2>
+<p>fANOVA is an efficient parameter importance method, leveraging random forest models fit on the data already gathered by
+Bayesian optimization. fANOVA is able to quantify the importance of both single hyperparameters and of interactions
+between hyperparameters.</p>
+<p>For more details we refer to the original <a class="reference external" href="http://www-devel.cs.ubc.ca/~hoos/Publ/HutEtAl14b.pdf">paper</a>.</p>
 </div>
 </div>
 
