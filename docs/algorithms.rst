@@ -46,3 +46,15 @@ weights of the linear model. However it does not necessarily look at all possibl
 the performance when adding them to the linear model in a forward step. Additionally, it performs one (or more) backwards
 steps, in which it checks if parameters have become unimportant due to conditionalities in the Parameter Space.
 For more details we refer to the original `paper <https://dl.acm.org/citation.cfm?doid=2786805.2786845>`_.
+
+
+.. _fa:
+
+fANOVA
+------
+
+fANOVA is an efficient parameter importance method, leveraging random forest models fit on the data already gathered by
+Bayesian optimization. fANOVA is able to quantify the importance of both single hyperparameters and of interactions
+between hyperparameters.
+
+For more details we refer to the original `paper <http://www-devel.cs.ubc.ca/~hoos/Publ/HutEtAl14b.pdf>`_.
