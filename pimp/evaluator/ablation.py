@@ -415,6 +415,11 @@ class Ablation(AbstractEvaluator):
         variances = list(self.predicted_parameter_variances.values())
         variances = np.array(variances).reshape((-1, 1))
 
+        if max_to_plot == self.MAX_PARAMS_TO_PLOT:
+            performances[self.MAX_PARAMS_TO_PLOT - 1] = performances[-1]
+            variances[self.MAX_PARAMS_TO_PLOT - 1] = variances[-1]
+            path[self.MAX_PARAMS_TO_PLOT - 1] = path[-1]
+
         ax1.plot(list(range(len(performances))), performances, label='Predicted Performance', ls='-', zorder=80,
                  **self.LINE_FONT)
 
