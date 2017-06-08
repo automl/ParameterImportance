@@ -49,6 +49,8 @@ class CMDs(CMDReader):
                               help="Path to trajectory file")
         req_opts.add_argument("--num_params", default=0, type=int,
                               help="Number of parameters to evaluate")
+        req_opts.add_argument("--impute", action='store_true',
+                              help="Impute censored data")
 
         args_, misc = parser.parse_known_args()
         self._check_args(args_)

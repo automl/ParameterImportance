@@ -42,12 +42,14 @@ class fANOVA(AbstractEvaluator):
                            predictions
         """
         self.logger.info('PREPROCESSING PREPROCESSING PREPROCESSING PREPROCESSING PREPROCESSING PREPROCESSING')
+        self.logger.info('Marginalizing away all instances!')
         configs = runhistory.get_all_configs()
         X_prime = np.array(convert_configurations_to_array(configs))
         y_prime = np.array(self.model.predict_marginalized_over_instances(X_prime)[0])
         self.X = X_prime
         self.y = y_prime
-
+        self.logger.info('Size of training X after preprocessing: %s' % str(self.X.shape))
+        self.logger.info('Size of training y after preprocessing: %s' % str(self.y.shape))
         self.logger.info('Finished Preprocessing')
 
     def plot_result(self, name='fANOVA'):

@@ -5,6 +5,7 @@ import os
 import sys
 
 import matplotlib
+
 # Force matplotlib to not use any Xwindows backend.
 matplotlib.use('Agg')
 
@@ -23,7 +24,6 @@ from pimp.evaluator.forward_selection import ForwardSelector
 from pimp.evaluator.influence_models import InfluenceModel
 from pimp.utils import RunHistory, RunHistory2EPM4Cost, RunHistory2EPM4LogCost, Scenario, average_cost
 
-
 __author__ = "Andre Biedenkapp"
 __copyright__ = "Copyright 2016, ML4AAD"
 __license__ = "3-clause BSD"
@@ -39,8 +39,9 @@ class Importance(object):
 
     def __init__(self, scenario_file, runhistory_files, seed: int = 12345,
                  parameters_to_evaluate: int = -1, traj_file=None, threshold=None, margin=None,
-                 save_folder='PIMP'):
+                 save_folder='PIMP', impute_censored: bool=False):
         self.logger = logging.getLogger("Importance")
+        self.impute = impute_censored
         self.logger.info('Reading Scenario file and files specified in the scenario')
         self.scenario = Scenario(scenario=scenario_file, cmd_args={'output_dir': save_folder}, run_id=1)
 
@@ -57,6 +58,7 @@ class Importance(object):
             self.runhistory.update_from_json(rh_file, self.scenario.cs)
         self.logger.info('Combined number of Runhistory data points: %d' % len(self.runhistory.data))
         self.seed = seed
+        self.logger.info('Number of Configurations: %d' % (len(self.runhistory.get_all_configs())))
 
         self.logger.info('Converting Data and constructing Model')
         self.X = None
@@ -192,7 +194,6 @@ class Importance(object):
         num_params = len(params)
 
         if self.scenario.run_obj == "runtime":
-
             self.cutoff = self.scenario.cutoff
             self.threshold = self.scenario.cutoff * self.scenario.par_factor
             self.model = 'urfi'
@@ -203,7 +204,9 @@ class Importance(object):
             cutoff = np.log10(self.scenario.cutoff)
             threshold = np.log10(self.scenario.cutoff *
                                  self.scenario.par_factor)
-            model = 'rfi'
+            model = RandomForestWithInstances(self.types, self.bounds,
+                                              instance_features=self.scenario.feature_array,
+                                              seed=self.seed, do_bootstrapping=True)
 
             imputor = RFRImputator(rs=np.random.RandomState(self.seed),
                                    cutoff=cutoff,
@@ -211,26 +214,30 @@ class Importance(object):
                                    model=model,
                                    change_threshold=0.01,
                                    max_iter=10)
-            # TODO: Adapt runhistory2EPM object based on scenario
             rh2EPM = RunHistory2EPM4LogCost(scenario=self.scenario,
                                             num_params=num_params,
                                             success_states=[
                                                 StatusType.SUCCESS, ],
-                                            impute_censored_data=False,
+                                            impute_censored_data=self.impute,
                                             impute_state=[
-                                                StatusType.TIMEOUT, ],
+                                                StatusType.TIMEOUT, StatusType.CAPPED],
                                             imputor=imputor)
         else:
             self.model = 'rfi'
             rh2EPM = RunHistory2EPM4Cost(scenario=self.scenario,
                                          num_params=num_params,
                                          success_states=None,
-                                         impute_censored_data=False,
+                                         impute_censored_data=self.impute,
                                          impute_state=None)
         X, Y = rh2EPM.transform(self.runhistory)
 
         self.X = X
         self.y = Y
+        self.logger.info('Size of training X: %s' % str(self.X.shape))
+        self.logger.info('Size of training y: %s' % str(self.y.shape))
+        self.logger.info('Data was %s imputed' % ('not' if not self.impute else ''))
+        if not self.impute:
+            self.logger.info('Thus the size of X might be smaller than the datapoints in the RunHistory')
         self.model.train(X, Y)
 
     def evaluate_scenario(self, evaluation_method='all'):

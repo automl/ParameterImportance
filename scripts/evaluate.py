@@ -34,7 +34,8 @@ if __name__ == '__main__':
     importance = Importance(args.scenario_file, args.history,
                             parameters_to_evaluate=args.num_params,
                             traj_file=args.trajectory, seed=args.seed,
-                            save_folder=save_folder)  # create importance object
+                            save_folder=save_folder,
+                            impute_censored=args.impute)  # create importance object
     save_folder += '_run1'
     with open(os.path.join(save_folder, 'pimp_args.json'), 'w') as out_file:
         json.dump(args.__dict__, out_file, sort_keys=True, indent=4, separators=(',', ': '))
