@@ -74,6 +74,16 @@ class Importance(object):
         if traj_file is not None:
             self.incumbent = self._read_traj_file(traj_file)
             self.logger.debug('Incumbent %s' % str(self.incumbent))
+        else:
+            traj_files = glob.glob('smac*/**/traj_aclib2.json', recursive=True)
+            incumbents = []
+            for traj_ in traj_files:
+                self.logger.info('Reading traj_file: %s' % traj_)
+                incumbents.append(self._read_traj_file(traj_))
+                self.logger.debug(incumbents[-1])
+            incumbents = sorted(incumbents, key=lambda x: x[1])
+            self.incumbent = incumbents[0]
+            self.logger.info('Incumbent %s' % str(self.incumbent))
 
         self.logger.info('Setting up Evaluation Method')
         self._parameters_to_evaluate = parameters_to_evaluate
