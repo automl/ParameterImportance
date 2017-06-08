@@ -46,6 +46,7 @@ if __name__ == '__main__':
             json.dump(result[0], out_file, sort_keys=True, indent=4, separators=(',', ': '))
         importance.plot_results(list(map(lambda x: os.path.join(save_folder, x.name.lower()), result[1])),
                                 result[1])
+        importance.table_for_comparison(evaluators=result[1], name='PIMP_table', style='latex')
     else:
         with open(os.path.join(save_folder, 'pimp_values_%s.json' % args.modus), 'w') as out_file:
             json.dump(result, out_file, sort_keys=True, indent=4, separators=(',', ': '))

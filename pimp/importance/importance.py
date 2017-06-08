@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import sys
+from typing import Union, List
 
 import matplotlib
 
@@ -20,7 +21,7 @@ from pimp.configspace import CategoricalHyperparameter, Configuration, FloatHype
 from pimp.epm.unlogged_rf_with_instances import UnloggedRandomForestWithInstances
 from pimp.evaluator.ablation import Ablation
 from pimp.evaluator.fanova import fANOVA
-from pimp.evaluator.forward_selection import ForwardSelector
+from pimp.evaluator.forward_selection import ForwardSelector, AbstractEvaluator
 from pimp.evaluator.influence_models import InfluenceModel
 from pimp.utils import RunHistory, RunHistory2EPM4Cost, RunHistory2EPM4LogCost, Scenario, average_cost
 
@@ -253,7 +254,9 @@ class Importance(object):
     def evaluate_scenario(self, evaluation_method='all'):
         if evaluation_method == 'all':
             evaluators = []
-            methods = ['ablation', 'influence-model', 'forward-selection', 'fanova']
+            # influence-model currently not supported
+            methods = ['ablation', 'forward-selection', 'fanova']
+            # influence-model currently not supported
             dict_ = {}
             for method in methods:
                 self.evaluator = method
@@ -271,3 +274,42 @@ class Importance(object):
                 eval.plot_result(name_)
         else:
             self.evaluator.plot_result(name)
+
+    def table_for_comparison(self, evaluators: List[AbstractEvaluator], name, style='cmd'):
+        header = ['{:^{width}s}' for _ in range(len(evaluators) + 1)]
+        line = '-' if style == 'cmd' else '\hline'
+        join_ = ' | ' if style == 'cmd' else ' & '
+        body = {}
+        _max_len_p = 1
+        _max_len_h = 1
+        for idx, e in enumerate(evaluators):
+            for p in e.evaluated_parameter_importance:
+                if p not in ['-source-', '-target-']:
+                    if p not in body:
+                        if idx > 0:
+                            body[p] = [0. for _ in range(idx)]
+                            body[p].append(e.evaluated_parameter_importance[p])
+                        else:
+                            body[p] = [e.evaluated_parameter_importance[p]]
+                        _max_len_p = max(_max_len_p, len(p))
+                    else:
+                        body[p].append(e.evaluated_parameter_importance[p])
+                        _max_len_p = max(_max_len_p, len(p))
+            header[idx + 1] = e.name
+            _max_len_h = max(_max_len_h, len(e.name))
+        header[0] = header[0].format(' ', width=_max_len_p)
+        header[1:] = list(map(lambda x: '{:^{width}s}'.format(x, width=_max_len_h), header[1:]))
+        header = join_.join(header)
+        if style == 'latex':
+            print('\\begin{tabular}{r%s|}' % ('|c'*len(evaluators)))
+        print(header)
+        if style == 'cmd':
+            print(line*len(header))
+        else:
+            print(line)
+        for p in body:
+            b = ['{:>{width}s}'.format(p, width=_max_len_p)]
+            b.extend(list(map(lambda x: '{:>{width}.2f}'.format(x, width=_max_len_h), body[p])))
+            print(join_.join(b))
+        if style == 'latex':
+            print('\end{tabuler}')
