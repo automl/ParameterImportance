@@ -48,6 +48,7 @@ class Importance(object):
         self.runhistory = RunHistory(aggregate_func=average_cost)
 
         globed_files = glob.glob(runhistory_files)
+        self.logger.info('#RunHistories found: %d' % len(globed_files))
         if not globed_files:
             self.logger.error('No runhistory files found!')
             sys.exit(1)
@@ -157,7 +158,8 @@ class Importance(object):
             evaluator = fANOVA(scenario=self.scenario,
                                cs=self.scenario.cs,
                                model=self._model,
-                               to_evaluate=self._parameters_to_evaluate)
+                               to_evaluate=self._parameters_to_evaluate,
+                               runhist=self.runhistory)
         else:
             evaluator = ForwardSelector(scenario=self.scenario,
                                         cs=self.scenario.cs,

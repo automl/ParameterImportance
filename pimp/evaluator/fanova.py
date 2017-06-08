@@ -4,6 +4,9 @@ import os
 import numpy as np
 from matplotlib import pyplot as plt
 
+from smac.runhistory.runhistory import RunHistory
+from smac.configspace.util import convert_configurations_to_array
+
 from fanova.fanova import fANOVA as fanova_pyrfr
 from fanova.visualizer import Visualizer
 
@@ -19,7 +22,7 @@ __email__ = "biedenka@cs.uni-freiburg.de"
 
 class fANOVA(AbstractEvaluator):
 
-    def __init__(self, scenario, cs, model, to_evaluate: int, **kwargs):
+    def __init__(self, scenario, cs, model, to_evaluate: int, runhist: RunHistory, **kwargs):
         super().__init__(scenario, cs, model, to_evaluate, **kwargs)
         self.name = 'fANOVA'
         self.logger = self.name
@@ -27,34 +30,21 @@ class fANOVA(AbstractEvaluator):
         if self.model.instance_features is None:
             self.logger.debug('No preprocessing necessary')
         else:
-            self._preprocess(self.X)
+            self._preprocess(runhist)
         self.evaluator = fanova_pyrfr(X=self.X, Y=self.y.flatten(), config_space=cs, config_on_hypercube=True)
 
-    def _preprocess(self, X):
+    def _preprocess(self, runhistory):
         """
         Method to marginalize over instances such that fANOVA can determine the parameter importance without
         having to deal with instance features.
-        :param X: ndarray [n_samples, (m_parameters + m_instance_features)]
-        :param y: ndarray [n_samples, ] of performance values for corresponding entries in X
-        :return: X', y' such that configurations in X are marginalized over all instances resulting in y'
+        :param runhistory: RunHistory that knows all configurations that were run. For all these configurations
+                           we have to marginalize away the instance features with which fANOVA will make it's
+                           predictions
         """
         self.logger.info('PREPROCESSING PREPROCESSING PREPROCESSING PREPROCESSING PREPROCESSING PREPROCESSING')
-        y_prime = []
-        X_prime = []
-        dupes = 0
-        tmp = []
-        for row_x in X[:, :X.shape[1] - len(self.model.instance_features[0])]:
-            if row_x.tolist() in tmp:  # needed to filter out duplicats
-                dupes += 1
-            else:
-                X_prime.append(row_x)
-                tmp.append(row_x.tolist())
-                y_prime.append(self.model.predict_marginalized_over_instances(np.array([row_x]))[0])
-
-        y_prime = np.array(y_prime)
-        X_prime = np.array(X_prime)
-        self.logger.debug('Duplicate Configurations in X found: %d' % dupes)
-        self.logger.debug('Remaining Configurations in X: %d' % X_prime.shape[0])
+        configs = runhistory.get_all_configs()
+        X_prime = np.array(convert_configurations_to_array(configs))
+        y_prime = np.array(self.model.predict_marginalized_over_instances(X_prime)[0])
         self.X = X_prime
         self.y = y_prime
 
