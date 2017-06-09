@@ -11,6 +11,7 @@ from fanova.fanova import fANOVA as fanova_pyrfr
 from fanova.visualizer import Visualizer
 
 from pimp.evaluator.base_evaluator import AbstractEvaluator
+from pimp.configspace import CategoricalHyperparameter
 
 
 __author__ = "Andre Biedenkapp"
@@ -56,8 +57,18 @@ class fANOVA(AbstractEvaluator):
         vis = Visualizer(self.evaluator, self.cs)
         if not os.path.exists(name):
             os.mkdir(name)
-        plt.clf()
-        vis.create_all_plots(name)
+        self.logger.info('Getting Marginals!')
+        for i in range(self.to_evaluate):
+            plt.close('all')
+            plt.clf()
+            param = list(self.evaluated_parameter_importance.keys())[i]
+            outfile_name = os.path.join(name, param.replace(os.sep, "_") + ".png")
+            if isinstance(self.cs.get_hyperparameter(param), (CategoricalHyperparameter)):
+                vis.plot_categorical_marginal(self.cs.get_idx_by_hyperparameter_name(param), show=False)
+            else:
+                vis.plot_marginal(self.cs.get_idx_by_hyperparameter_name(param), show=False)
+            plt.savefig(outfile_name)
+            self.logger.info('Creating fANOVA plot: %s' % outfile_name)
 
     def run(self) -> OrderedDict:
         params = self.cs.get_hyperparameters()
@@ -70,8 +81,11 @@ class fANOVA(AbstractEvaluator):
 
         tmp_res_sort_keys = [i[0] for i in sorted(enumerate(tmp_res), key=lambda x:x[1], reverse=True)]
         self.logger.debug(tmp_res_sort_keys)
+        count = 0
         for idx in tmp_res_sort_keys:
-            self.logger.debug('{:>02d} {:<30s}: {:>02.4f}'.format(idx, params[idx].name, tmp_res[idx]))
+            if count >= self.to_evaluate:
+                break
+            self.logger.info('{:>02d} {:<30s}: {:>02.4f}'.format(idx, params[idx].name, tmp_res[idx]))
             self.evaluated_parameter_importance[params[idx].name] = tmp_res[idx]
-
+            count += 1
         return self.evaluated_parameter_importance

@@ -4,6 +4,7 @@ import logging
 import os
 import sys
 from typing import Union, List
+from collections import OrderedDict
 
 import matplotlib
 
@@ -40,7 +41,8 @@ class Importance(object):
 
     def __init__(self, scenario_file, runhistory_files, seed: int = 12345,
                  parameters_to_evaluate: int = -1, traj_file=None, threshold=None, margin=None,
-                 save_folder='PIMP', impute_censored: bool=False):
+                 save_folder='PIMP', impute_censored: bool = False):
+        self.rng = np.random.RandomState(seed)
         self.logger = logging.getLogger("Importance")
         self.impute = impute_censored
         self.logger.info('Reading Scenario file and files specified in the scenario')
@@ -132,12 +134,14 @@ class Importance(object):
         elif model_short_name == 'rfi':
             self._model = RandomForestWithInstances(self.types, self.bounds,
                                                     instance_features=self.scenario.feature_array,
-                                                    seed=self.seed, do_bootstrapping=True)
+                                                    seed=self.rng.randint(99999),
+                                                    num_trees=100)
         elif model_short_name == 'urfi':
             self._model = UnloggedRandomForestWithInstances(self.types, self.bounds,
-                                                            self.scenario.feature_array, seed=self.seed,
+                                                            self.scenario.feature_array,
+                                                            seed=self.rng.randint(99999),
                                                             cutoff=self.cutoff, threshold=self.threshold,
-                                                            do_bootstrapping=True)
+                                                            num_trees=100)
         self._model.rf_opts.compute_oob_error = True
 
     @property
@@ -217,9 +221,10 @@ class Importance(object):
                                  self.scenario.par_factor)
             model = RandomForestWithInstances(self.types, self.bounds,
                                               instance_features=self.scenario.feature_array,
-                                              seed=self.seed, do_bootstrapping=True)
+                                              seed=self.rng.randint(99999), do_bootstrapping=True,
+                                              num_trees=80, n_points_per_tree=50000)
 
-            imputor = RFRImputator(rs=np.random.RandomState(self.seed),
+            imputor = RFRImputator(rs=self.rng,
                                    cutoff=cutoff,
                                    threshold=threshold,
                                    model=model,
@@ -251,12 +256,35 @@ class Importance(object):
             self.logger.info('Thus the size of X might be smaller than the datapoints in the RunHistory')
         self.model.train(X, Y)
 
-    def evaluate_scenario(self, evaluation_method='all'):
+    def evaluate_scenario(self, evaluation_method='all',
+                          sort_by: int=0):
+        """
+        Evaluate the given scenario
+        :param evaluation_method: name of the method to use
+        :param sort_by: int, determines the order (only used if evaluation_method == all)
+            0 => Ablation, fANOVA, Forward Selection
+            1 => Ablation, Forward Selection, fANOVA
+            2 => fANOVA, Forward Selection, Ablation
+            3 => fANOVA, Ablation, Forward Selection
+            4 => Forward Selection, Ablation, fANOVA
+            5 => Forward Selection, fANOVA, Ablation
+        :return: 
+        """
+        # influence-model currently not supported
+        # influence-model currently not supported
+        methods = ['ablation', 'fanova', 'forward-selection']
+        if sort_by == 1:
+            methods = ['ablation', 'forward-selection', 'fanova']
+        elif sort_by == 2:
+            methods = ['fanova', 'forward-selection', 'ablation']
+        elif sort_by == 3:
+            methods = ['fanova', 'ablation', 'forward-selection']
+        elif sort_by == 4:
+            methods = ['forward-selection', 'ablation', 'fanova']
+        elif sort_by == 5:
+            methods = ['forward-selection', 'fanova', 'ablation']
         if evaluation_method == 'all':
             evaluators = []
-            # influence-model currently not supported
-            methods = ['ablation', 'forward-selection', 'fanova']
-            # influence-model currently not supported
             dict_ = {}
             for method in methods:
                 self.evaluator = method
@@ -275,41 +303,89 @@ class Importance(object):
         else:
             self.evaluator.plot_result(name)
 
-    def table_for_comparison(self, evaluators: List[AbstractEvaluator], name, style='cmd'):
-        header = ['{:^{width}s}' for _ in range(len(evaluators) + 1)]
+    def table_for_comparison(self, evaluators: List[AbstractEvaluator], name: Union[None, str] = None, style='cmd'):
+        """
+        Small Method that creates an output table for comparison either printed in a readable format for the command
+        line or in latex style
+        :param evaluators: All evaluators to put into the table
+        :param name: Name for the save file name
+        :param style: (cmd|latex) str to determine which format to use
+        :return: None
+        """
+        if name:
+            f = open(name, 'w')
+        else:
+            f = sys.stderr
+        header = ['{:>{width}s}' for _ in range(len(evaluators) + 1)]
         line = '-' if style == 'cmd' else '\hline'
         join_ = ' | ' if style == 'cmd' else ' & '
-        body = {}
+        body = OrderedDict()
         _max_len_p = 1
         _max_len_h = 1
         for idx, e in enumerate(evaluators):
             for p in e.evaluated_parameter_importance:
                 if p not in ['-source-', '-target-']:
                     if p not in body:
-                        if idx > 0:
-                            body[p] = [0. for _ in range(idx)]
-                            body[p].append(e.evaluated_parameter_importance[p])
-                        else:
-                            body[p] = [e.evaluated_parameter_importance[p]]
+                        body[p] = ['-' for _ in range(len(evaluators))]
+                        body[p][idx] = e.evaluated_parameter_importance[p]
                         _max_len_p = max(_max_len_p, len(p))
                     else:
-                        body[p].append(e.evaluated_parameter_importance[p])
+                        body[p][idx] = e.evaluated_parameter_importance[p]
+                    if e.name in ['Ablation', 'fANOVA']:
+                        if body[p][idx] != '-':
+                            body[p][idx] *= 100
                         _max_len_p = max(_max_len_p, len(p))
+
             header[idx + 1] = e.name
             _max_len_h = max(_max_len_h, len(e.name))
         header[0] = header[0].format(' ', width=_max_len_p)
         header[1:] = list(map(lambda x: '{:^{width}s}'.format(x, width=_max_len_h), header[1:]))
         header = join_.join(header)
         if style == 'latex':
-            print('\\begin{tabular}{r%s|}' % ('|c'*len(evaluators)))
-        print(header)
+            print('\\begin{table}', file=f)
+            print('\\begin{tabular}{r%s}' % ('|r' * len(evaluators)), file=f)
+            print('\\toprule', file=f)
+        print(header, end='\n' if style == 'cmd' else '\\\\\n', file=f)
         if style == 'cmd':
-            print(line*len(header))
+            print(line * len(header), file=f)
         else:
-            print(line)
+            print(line, file=f)
         for p in body:
-            b = ['{:>{width}s}'.format(p, width=_max_len_p)]
-            b.extend(list(map(lambda x: '{:>{width}.2f}'.format(x, width=_max_len_h), body[p])))
-            print(join_.join(b))
+            if style == 'cmd':
+                b = ['{:>{width}s}'.format(p, width=_max_len_p)]
+            else:
+                b = ['{:<{width}s}'.format(p, width=_max_len_p)]
+            for x in body[p]:
+                try:
+                    if style == 'latex':
+                        b.append('${:> {width}.3f}$'.format(x, width=_max_len_h - 2))
+                    else:
+                        b.append('{:> {width}.3f}'.format(x, width=_max_len_h))
+                except ValueError:
+                    b.append('{:>{width}s}'.format(x, width=_max_len_h))
+            print(join_.join(b), end='\n' if style == 'cmd' else '\\\\\n', file=f)
+        cap = 'Parameter Importance values, obtained using the PIMP package. Ablation values are percentages ' \
+              'of improvement a single parameter change obtained between the default and an' \
+              ' incumbent configuration.\n' \
+              'fANOVA values are percentages that show how much variance across the whole ConfigSpace can be ' \
+              'explained by that parameter.\n' \
+              'Forward Selection values are RMSE values obtained using only a subset of parameters for prediction.\n' \
+              'fANOVA and Forward Selection try to estimate the importances across the whole parameter space, while ' \
+              'ablation tries to estimate them between two given configurations.'
+        if self._parameters_to_evaluate > 0:
+            cap += """\nOnly the top %d parameters of each method are listed. 
+                    "-" represent that this parameter was not evaluated 
+                     using the given method but with another.
+                    """ % self._parameters_to_evaluate
         if style == 'latex':
-            print('\end{tabuler}')
+            print('\\bottomrule', file=f)
+            print('\end{tabular}', file=f)
+            print('\\caption{%s}' % cap,
+                  file=f)
+            print('\\label{tab:pimp}', file=f)
+            print('\end{table}', file=f)
+        else:
+            print('', file=f)
+            print(cap)
+        if name:
+            f.close()

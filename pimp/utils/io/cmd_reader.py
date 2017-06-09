@@ -31,26 +31,36 @@ class CMDs(CMDReader):
 
         parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
         req_opts = parser.add_argument_group("Required Options")
-        req_opts.add_argument("--scenario_file", required=True,
+        req_opts.add_argument("-S", "--scenario_file", required=True,
                               help="scenario file in AClib format")
-        req_opts.add_argument("--modus", required=True,
+        req_opts.add_argument("-M", "--modus", required=True,
                               help='Analysis method to use', choices=['ablation', 'forward-selection',
                                                                       'influence-model', 'all', 'fanova'])
-        req_opts.add_argument("--history", required=True,
+        req_opts.add_argument("-H", "--history", required=True,
                               help="runhistory file")
 
         req_opts = parser.add_argument_group("Optional Options")
         req_opts.add_argument("--seed", default=12345, type=int,
                               help="random seed")
-        req_opts.add_argument("--verbose_level", default=logging.INFO,
+        req_opts.add_argument("-V", "--verbose_level", default=logging.INFO,
                               choices=["INFO", "DEBUG"],
                               help="verbosity")
-        req_opts.add_argument("--trajectory", default=None,
+        req_opts.add_argument("-T", "--trajectory", default=None,
                               help="Path to trajectory file")
-        req_opts.add_argument("--num_params", default=0, type=int,
+        req_opts.add_argument("-N", "--num_params", default=0, type=int,
                               help="Number of parameters to evaluate")
-        req_opts.add_argument("--impute", action='store_true',
+        req_opts.add_argument("-I", "--impute", action='store_true',
                               help="Impute censored data")
+        req_opts.add_argument("-C", "--table", action='store_true',
+                              help="Save result table")
+        req_opts.add_argument('-O', '--order', type=int, choices=[0, 1, 2, 3, 4, 5],
+                              help='\
+                                    0 => Ablation, fANOVA, Forward Selection\n\
+                                    1 => Ablation, Forward Selection, fANOVA\n\
+                                    2 => fANOVA, Forward Selection, Ablation\n\
+                                    3 => fANOVA, Ablation, Forward Selection\n\
+                                    4 => Forward Selection, Ablation, fANOVA\n\
+                                    5 => Forward Selection, fANOVA, Ablation', default=3)
 
         args_, misc = parser.parse_known_args()
         self._check_args(args_)

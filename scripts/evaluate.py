@@ -39,14 +39,18 @@ if __name__ == '__main__':
     save_folder += '_run1'
     with open(os.path.join(save_folder, 'pimp_args.json'), 'w') as out_file:
         json.dump(args.__dict__, out_file, sort_keys=True, indent=4, separators=(',', ': '))
-    result = importance.evaluate_scenario(args.modus)
+    result = importance.evaluate_scenario(args.modus, sort_by=args.order)
 
     if args.modus == 'all':
         with open(os.path.join(save_folder, 'pimp_values_%s.json' % args.modus), 'w') as out_file:
             json.dump(result[0], out_file, sort_keys=True, indent=4, separators=(',', ': '))
         importance.plot_results(list(map(lambda x: os.path.join(save_folder, x.name.lower()), result[1])),
                                 result[1])
-        importance.table_for_comparison(evaluators=result[1], name='PIMP_table', style='latex')
+        if args.table:
+            importance.table_for_comparison(evaluators=result[1], name=os.path.join(
+                save_folder, 'pimp_table_%s.tex' % args.modus), style='latex')
+        else:
+            importance.table_for_comparison(evaluators=result[1], style='cmd')
     else:
         with open(os.path.join(save_folder, 'pimp_values_%s.json' % args.modus), 'w') as out_file:
             json.dump(result, out_file, sort_keys=True, indent=4, separators=(',', ': '))
