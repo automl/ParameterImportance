@@ -69,6 +69,9 @@ class fANOVA(AbstractEvaluator):
                 vis.plot_marginal(self.cs.get_idx_by_hyperparameter_name(param), show=False)
             plt.savefig(outfile_name)
             self.logger.info('Creating fANOVA plot: %s' % outfile_name)
+        self.logger.info('Getting Pairwise-Marginals!')
+        self.logger.info('This will take some time!')
+        vis.create_most_important_pairwise_marginal_plots(name, self.to_evaluate)
 
     def run(self) -> OrderedDict:
         params = self.cs.get_hyperparameters()
