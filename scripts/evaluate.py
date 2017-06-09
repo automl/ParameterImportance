@@ -34,17 +34,23 @@ if __name__ == '__main__':
     importance = Importance(args.scenario_file, args.history,
                             parameters_to_evaluate=args.num_params,
                             traj_file=args.trajectory, seed=args.seed,
-                            save_folder=save_folder)  # create importance object
+                            save_folder=save_folder,
+                            impute_censored=args.impute)  # create importance object
     save_folder += '_run1'
     with open(os.path.join(save_folder, 'pimp_args.json'), 'w') as out_file:
         json.dump(args.__dict__, out_file, sort_keys=True, indent=4, separators=(',', ': '))
-    result = importance.evaluate_scenario(args.modus)
+    result = importance.evaluate_scenario(args.modus, sort_by=args.order)
 
     if args.modus == 'all':
         with open(os.path.join(save_folder, 'pimp_values_%s.json' % args.modus), 'w') as out_file:
             json.dump(result[0], out_file, sort_keys=True, indent=4, separators=(',', ': '))
         importance.plot_results(list(map(lambda x: os.path.join(save_folder, x.name.lower()), result[1])),
                                 result[1])
+        if args.table:
+            importance.table_for_comparison(evaluators=result[1], name=os.path.join(
+                save_folder, 'pimp_table_%s.tex' % args.modus), style='latex')
+        else:
+            importance.table_for_comparison(evaluators=result[1], style='cmd')
     else:
         with open(os.path.join(save_folder, 'pimp_values_%s.json' % args.modus), 'w') as out_file:
             json.dump(result, out_file, sort_keys=True, indent=4, separators=(',', ': '))
