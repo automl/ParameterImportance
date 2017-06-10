@@ -78,7 +78,7 @@ class Importance(object):
             self.incumbent = self._read_traj_file(traj_file)
             self.logger.debug('Incumbent %s' % str(self.incumbent))
         else:
-            traj_files = glob.glob('smac*/**/traj_aclib2.json', recursive=True)
+            traj_files = glob.glob('**/traj_aclib2.json', recursive=True)
             incumbents = []
             for traj_ in traj_files:
                 self.logger.info('Reading traj_file: %s' % traj_)
