@@ -1,4 +1,5 @@
 from collections import OrderedDict
+import pickle
 
 import os
 import numpy as np
@@ -74,21 +75,26 @@ class fANOVA(AbstractEvaluator):
         vis.create_most_important_pairwise_marginal_plots(name, self.to_evaluate)
 
     def run(self) -> OrderedDict:
-        params = self.cs.get_hyperparameters()
+        try:
+            params = self.cs.get_hyperparameters()
 
-        tmp_res = []
-        for idx, param in enumerate(params):
-            self.logger.debug('{:>02d} {:<30s}: {:>02.4f}' .format(
-                idx, param.name, self.evaluator.quantify_importance([idx])[(idx, )]['total importance']))
-            tmp_res.append(self.evaluator.quantify_importance([idx])[(idx, )]['total importance'])
+            tmp_res = []
+            for idx, param in enumerate(params):
+                self.logger.debug('{:>02d} {:<30s}: {:>02.4f}' .format(
+                    idx, param.name, self.evaluator.quantify_importance([idx])[(idx, )]['total importance']))
+                tmp_res.append(self.evaluator.quantify_importance([idx])[(idx, )]['total importance'])
 
-        tmp_res_sort_keys = [i[0] for i in sorted(enumerate(tmp_res), key=lambda x:x[1], reverse=True)]
-        self.logger.debug(tmp_res_sort_keys)
-        count = 0
-        for idx in tmp_res_sort_keys:
-            if count >= self.to_evaluate:
-                break
-            self.logger.info('{:>02d} {:<30s}: {:>02.4f}'.format(idx, params[idx].name, tmp_res[idx]))
-            self.evaluated_parameter_importance[params[idx].name] = tmp_res[idx]
-            count += 1
-        return self.evaluated_parameter_importance
+            tmp_res_sort_keys = [i[0] for i in sorted(enumerate(tmp_res), key=lambda x:x[1], reverse=True)]
+            self.logger.debug(tmp_res_sort_keys)
+            count = 0
+            for idx in tmp_res_sort_keys:
+                if count >= self.to_evaluate:
+                    break
+                self.logger.info('{:>02d} {:<30s}: {:>02.4f}'.format(idx, params[idx].name, tmp_res[idx]))
+                self.evaluated_parameter_importance[params[idx].name] = tmp_res[idx]
+                count += 1
+            return self.evaluated_parameter_importance
+        except ZeroDivisionError:
+            with open('fANOVA_crash_data.pkl', 'wb') as fh:
+                pickle.dump([self.X, self.y, self.cs], fh)
+            raise Exception('fANOVA crashed with a "float division by zero" error. Dumping the data to disk')
