@@ -153,6 +153,14 @@ class Importance(object):
         if evaluation_method not in ['ablation', 'fanova', 'forward-selection', 'influence-model']:
             raise ValueError('Specified evaluation method %s does not exist!' % evaluation_method)
         if evaluation_method == 'ablation':
+            if self.scenario.run_obj == "runtime":
+                self.cutoff = self.scenario.cutoff
+                self.threshold = self.scenario.cutoff * self.scenario.par_factor
+                self.model = 'urfi'
+                self.logged_y = True
+            else:
+                self.model = 'rfi'
+            self.model.train(self.X, self.y)
             if self.incumbent[0] is None:
                 raise ValueError('Incumbent is %s!\n \
                                  Incumbent has to be read from a trajectory file before ablation can be used!'
@@ -165,6 +173,8 @@ class Importance(object):
                                  logy=self.logged_y,
                                  target_performance=self.incumbent[1])
         elif evaluation_method == 'influence-model':
+            self.model = 'rfi'
+            self.model.train(self.X, self.y)
             evaluator = InfluenceModel(scenario=self.scenario,
                                        cs=self.scenario.cs,
                                        model=self._model,
@@ -172,12 +182,16 @@ class Importance(object):
                                        margin=self.margin,
                                        threshold=self.threshold)
         elif evaluation_method == 'fanova':
+            self.model = 'rfi'
+            self.model.train(self.X, self.y)
             evaluator = fANOVA(scenario=self.scenario,
                                cs=self.scenario.cs,
                                model=self._model,
                                to_evaluate=self._parameters_to_evaluate,
                                runhist=self.runhistory)
         else:
+            self.model = 'rfi'
+            self.model.train(self.X, self.y)
             evaluator = ForwardSelector(scenario=self.scenario,
                                         cs=self.scenario.cs,
                                         model=self._model,
