@@ -136,7 +136,7 @@ class InfluenceModel(AbstractEvaluator):
 
         return self.evaluated_parameter_importance
 
-    def plot_result(self, name=None):
+    def plot_result(self, name=None, show=True):
         # TODO find out what a sensible way of plotting this would be.
         # get sort index
         ids = [i[0] for i in sorted(enumerate(self.evaluated_parameter_importance.values()), key=lambda x: x[1])]
@@ -166,6 +166,8 @@ class InfluenceModel(AbstractEvaluator):
         plt.tight_layout()
         if name is not None:
             fig.savefig(name)
+            if show:
+                plt.show()
             self.logger.info('Saved plot as %s.png' % name)
         else:
             plt.show()

@@ -98,7 +98,7 @@ class ForwardSelector(AbstractEvaluator):
                 self.evaluated_parameter_importance[best_parameter.name] = lowest_error
         return self.evaluated_parameter_importance
 
-    def _plot_result(self, name, bar=True):
+    def _plot_result(self, name, bar=True, show=True):
         """
             plot oob score as bar charts
             Parameters
@@ -132,11 +132,13 @@ class ForwardSelector(AbstractEvaluator):
         plt.tight_layout()
         if name is not None:
             fig.savefig(name)
+            if show:
+                plt.show()
         else:
             plt.show()
 
-    def plot_result(self, name=None):
-        self._plot_result(name + '-barplot.png', True)
-        self._plot_result(name + '-chng.png', False)
+    def plot_result(self, name=None, show=True):
+        self._plot_result(name + '-barplot.png', True, show)
+        self._plot_result(name + '-chng.png', False, show)
         plt.close('all')
         self.logger.info('Saved plot as %s-[barplot|chng].png' % name)

@@ -45,7 +45,7 @@ if __name__ == '__main__':
         with open(os.path.join(save_folder, 'pimp_values_%s.json' % args.modus), 'w') as out_file:
             json.dump(result[0], out_file, sort_keys=True, indent=4, separators=(',', ': '))
         importance.plot_results(list(map(lambda x: os.path.join(save_folder, x.name.lower()), result[1])),
-                                result[1])
+                                result[1], show=False)
         if args.table:
             importance.table_for_comparison(evaluators=result[1], name=os.path.join(
                 save_folder, 'pimp_table_%s.tex' % args.modus), style='latex')
@@ -55,4 +55,4 @@ if __name__ == '__main__':
         with open(os.path.join(save_folder, 'pimp_values_%s.json' % args.modus), 'w') as out_file:
             json.dump(result, out_file, sort_keys=True, indent=4, separators=(',', ': '))
 
-        importance.plot_results(name=os.path.join(save_folder, args.modus))
+        importance.plot_results(name=os.path.join(save_folder, args.modus), show=False)

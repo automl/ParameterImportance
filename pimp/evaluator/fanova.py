@@ -54,7 +54,7 @@ class fANOVA(AbstractEvaluator):
         self.logger.info('Size of training y after preprocessing: %s' % str(self.y.shape))
         self.logger.info('Finished Preprocessing')
 
-    def plot_result(self, name='fANOVA'):
+    def plot_result(self, name='fANOVA', show=True):
         vis = Visualizer(self.evaluator, self.cs)
         if not os.path.exists(name):
             os.mkdir(name)
@@ -68,11 +68,15 @@ class fANOVA(AbstractEvaluator):
                 vis.plot_categorical_marginal(self.cs.get_idx_by_hyperparameter_name(param), show=False)
             else:
                 vis.plot_marginal(self.cs.get_idx_by_hyperparameter_name(param), show=False)
-            plt.savefig(outfile_name)
+            fig = plt.gcf()
+            fig.savefig(outfile_name)
+            if show:
+                plt.show()
             self.logger.info('Creating fANOVA plot: %s' % outfile_name)
         self.logger.info('Getting Pairwise-Marginals!')
         self.logger.info('This will take some time!')
         vis.create_most_important_pairwise_marginal_plots(name, self.to_evaluate)
+        plt.close('all')
 
     def run(self) -> OrderedDict:
         try:

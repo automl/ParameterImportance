@@ -6,11 +6,6 @@ import sys
 from typing import Union, List, Dict, Tuple
 from collections import OrderedDict
 
-import matplotlib
-
-# Force matplotlib to not use any Xwindows backend.
-matplotlib.use('Agg')
-
 import numpy as np
 
 from smac.utils.util_funcs import get_types
@@ -107,7 +102,7 @@ class Importance(object):
                 incumbents.append(self._read_traj_file(traj_))
                 self.logger.debug(incumbents[-1])
             incumbents = sorted(incumbents, key=lambda x: x[1])
-            self.incumbent = incumbents[0]
+            self.incumbent = incumbents[0][0]
             self.logger.info('Incumbent %s' % str(self.incumbent))
         elif incumbent is not None:
             self.incumbent = incumbent
@@ -236,17 +231,16 @@ class Importance(object):
             else:
                 self.model = 'rfi'
             self.model.train(self.X, self.y)
-            if self.incumbent[0] is None:
+            if self.incumbent is None:
                 raise ValueError('Incumbent is %s!\n \
                                  Incumbent has to be read from a trajectory file before ablation can be used!'
-                                 % self.incumbent[0])
+                                 % self.incumbent)
             evaluator = Ablation(scenario=self.scenario,
                                  cs=self.scenario.cs,
                                  model=self._model,
                                  to_evaluate=self._parameters_to_evaluate,
-                                 incumbent=self.incumbent[0],
-                                 logy=self.logged_y,
-                                 target_performance=self.incumbent[1])
+                                 incumbent=self.incumbent,
+                                 logy=self.logged_y)
         elif evaluation_method == 'influence-model':
             self.model = 'rfi'
             self.model.train(self.X, self.y)
@@ -390,18 +384,20 @@ class Importance(object):
             return {evaluation_method: self.evaluator.run()}
 
     def plot_results(self, name: Union[List[str], str, None]=None, evaluators: Union[List[AbstractEvaluator],
-                                                                                     None]=None):
+                                                                                     None]=None,
+                     show: bool=True):
         """
         Method to handle the plotting in case of plots for multiple evaluation methods or only one
         :param name: name(s) to save the plot(s) with
         :param evaluators: list of ealuators to generate the plots for
+        :param show: boolean. Specifies if the results have to additionally be shown and not just saved!
         :return:
         """
         if evaluators:
             for eval, name_ in zip(evaluators, name):
-                eval.plot_result(name_)
+                eval.plot_result(name_, show)
         else:
-            self.evaluator.plot_result(name)
+            self.evaluator.plot_result(name, show)
 
     def table_for_comparison(self, evaluators: List[AbstractEvaluator], name: Union[None, str] = None, style='cmd'):
         """
