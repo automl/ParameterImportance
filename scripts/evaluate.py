@@ -31,7 +31,7 @@ if __name__ == '__main__':
     ts = datetime.datetime.fromtimestamp(ts).strftime('%Y_%m_%d_%H:%M:%S')
     save_folder = 'PIMP_%s_%s' % (args.modus, ts)
 
-    importance = Importance(args.scenario_file, args.history,
+    importance = Importance(scenario_file=args.scenario_file, runhistory_file=args.history,
                             parameters_to_evaluate=args.num_params,
                             traj_file=args.trajectory, seed=args.seed,
                             save_folder=save_folder,
