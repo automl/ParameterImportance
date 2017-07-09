@@ -1,3 +1,4 @@
+notebooks/.ipynb_checkpoints*
 smac3-output*
 tests
 *__pycache__*
