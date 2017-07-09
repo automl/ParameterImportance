@@ -20,6 +20,18 @@ class PIMP:
     def __init__(self, scenario: Scenario, smac: Union[SMAC, None]=None, mode: str='all',
                  X: Union[None, List[list], np.ndarray]=None, y: Union[None, List[list], np.ndarray]=None,
                  numParams: int=-1, impute: bool=False, seed: int=12345, run: bool=False):
+        """
+        Interface to be used with SMAC or with X and y matrices.
+        :param scenario: The scenario object, that knows the configuration space.
+        :param smac: The smac object that keeps all the run-data
+        :param mode: The mode with which to run PIMP [ablation, fanova, all, forward-selection]
+        :param X: Numpy Array that contains parameter arrays
+        :param y: Numpy array that contains the corresponding performance values
+        :param numParams: The number of parameters to evaluate
+        :param impute: Flag to decide if censored data gets imputed or not
+        :param seed: The random seed
+        :param run: Flag to immediately compute the importance values after this setup or not.
+        """
         self.scenario = scenario
         self.imp = None
         self.mode = mode
@@ -38,8 +50,6 @@ class PIMP:
             feats = None
             if X.shape[1] > n_params:
                 feats = X[:, n_params:]
-                print(feats.shape)
-                print(scenario.feature_array.shape)
                 assert feats.shape[1] == scenario.feature_array.shape[1]
                 X = X[:, :n_params]
 
@@ -78,7 +88,7 @@ class PIMP:
                             'values from!')
 
         if run:
-            self.compute_importances()
+            return self.compute_importances()
 
     def compute_importances(self, order=3):
         result = self.imp.evaluate_scenario(self.mode, sort_by=order)
