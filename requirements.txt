@@ -4,5 +4,5 @@ matplotlib
 ConfigSpace
 scipy
 pyrfr>=0.4.0
-git+http://github.com/automl/fanova@28aab9d1cd8a3383f0048075cdd04aa67c475f88
+git+http://github.com/automl/fanova@cfcecd7a8707f88f5e3da7cb978ae12d143f12ab
 smac>=0.5.0
