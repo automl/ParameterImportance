@@ -20,8 +20,7 @@ class Ablation(AbstractEvaluator):
     Implementation of Ablation via surrogates
     """
 
-    def __init__(self, scenario, cs, model, to_evaluate: int, incumbent=None,
-                 target_performance=None, **kwargs):
+    def __init__(self, scenario, cs, model, to_evaluate: int, incumbent=None, **kwargs):
         super().__init__(scenario, cs, model, to_evaluate, **kwargs)
         self.name = 'Ablation'
         self.logger = self.name
@@ -39,7 +38,6 @@ class Ablation(AbstractEvaluator):
         self.insts = copy.deepcopy(self.scenario.train_insts)
         if len(self.scenario.test_insts) > 1:
             self.insts.extend(self.scenario.test_insts)
-        self.target_performance = target_performance
         self.predicted_parameter_performances = OrderedDict()
         self.predicted_parameter_variances = OrderedDict()
 
@@ -333,13 +331,13 @@ class Ablation(AbstractEvaluator):
 ########################################################################################################################
 # PLOTTING # PLOTTING # PLOTTING # PLOTTING # PLOTTING # PLOTTING # PLOTTING # PLOTTING # PLOTTING # PLOTTING # PLOTTING
 ########################################################################################################################
-    def plot_result(self, name=None):
-        self.plot_predicted_percentage(plot_name=name+'percentage.png')
-        self.plot_predicted_performance(plot_name=name+'performance.png')
+    def plot_result(self, name=None, show=True):
+        self.plot_predicted_percentage(plot_name=name+'percentage.png', show=show)
+        self.plot_predicted_performance(plot_name=name+'performance.png', show=show)
         self.logger.info('Saved plots as %s[percentage|performance].png' % name)
         plt.close('all')
 
-    def plot_predicted_percentage(self, plot_name=None):
+    def plot_predicted_percentage(self, plot_name=None, show=True):
         """
         Method to plot a barchart of individual parameter contributions of the improvement from source to target
         """
@@ -390,11 +388,13 @@ class Ablation(AbstractEvaluator):
             pass
 
         if plot_name is not None:
-            plt.savefig(plot_name)
+            fig.savefig(plot_name)
+            if show:
+                plt.show()
         else:
             plt.show()
 
-    def plot_predicted_performance(self, plot_name=None):
+    def plot_predicted_performance(self, plot_name=None, show=True):
         """
         Method to plot the ablation path using the predicted performances of parameter flips
         """
@@ -452,6 +452,8 @@ class Ablation(AbstractEvaluator):
             pass
 
         if plot_name is not None:
-            plt.savefig(plot_name)
+            fig.savefig(plot_name)
+            if show:
+                plt.show()
         else:
             plt.show()
