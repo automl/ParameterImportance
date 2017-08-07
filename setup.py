@@ -1,8 +1,8 @@
-from distutils.core import setup
+from setuptools import setup
 
 setup(
     name='PIMP',
-    version='v0.0.1',
+    version='0.0.1',
     packages=['pimp', 'pimp.epm', 'pimp.utils', 'pimp.utils.io', 'pimp.evaluator', 'pimp.importance',
               'pimp.configspace'],
     url='',
