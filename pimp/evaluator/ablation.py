@@ -226,6 +226,7 @@ class Ablation(AbstractEvaluator):
 
         forbidden_name_value_pairs = self.determine_forbidden()
         length_ = len(self.delta) - min(len(self.delta), self.to_evaluate)
+        self.logger.info('Difference in source and target: %d' % len(self.delta))
 
         while len(self.delta) > length_:  # Main loop. While parameters still left ...
             modifiable_config_dict = copy.deepcopy(prev_modifiable_config_dict)
