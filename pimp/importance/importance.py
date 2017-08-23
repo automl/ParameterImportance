@@ -91,7 +91,7 @@ class Importance(object):
         """
         self.incumbent = (None, None)
         if traj_file is not None:
-            self.incumbent = self._read_traj_file(traj_file)
+            self.incumbent = self._read_traj_file(traj_file)[0]
             self.logger.debug('Incumbent %s' % str(self.incumbent))
         elif traj_file is None and runhistory_file is not None:
             traj_files = os.path.join(os.path.dirname(runhistory_file), 'traj_aclib2.json')
