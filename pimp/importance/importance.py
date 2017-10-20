@@ -91,7 +91,7 @@ class Importance(object):
         """
         self.incumbent = (None, None)
         if traj_file is not None:
-            self.incumbent = self._read_traj_file(traj_file)
+            self.incumbent = self._read_traj_file(traj_file)[0]
             self.logger.debug('Incumbent %s' % str(self.incumbent))
         elif traj_file is None and runhistory_file is not None:
             traj_files = os.path.join(os.path.dirname(runhistory_file), 'traj_aclib2.json')
@@ -307,7 +307,7 @@ class Importance(object):
                                               seed=self.rng.randint(99999), do_bootstrapping=True,
                                               num_trees=80, n_points_per_tree=50000)
 
-            imputor = RFRImputator(rs=self.rng,
+            imputor = RFRImputator(rng=self.rng,
                                    cutoff=cutoff,
                                    threshold=threshold,
                                    model=model,
@@ -374,6 +374,7 @@ class Importance(object):
             evaluators = []
             dict_ = {}
             for method in methods:
+                self.logger.info('Running %s' %method)
                 self.evaluator = method
                 dict_[method] = self.evaluator.run()
                 evaluators.append(self.evaluator)
@@ -469,8 +470,8 @@ class Importance(object):
               'fANOVA and Forward Selection try to estimate the importances across the whole parameter space, while ' \
               'ablation tries to estimate them between two given configurations.'
         if self._parameters_to_evaluate > 0:
-            cap += """\nOnly the top %d parameters of each method are listed. 
-                    "-" represent that this parameter was not evaluated 
+            cap += """\nOnly the top %d parameters of each method are listed.
+                    "-" represent that this parameter was not evaluated
                      using the given method but with another.
                     """ % self._parameters_to_evaluate
         if style == 'latex':

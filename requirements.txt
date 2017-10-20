@@ -3,6 +3,6 @@ sklearn
 matplotlib
 ConfigSpace
 scipy
-pyrfr>=0.4.0
+pyrfr>=0.5.0
 git+http://github.com/automl/fanova@b5d69a7db458f61b3a31e8fbb66edef6d8fce35f
-smac>=0.5.0
+smac>=0.6.0

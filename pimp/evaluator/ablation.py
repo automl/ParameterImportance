@@ -226,6 +226,7 @@ class Ablation(AbstractEvaluator):
 
         forbidden_name_value_pairs = self.determine_forbidden()
         length_ = len(self.delta) - min(len(self.delta), self.to_evaluate)
+        self.logger.info('Difference in source and target: %d' % len(self.delta))
 
         while len(self.delta) > length_:  # Main loop. While parameters still left ...
             modifiable_config_dict = copy.deepcopy(prev_modifiable_config_dict)
@@ -424,7 +425,10 @@ class Ablation(AbstractEvaluator):
                  **self.LINE_FONT)
 
         upper = np.array(list(map(lambda x, y: x + np.sqrt(y), performances, variances))).flatten()
-        lower = np.array(list(map(lambda x, y: x - np.sqrt(y), performances, variances))).flatten()
+        if self.scenario.run_obj == "runtime":
+            lower = np.array(list(map(lambda x, y: max(x - np.sqrt(y), 0), performances, variances))).flatten()
+        else:
+            lower = np.array(list(map(lambda x, y: max(x - np.sqrt(y), 0), performances, variances))).flatten()
         ax1.fill_between(list(range(len(performances))), lower, upper, label='std', color=self.area_color)
 
         ax1.set_xticks(list(range(len(path))))
