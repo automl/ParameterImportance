@@ -426,14 +426,17 @@ class Ablation(AbstractEvaluator):
 
         upper = np.array(list(map(lambda x, y: x + np.sqrt(y), performances, variances))).flatten()
         if self.scenario.run_obj == "runtime":
-            lower = np.array(list(map(lambda x, y: max(x - np.sqrt(y), 0), performances, variances))).flatten()
+            lower = np.array(list(map(lambda x, y: max(x - np.sqrt(y), np.array([0])), performances,
+                                                       variances))).squeeze()
         else:
-            lower = np.array(list(map(lambda x, y: max(x - np.sqrt(y), 0), performances, variances))).flatten()
+            lower = np.array(list(map(lambda x, y: max(x - np.sqrt(y), np.array([0])), performances,
+                                      variances))).squeeze()
         ax1.fill_between(list(range(len(performances))), lower, upper, label='std', color=self.area_color)
 
         ax1.set_xticks(list(range(len(path))))
         ax1.set_xticklabels(path, rotation=25, ha='right', **self.AXIS_FONT)
         percentages = list(self.evaluated_parameter_importance.values())
+        print(performances)
         for idx, t in enumerate(ax1.xaxis.get_ticklabels()):
             color_ = (0.45, 0.45, 0.45)
             if percentages[idx] > self.IMPORTANCE_THRESHOLD:

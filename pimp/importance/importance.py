@@ -13,7 +13,8 @@ from smac.tae.execute_ta_run import StatusType
 from smac.epm.rfr_imputator import RFRImputator
 from smac.epm.rf_with_instances import RandomForestWithInstances
 
-from pimp.configspace import CategoricalHyperparameter, Configuration, FloatHyperparameter, IntegerHyperparameter
+from pimp.configspace import CategoricalHyperparameter, Configuration,\
+    FloatHyperparameter, IntegerHyperparameter, impute_inactive_values
 from pimp.epm.unlogged_rf_with_instances import UnloggedRandomForestWithInstances
 from pimp.evaluator.ablation import Ablation
 from pimp.evaluator.fanova import fANOVA
@@ -65,8 +66,8 @@ class Importance(object):
 
         self._setup_scenario(scenario, scenario_file, save_folder)
         self._load_runhist(runhistory, runhistory_file)
-        self ._load_incumbent(traj_file, runhistory_file, incumbent)
         self._setup_model()
+        self ._load_incumbent(traj_file, runhistory_file, incumbent)
 
     def _setup_scenario(self, scenario: Union[None, Scenario], scenario_file: Union[None, str], save_folder: str) -> \
             None:
@@ -83,9 +84,9 @@ class Importance(object):
         else:
             raise Exception('Either a scenario has to be given or a file to load it from! Both were set to None!')
 
-    def _load_incumbent(self, traj_file, runhistory_file, incumbent) -> None:
+    def _load_incumbent(self, traj_file, runhistory_file, incumbent, predict_best=True) -> None:
         """
-        Handels the loading of the incumbent according to the given parameters.
+        Handles the loading of the incumbent according to the given parameters.
         Helper method to have the init method less cluttered.
         For parameter specifications, see __init__
         """
@@ -95,13 +96,16 @@ class Importance(object):
             self.logger.debug('Incumbent %s' % str(self.incumbent))
         elif traj_file is None and runhistory_file is not None:
             traj_files = os.path.join(os.path.dirname(runhistory_file), 'traj_aclib2.json')
-            traj_files = glob.glob(traj_files, recursive=True)
+            traj_files = sorted(glob.glob(traj_files, recursive=True))
             incumbents = []
             for traj_ in traj_files:
                 self.logger.info('Reading traj_file: %s' % traj_)
                 incumbents.append(self._read_traj_file(traj_))
+                incumbents[-1].extend(self._model.predict_marginalized_over_instances(
+                    np.array([impute_inactive_values(incumbents[-1][0]).get_array()])))
                 self.logger.debug(incumbents[-1])
-            incumbents = sorted(incumbents, key=lambda x: x[1])
+            sort_idx = 2 if predict_best else 1
+            incumbents = sorted(incumbents, key=lambda x: x[sort_idx])
             self.incumbent = incumbents[0][0]
             self.logger.info('Incumbent %s' % str(self.incumbent))
         elif incumbent is not None:
@@ -179,7 +183,7 @@ class Importance(object):
                 inc_dict[key] = int(val)
         incumbent = Configuration(self.scenario.cs, inc_dict)
         incumbent_cost = incumbent_dict['cost']
-        return incumbent, incumbent_cost
+        return [incumbent, incumbent_cost]
 
     @property
     def model(self):
