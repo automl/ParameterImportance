@@ -61,7 +61,8 @@ class CMDs(CMDReader):
                                     3 => fANOVA, Ablation, Forward Selection\n\
                                     4 => Forward Selection, Ablation, fANOVA\n\
                                     5 => Forward Selection, fANOVA, Ablation', default=3)
-
+        req_opts.add_argument('-F', '--out-folder', default=None, help='Folder to store results in',
+                dest='out_folder')
         args_, misc = parser.parse_known_args()
         self._check_args(args_)
 

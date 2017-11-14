@@ -133,14 +133,19 @@ def cmd_line_call():
     logging.basicConfig(level=args.verbose_level)
     ts = time.time()
     ts = datetime.datetime.fromtimestamp(ts).strftime('%Y_%m_%d_%H:%M:%S')
-    save_folder = 'PIMP_%s_%s' % (args.modus, ts)
+    if not args.out_folder:
+        save_folder = 'PIMP_%s_%s' % (args.modus, ts)
+    else:
+        if os.path.exists(os.path.abspath(args.out_folder)):
+            save_folder = args.out_folder + '_%s_%s' % (args.modus, ts)
+        else:
+            save_folder = args.out_folder
 
     importance = Importance(scenario_file=args.scenario_file, runhistory_file=args.history,
                             parameters_to_evaluate=args.num_params,
                             traj_file=args.trajectory, seed=args.seed,
                             save_folder=save_folder,
                             impute_censored=args.impute)  # create importance object
-    save_folder += '_run1'
     with open(os.path.join(save_folder, 'pimp_args.json'), 'w') as out_file:
         json.dump(args.__dict__, out_file, sort_keys=True, indent=4, separators=(',', ': '))
     result = importance.evaluate_scenario(args.modus, sort_by=args.order)

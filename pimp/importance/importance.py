@@ -80,7 +80,9 @@ class Importance(object):
             self.scenario = scenario
         elif scenario_file is not None:
             self.logger.info('Reading Scenario file and files specified in the scenario')
-            self.scenario = Scenario(scenario=scenario_file, cmd_args={'output_dir': save_folder}, run_id=1)
+            self.scenario = Scenario(scenario=scenario_file, cmd_args={'output_dir': ""}, run_id=1)
+            self.scenario.output_dir = save_folder
+            self.scenario.out_writer.write_scenario_file(self.scenario)
         else:
             raise Exception('Either a scenario has to be given or a file to load it from! Both were set to None!')
 
