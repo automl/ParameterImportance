@@ -2,6 +2,8 @@ import time
 from collections import OrderedDict
 
 import numpy as np
+import matplotlib as mpl
+mpl.use('Agg')
 from matplotlib import pyplot as plt
 from sklearn.decomposition import PCA
 
@@ -96,7 +98,8 @@ class ForwardSelector(AbstractEvaluator):
             else:
                 self.logger.info('%s: %.4f' % (best_parameter.name, lowest_error))
                 self.evaluated_parameter_importance[best_parameter.name] = lowest_error
-        return self.evaluated_parameter_importance
+        all_res = {'imp': self.evaluated_parameter_importance, 'order': list(self.evaluated_parameter_importance.keys())}
+        return all_res
 
     def _plot_result(self, name, bar=True, show=True):
         """

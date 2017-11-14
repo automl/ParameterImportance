@@ -3,6 +3,8 @@ import pickle
 
 import os
 import numpy as np
+import matplotlib as mpl
+mpl.use('Agg')
 from matplotlib import pyplot as plt
 
 from smac.runhistory.runhistory import RunHistory
@@ -93,7 +95,8 @@ class fANOVA(AbstractEvaluator):
                 self.logger.info('{:>02d} {:<30s}: {:>02.4f}'.format(idx, params[idx].name, tmp_res[idx]))
                 self.evaluated_parameter_importance[params[idx].name] = tmp_res[idx]
                 count += 1
-            return self.evaluated_parameter_importance
+            all_res = {'imp': self.evaluated_parameter_importance, 'order': list(self.evaluated_parameter_importance.keys())}
+            return all_res
         except ZeroDivisionError:
             with open('fANOVA_crash_data.pkl', 'wb') as fh:
                 pickle.dump([self.X, self.y, self.cs], fh)

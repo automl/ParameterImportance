@@ -2,6 +2,8 @@ import copy
 from collections import OrderedDict
 
 import numpy as np
+import matplotlib as mpl
+mpl.use('Agg')
 from matplotlib import pyplot as plt
 
 from pimp.configspace import AndConjunction, Configuration, OrConjunction, impute_inactive_values
@@ -271,7 +273,7 @@ class Ablation(AbstractEvaluator):
             param_str = '; '.join(self.delta[best_idx])
             self.evaluated_parameter_importance[param_str] = improvement_in_percentage.flatten()[0]
             self.predicted_parameter_performances[param_str] = best_performance.flatten()[0]
-            self.predicted_parameter_variances[param_str] = best_variance
+            self.predicted_parameter_variances[param_str] = best_variance.flatten()[0]
 
             for winning_param in self.delta[best_idx]:  # Delete parameters that were set to inactive by the last
                                                         # best parameter
@@ -288,7 +290,9 @@ class Ablation(AbstractEvaluator):
         #     print(key, self.evaluated_parameter_importance[key])
         #     sum_ += self.evaluated_parameter_importance[key]
         # print(sum_)
-        return self.evaluated_parameter_importance
+        all_res = {'perf': self.predicted_parameter_performances, 'var': self.predicted_parameter_variances,
+                'imp': self.evaluated_parameter_importance, 'order': list(self.evaluated_parameter_importance.keys())}
+        return all_res
 
 ########################################################################################################################
 # HELPER METHODS # HELPER METHODS # HELPER METHODS # HELPER METHODS # HELPER METHODS # HELPER METHODS # HELPER METHODS
