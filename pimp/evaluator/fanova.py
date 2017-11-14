@@ -12,7 +12,6 @@ from fanova.fanova import fANOVA as fanova_pyrfr
 from fanova.visualizer import Visualizer
 
 from pimp.evaluator.base_evaluator import AbstractEvaluator
-from pimp.configspace import CategoricalHyperparameter
 
 
 __author__ = "Andre Biedenkapp"
@@ -70,9 +69,9 @@ class fANOVA(AbstractEvaluator):
             if show:
                 plt.show()
             self.logger.info('Creating fANOVA plot: %s' % outfile_name)
-        self.logger.info('Getting Pairwise-Marginals!')
-        self.logger.info('This will take some time!')
-        vis.create_most_important_pairwise_marginal_plots(name, 5)
+        self.logger.info('Not creating Pairwise-Marginals!')
+        # self.logger.info('This will take some time!')
+        # vis.create_most_important_pairwise_marginal_plots(name, 5)
         plt.close('all')
 
     def run(self) -> OrderedDict:
