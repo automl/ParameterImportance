@@ -353,15 +353,11 @@ class Ablation(AbstractEvaluator):
                 p = p[:18] + '...'
                 path[idx] = p
         performances = list(self.evaluated_parameter_importance.values())
-        performances = 100 * np.array(performances).reshape((-1, 1))
+        performances = 100 * np.array(performances).reshape((1, -1)).squeeze()
         path = np.array(path)
         max_to_plot = min(len(path), self.MAX_PARAMS_TO_PLOT)
-        try:
-            ax1.bar(list(range(len(path))),
-                    performances[1:-1], width=.75, color=self.area_color)
-        except TypeError as e:
-            self.logger.debug(e)
-            self.logger.debug('pyplot encountered a strange error which however does not affect the plots')
+        ax1.bar(list(range(len(path))),
+                performances[1:-1], color=self.area_color)
 
         ax1.set_xticks(np.arange(len(path)))
         ax1.set_xlim(-0.5, max_to_plot - .25)
@@ -436,7 +432,6 @@ class Ablation(AbstractEvaluator):
         ax1.set_xticks(list(range(len(path))))
         ax1.set_xticklabels(path, rotation=25, ha='right', **self.AXIS_FONT)
         percentages = list(self.evaluated_parameter_importance.values())
-        print(performances)
         for idx, t in enumerate(ax1.xaxis.get_ticklabels()):
             color_ = (0.45, 0.45, 0.45)
             if percentages[idx] > self.IMPORTANCE_THRESHOLD:
