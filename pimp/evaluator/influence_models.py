@@ -25,8 +25,8 @@ class InfluenceModel(AbstractEvaluator):
     Implementation of Influence Models
     """
 
-    def __init__(self, scenario, cs, model, to_evaluate: int, margin: float=None, threshold: float=None, **kwargs):
-        super().__init__(scenario, cs, model, to_evaluate, **kwargs)
+    def __init__(self, scenario, cs, model, to_evaluate: int, rng, margin: float=None, threshold: float=None, **kwargs):
+        super().__init__(scenario, cs, model, to_evaluate, rng, **kwargs)
         self.name = 'InfluenceModel'
         self.logger = self.name
         self.model = LinearRegression()

@@ -22,8 +22,8 @@ class Ablation(AbstractEvaluator):
     Implementation of Ablation via surrogates
     """
 
-    def __init__(self, scenario, cs, model, to_evaluate: int, incumbent=None, **kwargs):
-        super().__init__(scenario, cs, model, to_evaluate, **kwargs)
+    def __init__(self, scenario, cs, model, to_evaluate: int, rng, incumbent=None, **kwargs):
+        super().__init__(scenario, cs, model, to_evaluate, rng, **kwargs)
         self.name = 'Ablation'
         self.logger = self.name
 

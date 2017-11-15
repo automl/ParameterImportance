@@ -18,7 +18,7 @@ __email__ = "biedenka@cs.uni-freiburg.de"
 
 class ForwardSelector(AbstractEvaluator):
 
-    def __init__(self, scenario, cs, model, to_evaluate: int, feature_imp: bool=False, **kwargs):
+    def __init__(self, scenario, cs, model, to_evaluate: int, rng, feature_imp: bool=False, **kwargs):
         """
         Constructor
         :parameter:
@@ -31,7 +31,7 @@ class ForwardSelector(AbstractEvaluator):
         to_evaluate
             int. Indicates for how many parameters the Importance values have to be computed
         """
-        super().__init__(scenario, cs, model, to_evaluate, **kwargs)
+        super().__init__(scenario, cs, model, to_evaluate, rng, **kwargs)
         self.name = 'Forward Selection'
         self.logger = self.name
         self.feature_importance = feature_imp

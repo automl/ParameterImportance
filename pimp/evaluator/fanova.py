@@ -25,8 +25,8 @@ __email__ = "biedenka@cs.uni-freiburg.de"
 
 class fANOVA(AbstractEvaluator):
 
-    def __init__(self, scenario, cs, model, to_evaluate: int, runhist: RunHistory, **kwargs):
-        super().__init__(scenario, cs, model, to_evaluate, **kwargs)
+    def __init__(self, scenario, cs, model, to_evaluate: int, runhist: RunHistory, rng, **kwargs):
+        super().__init__(scenario, cs, model, to_evaluate, rng, **kwargs)
         self.name = 'fANOVA'
         self.logger = self.name
         # This way the instance features in X are ignored and a new forest is constructed
