@@ -65,15 +65,15 @@ class fANOVA(AbstractEvaluator):
             plt.clf()
             param = list(self.evaluated_parameter_importance.keys())[i]
             outfile_name = os.path.join(name, param.replace(os.sep, "_") + ".png")
-            vis.plot_marginal(self.cs.get_idx_by_hyperparameter_name(param), show=False)
+            vis.plot_marginal(self.cs.get_idx_by_hyperparameter_name(param), show=False, log_scale=True)
             fig = plt.gcf()
             fig.savefig(outfile_name)
             if show:
                 plt.show()
             self.logger.info('Creating fANOVA plot: %s' % outfile_name)
         self.logger.info('Not creating Pairwise-Marginals!')
-        # self.logger.info('This will take some time!')
-        # vis.create_most_important_pairwise_marginal_plots(name, 5)
+        most_important_ones = list(self.evaluated_parameter_importance.keys())[:5]
+        vis.create_most_important_pairwise_marginal_plots(name, most_important_ones)
         plt.close('all')
 
     def run(self) -> OrderedDict:

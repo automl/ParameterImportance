@@ -139,7 +139,7 @@ def cmd_line_call():
         if os.path.exists(os.path.abspath(args.out_folder)):
             save_folder = args.out_folder + '_%s_%s' % (args.modus, ts)
         else:
-            save_folder = args.out_folder
+            save_folder = args.out_folder + '_%s' % args.modus
 
     importance = Importance(scenario_file=args.scenario_file, runhistory_file=args.history,
                             parameters_to_evaluate=args.num_params,

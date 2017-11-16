@@ -347,8 +347,8 @@ class Ablation(AbstractEvaluator):
         Method to plot a barchart of individual parameter contributions of the improvement from source to target
         """
         fig = plt.figure()
-        plt.subplots_adjust(bottom=0.25, top=0.9, left=0.05, right=.95)
         ax1 = fig.add_subplot(111)
+        plt.subplots_adjust(bottom=0.25, top=0.9, left=0.05, right=.95)
 
         path = list(self.evaluated_parameter_importance.keys())[1:-1]
         true_path = np.array(copy.deepcopy(path))
@@ -427,9 +427,9 @@ class Ablation(AbstractEvaluator):
         upper = np.array(list(map(lambda x, y: x + np.sqrt(y), performances, variances))).flatten()
         if self.scenario.run_obj == "runtime":
             lower = np.array(list(map(lambda x, y: max(x - np.sqrt(y), np.array([0])), performances,
-                                                       variances))).squeeze()
+                                      variances))).squeeze()
         else:
-            lower = np.array(list(map(lambda x, y: max(x - np.sqrt(y), np.array([0])), performances,
+            lower = np.array(list(map(lambda x, y: x - np.sqrt(y), performances,
                                       variances))).squeeze()
         ax1.fill_between(list(range(len(performances))), lower, upper, label='std', color=self.area_color)
 

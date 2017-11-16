@@ -386,17 +386,17 @@ class Importance(object):
         """
         # influence-model currently not supported
         # influence-model currently not supported
-        methods = ['ablation', 'fanova', 'forward-selection', 'incneigh']
+        methods = ['ablation', 'fanova', 'forward-selection', 'incneighbor']
         if sort_by == 1:
-            methods = ['ablation', 'forward-selection', 'fanova', 'incneigh']
+            methods = ['ablation', 'forward-selection', 'fanova', 'incneighbor']
         elif sort_by == 2:
-            methods = ['fanova', 'forward-selection', 'ablation', 'incneigh']
+            methods = ['fanova', 'forward-selection', 'ablation', 'incneighbor']
         elif sort_by == 3:
-            methods = ['fanova', 'ablation', 'forward-selection', 'incneigh']
+            methods = ['fanova', 'ablation', 'forward-selection', 'incneighbor']
         elif sort_by == 4:
-            methods = ['forward-selection', 'ablation', 'fanova', 'incneigh']
+            methods = ['forward-selection', 'ablation', 'fanova', 'incneighbor']
         elif sort_by == 5:
-            methods = ['forward-selection', 'fanova', 'ablation', 'incneigh']
+            methods = ['forward-selection', 'fanova', 'ablation', 'incneighbor']
         if evaluation_method == 'all':
             evaluators = []
             dict_ = {}
