@@ -50,6 +50,8 @@ class CMDs(CMDReader):
                               help="Path to trajectory file")
         req_opts.add_argument("-N", "--num_params", default=0, type=int,
                               help="Number of parameters to evaluate")
+        req_opts.add_argument("-P", "--max_sample_size", default=-1, type=int,
+                              help="Number of samples from runhistorie(s) used. -1 -> use all")
         req_opts.add_argument("-I", "--impute", action='store_true',
                               help="Impute censored data")
         req_opts.add_argument("-C", "--table", action='store_true',

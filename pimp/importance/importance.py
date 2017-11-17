@@ -35,7 +35,7 @@ class Importance(object):
                  runhistory_file: Union[str, None] = None, runhistory: Union[None, RunHistory] = None,
                  traj_file: Union[None, List[str]] = None, incumbent: Union[None, Configuration] = None,
                  seed: int = 12345, parameters_to_evaluate: int = -1, margin: Union[None, float] = None,
-                 save_folder: str = 'PIMP', impute_censored: bool = False):
+                 save_folder: str = 'PIMP', impute_censored: bool = False, max_sample_size: int = -1):
         """
         Importance Object. Handles the construction of the data and training of the model. Easy interface to the
         different evaluators.
@@ -69,6 +69,15 @@ class Importance(object):
         self._load_runhist(runhistory, runhistory_file)
         self._setup_model()
         self._load_incumbent(traj_file, runhistory_file, incumbent)
+        if 0 < max_sample_size < len(self.X):
+            idx = list(range(len(self.X)))
+            np.random.shuffle(idx)
+            idx = idx[:max_sample_size]
+            self.X = self.X[idx]
+            self.y = self.y[idx]
+            self.logger.info('Remaining %d datapoints' % len(self.X))
+            self.model.train(self.X, self.y)
+
 
     def _setup_scenario(self, scenario: Union[None, Scenario], scenario_file: Union[None, str], save_folder: str) -> \
             None:

@@ -29,7 +29,7 @@ __email__ = "biedenka@cs.uni-freiburg.de"
 class PIMP:
     def __init__(self, scenario: Scenario, smac: Union[SMAC, None]=None, mode: str='all',
                  X: Union[None, List[list], np.ndarray]=None, y: Union[None, List[list], np.ndarray]=None,
-                 numParams: int=-1, impute: bool=False, seed: int=12345, run: bool=False):
+                 numParams: int=-1, impute: bool=False, seed: int=12345, run: bool=False, max_sample_size: int = -1):
         """
         Interface to be used with SMAC or with X and y matrices.
         :param scenario: The scenario object, that knows the configuration space.
@@ -49,7 +49,7 @@ class PIMP:
         if smac is not None:
             self.imp = Importance(scenario=scenario, runhistory=smac.runhistory, incumbent=smac.solver.incumbent,
                                   seed=seed, parameters_to_evaluate=numParams, save_folder='PIMP',
-                                  impute_censored=impute)
+                                  impute_censored=impute, max_sample_size=max_sample_size)
         elif X is not None and y is not None:
             X = np.array(X)
             y = np.array(y)
@@ -146,7 +146,8 @@ def cmd_line_call():
                             parameters_to_evaluate=args.num_params,
                             traj_file=args.trajectory, seed=args.seed,
                             save_folder=save_folder,
-                            impute_censored=args.impute)  # create importance object
+                            impute_censored=args.impute,
+                            max_sample_size=args.max_sample_size)  # create importance object
     with open(os.path.join(save_folder, 'pimp_args.json'), 'w') as out_file:
         json.dump(args.__dict__, out_file, sort_keys=True, indent=4, separators=(',', ': '))
     result = importance.evaluate_scenario(args.modus, sort_by=args.order)
