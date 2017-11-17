@@ -226,7 +226,7 @@ class IncNeighbor(AbstractEvaluator):
                             y[4] = y[4] - std_
                         box.set_ydata(y)
                         if self.scenario.run_obj == "runtime":
-                            min_y = min(min_y, max(y[0] - std_, -0.1))
+                            min_y = min(min_y, max(y[0] - std_, -0.01))
                         else:
                             min_y = min(min_y, y[0] - std_)
                         max_y = max(max_y, y[2] + std_)

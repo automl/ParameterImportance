@@ -8,7 +8,8 @@ mpl.use('Agg')
 from matplotlib import pyplot as plt
 
 from smac.runhistory.runhistory import RunHistory
-from smac.configspace.util import convert_configurations_to_array
+from ConfigSpace.util import impute_inactive_values
+from ConfigSpace.hyperparameters import CategoricalHyperparameter
 
 from fanova.fanova import fANOVA as fanova_pyrfr
 from fanova.visualizer import Visualizer
@@ -25,7 +26,8 @@ __email__ = "biedenka@cs.uni-freiburg.de"
 
 class fANOVA(AbstractEvaluator):
 
-    def __init__(self, scenario, cs, model, to_evaluate: int, runhist: RunHistory, rng, **kwargs):
+    def __init__(self, scenario, cs, model, to_evaluate: int, runhist: RunHistory, rng,
+                 n_pairs=5, **kwargs):
         super().__init__(scenario, cs, model, to_evaluate, rng, **kwargs)
         self.name = 'fANOVA'
         self.logger = self.name
@@ -34,7 +36,9 @@ class fANOVA(AbstractEvaluator):
             self.logger.debug('No preprocessing necessary')
         else:
             self._preprocess(runhist)
-        self.evaluator = fanova_pyrfr(X=self.X, Y=self.y.flatten(), config_space=cs, config_on_hypercube=True)
+        self.evaluator = fanova_pyrfr(X=self.X, Y=self.y.flatten(), config_space=cs)
+        self.n_most_imp_pairs = n_pairs
+        self.num_single = None
 
     def _preprocess(self, runhistory):
         """
@@ -47,33 +51,43 @@ class fANOVA(AbstractEvaluator):
         self.logger.info('PREPROCESSING PREPROCESSING PREPROCESSING PREPROCESSING PREPROCESSING PREPROCESSING')
         self.logger.info('Marginalizing away all instances!')
         configs = runhistory.get_all_configs()
-        X_prime = np.array(convert_configurations_to_array(configs))
+        X_non_hyper, X_prime = [], []
+        for config in configs:
+            config = impute_inactive_values(config).get_array()
+            X_prime.append(config)
+            X_non_hyper.append(config)
+            for idx, param in enumerate(self.cs.get_hyperparameters()):
+                if not isinstance(param, CategoricalHyperparameter):
+                    X_non_hyper[-1][idx] = param._transform(X_non_hyper[-1][idx])
+        X_non_hyper = np.array(X_non_hyper)
+        X_prime = np.array(X_prime)
         y_prime = np.array(self.model.predict_marginalized_over_instances(X_prime)[0])
-        self.X = X_prime
+        self.X = X_non_hyper
         self.y = y_prime
         self.logger.info('Size of training X after preprocessing: %s' % str(self.X.shape))
         self.logger.info('Size of training y after preprocessing: %s' % str(self.y.shape))
         self.logger.info('Finished Preprocessing')
 
     def plot_result(self, name='fANOVA', show=True):
-        vis = Visualizer(self.evaluator, self.cs)
         if not os.path.exists(name):
             os.mkdir(name)
+        vis = Visualizer(self.evaluator, self.cs, directory=name)
         self.logger.info('Getting Marginals!')
         for i in range(self.to_evaluate):
             plt.close('all')
             plt.clf()
             param = list(self.evaluated_parameter_importance.keys())[i]
             outfile_name = os.path.join(name, param.replace(os.sep, "_") + ".png")
-            vis.plot_marginal(self.cs.get_idx_by_hyperparameter_name(param), show=False, log_scale=True)
+            vis.plot_marginal(self.cs.get_idx_by_hyperparameter_name(param), show=False)
             fig = plt.gcf()
             fig.savefig(outfile_name)
             if show:
                 plt.show()
             self.logger.info('Creating fANOVA plot: %s' % outfile_name)
-        self.logger.info('Not creating Pairwise-Marginals!')
-        most_important_ones = list(self.evaluated_parameter_importance.keys())[:5]
-        vis.create_most_important_pairwise_marginal_plots(name, most_important_ones)
+        self.logger.info('Plotting Pairwise-Marginals!')
+        most_important_ones = list(self.evaluated_parameter_importance.keys())[
+                              :min(self.num_single, self.n_most_imp_pairs)]
+        vis.create_most_important_pairwise_marginal_plots(most_important_ones)
         plt.close('all')
 
     def run(self) -> OrderedDict:
@@ -95,7 +109,22 @@ class fANOVA(AbstractEvaluator):
                 self.logger.info('{:>02d} {:<30s}: {:>02.4f}'.format(idx, params[idx].name, tmp_res[idx]))
                 self.evaluated_parameter_importance[params[idx].name] = tmp_res[idx]
                 count += 1
-            all_res = {'imp': self.evaluated_parameter_importance, 'order': list(self.evaluated_parameter_importance.keys())}
+            self.num_single = len(list(self.evaluated_parameter_importance.keys()))
+            self.logger.info(
+                'Computing most important pairwise marginals using at most'
+                ' the %d most important ones.' % min(self.n_most_imp_pairs, self.num_single))
+            pairs = self.evaluator.get_most_important_pairwise_marginals(params=list(
+                self.evaluated_parameter_importance.keys())[:self.n_most_imp_pairs])
+            for pair in pairs:
+                a, b = pair
+                self.evaluated_parameter_importance[str([a, b])] = pairs[pair]
+                if len(a) > 13:
+                    a = str(a)[:5] + '...' + str(a)[-5:]
+                if len(b) > 13:
+                    b = str(b)[:5] + '...' + str(b)[-5:]
+                self.logger.info('{:>02d} {:<30s}: {:>02.4f}'.format(-1, a + ' <> ' + b, pairs[pair]))
+            all_res = {'imp': self.evaluated_parameter_importance,
+                       'order': list(self.evaluated_parameter_importance.keys())}
             return all_res
         except ZeroDivisionError:
             with open('fANOVA_crash_data.pkl', 'wb') as fh:
