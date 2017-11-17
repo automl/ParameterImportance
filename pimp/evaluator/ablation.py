@@ -443,7 +443,10 @@ class Ablation(AbstractEvaluator):
             t.set_color(color_)
 
         ax1.set_xlim(0, max_to_plot - 1)
-        ax1.set_ylim(min(lower) - max(.1 * min(lower), 0.1), max(upper) + .1 * max(upper))
+        if self.scenario.run_obj == "runtime":
+            ax1.set_ylim(max(min(lower) - max(.1 * min(lower), 0.1), 0), max(upper) + .1 * max(upper))
+        else:
+            ax1.set_ylim(min(lower) - max(.1 * min(lower), 0.1), max(upper) + .1 * max(upper))
 
         ax1.legend()
         if self.scenario.run_obj == 'runtime':

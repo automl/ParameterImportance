@@ -226,23 +226,18 @@ class Importance(object):
         :param evaluation_method: Name of the evaluation method to use
         :return: None
         """
+        if self._model is None:
+            self._setup_model()
         self.logger.info('Setting up Evaluation Method')
         if evaluation_method not in ['ablation', 'fanova', 'forward-selection', 'influence-model',
                                      'incneighbor']:
             raise ValueError('Specified evaluation method %s does not exist!' % evaluation_method)
         if evaluation_method == 'ablation':
-            if self.scenario.run_obj == "runtime":
-                self.cutoff = self.scenario.cutoff
-                self.threshold = self.scenario.cutoff * self.scenario.par_factor
-                self.model = 'urfi'
-                self.logged_y = True
-            else:
-                self.model = 'rfi'
-            self.model.train(self.X, self.y)
             if self.incumbent is None:
                 raise ValueError('Incumbent is %s!\n \
                                  Incumbent has to be read from a trajectory file before ablation can be used!'
                                  % self.incumbent)
+            self.logger.info('Using model %s' % str(self.model))
             evaluator = Ablation(scenario=self.scenario,
                                  cs=self.scenario.cs,
                                  model=self._model,
@@ -250,8 +245,7 @@ class Importance(object):
                                  incumbent=self.incumbent,
                                  logy=self.logged_y, rng=self.rng)
         elif evaluation_method == 'influence-model':
-            self.model = 'rfi'
-            self.model.train(self.X, self.y)
+            self.logger.info('Using model %s' % str(self.model))
             evaluator = InfluenceModel(scenario=self.scenario,
                                        cs=self.scenario.cs,
                                        model=self._model,
@@ -259,26 +253,18 @@ class Importance(object):
                                        margin=self.margin,
                                        threshold=self.threshold, rng=self.rng)
         elif evaluation_method == 'fanova':
-            self.model = 'rfi'
-            self.model.train(self.X, self.y)
+            self.logger.info('Using model %s' % str(self.model))
             evaluator = fANOVA(scenario=self.scenario,
                                cs=self.scenario.cs,
                                model=self._model,
                                to_evaluate=self._parameters_to_evaluate,
                                runhist=self.runhistory, rng=self.rng)
         elif evaluation_method == 'incneighbor':
-            if self.scenario.run_obj == "runtime":
-                self.cutoff = self.scenario.cutoff
-                self.threshold = self.scenario.cutoff * self.scenario.par_factor
-                self.model = 'urfi'
-                self.logged_y = True
-            else:
-                self.model = 'rfi'
-            self.model.train(self.X, self.y)
             if self.incumbent is None:
                 raise ValueError('Incumbent is %s!\n \
                                  Incumbent has to be read from a trajectory file before ablation can be used!'
                                  % self.incumbent)
+            self.logger.info('Using model %s' % str(self.model))
             evaluator = IncNeighbor(scenario=self.scenario,
                                     cs=self.scenario.cs,
                                     model=self._model,
@@ -286,8 +272,7 @@ class Importance(object):
                                     incumbent=self.incumbent,
                                     logy=self.logged_y, rng=self.rng)
         else:
-            self.model = 'rfi'
-            self.model.train(self.X, self.y)
+            self.logger.info('Using model %s' % str(self.model))
             evaluator = ForwardSelector(scenario=self.scenario,
                                         cs=self.scenario.cs,
                                         model=self._model,
@@ -355,6 +340,7 @@ class Importance(object):
                                          success_states=None,
                                          impute_censored_data=self.impute,
                                          impute_state=None)
+        self.logger.info('Using model %s' % str(self.model))
         X, Y = rh2EPM.transform(self.runhistory)
 
         self.X = X

@@ -136,7 +136,8 @@ def cmd_line_call():
     if not args.out_folder:
         save_folder = 'PIMP_%s_%s' % (args.modus, ts)
     else:
-        if os.path.exists(os.path.abspath(args.out_folder)):
+        if os.path.exists(os.path.abspath(args.out_folder)) or os.path.exists(os.path.abspath(
+                        args.out_folder + '_%s' % args.modus)):
             save_folder = args.out_folder + '_%s_%s' % (args.modus, ts)
         else:
             save_folder = args.out_folder + '_%s' % args.modus
