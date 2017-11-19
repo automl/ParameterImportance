@@ -145,7 +145,10 @@ class Ablation(AbstractEvaluator):
         for child in children:
             all_child_conditions_fulfilled = True
             for condition in self.cs.get_parent_conditions_of(child):
-                all_child_conditions_fulfilled = all_child_conditions_fulfilled and condition.evaluate(_dict)
+                try:
+                    all_child_conditions_fulfilled = all_child_conditions_fulfilled and condition.evaluate(_dict)
+                except ValueError:
+                    all_child_conditions_fulfilled = False  # Parent not set!
             dict_[child.name] = all_child_conditions_fulfilled
         return dict_
 
