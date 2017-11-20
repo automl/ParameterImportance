@@ -29,7 +29,9 @@ class Ablation(AbstractEvaluator):
 
         self.target = incumbent
         self.source = self.cs.get_default_configuration()
-        self.delta = self._diff_in_source_and_target()
+        self.target_active = {}
+        self.source_active = {}
+        self.delta, self.active = self._diff_in_source_and_target()
         self.default = self.cs.get_default_configuration()
         self._determine_combined_flipps()
         self.inactive = []
@@ -119,8 +121,14 @@ class Ablation(AbstractEvaluator):
                                         skip_this = True
                                 if skip_this:
                                     continue
-                            source_conditions_met = condition.evaluate(self.source)
-                            target_conditions_met = condition.evaluate(self.target)
+                            try:
+                                source_conditions_met = condition.evaluate(self.source)
+                            except ValueError:
+                                source_conditions_met = False
+                            try:
+                                target_conditions_met = condition.evaluate(self.target)
+                            except ValueError:
+                                target_conditions_met = False
                             if target_conditions_met and not source_conditions_met:
                                 if child.name not in modified_delta[idx]:
                                     modified_delta[idx].append(child.name)  # Now at idx delta has two combined entries
@@ -130,7 +138,7 @@ class Ablation(AbstractEvaluator):
                                     if [child.name] in modified_delta and tmp_idx not in to_remove:
                                         to_remove.append(modified_delta.index([child.name]))
                                 except ValueError:
-                                    continue
+                                    pass
         return to_remove, modified_delta
 
     def _determine_combined_flipps(self):
@@ -140,6 +148,26 @@ class Ablation(AbstractEvaluator):
         """
         to_remove, self.delta = self._helper(self.delta)
         to_remove = sorted(to_remove, reverse=True)  # reverse sort necessary to not delete the wrong items
+        for idx in to_remove:
+            self.delta.pop(idx)
+        to_remove = []
+        single_remove = []
+        for i in range(len(self.delta) - 1):
+            flip_1 = self.delta[i]
+            for j in range(i + 1, len(self.delta)):
+                flip_2 = self.delta[j]
+                for idx, entry in enumerate(flip_2):
+                    if entry in flip_1:
+                        if idx == 0:
+                            to_remove.append(j)
+                            self.logger.info('Removing %s' % str(self.delta[j]))
+                        else:
+                            single_remove.append((j, idx))
+        single_remove = sorted(single_remove, reverse=True)
+        for tuple_ in single_remove:
+            del self.delta[tuple_[0]][tuple_[1]]
+        to_remove = sorted(to_remove, reverse=True)  # reverse sort necessary to not delete the wrong items
+        self.logger.info(to_remove)
         for idx in to_remove:
             self.delta.pop(idx)
 
@@ -186,6 +214,14 @@ class Ablation(AbstractEvaluator):
                                 self.logger.debug('%s, %s' % (str([child]), str(item)))
                             self.logger.critical('Removing deactivated parameter %s' % child)
                             self.delta.pop(self.delta.index([child]))
+                    else:
+                        if self.source_active[child] and not self.target_active[child]:
+                            modded_dict[child] = self.source[child]
+                        elif self.target_active[child]:
+                            modded_dict[child] = self.target[child]
+                        else:
+                            modded_dict[child] = self.cs.get_hyperparameter(child).default
+                        modded_dict = self._check_children(modded_dict, [child])
         return modded_dict
 
     def _set_child_of_child_to_none(self, child, modded_dict):
@@ -238,7 +274,8 @@ class Ablation(AbstractEvaluator):
 
         while len(self.delta) > length_:  # Main loop. While parameters still left ...
             modifiable_config_dict = copy.deepcopy(prev_modifiable_config_dict)
-            self.logger.debug('Round %d of %d:' % (start_delta - len(self.delta) + 1, min(start_delta, self.to_evaluate)))
+            self.logger.debug('Round %d of %d:' % (start_delta - len(self.delta) + 1, min(start_delta,
+                                                                                          self.to_evaluate)))
             for param_tuple in modified_so_far:  # necessary due to combined flips
                 for parameter in param_tuple:
                     modifiable_config_dict[parameter] = self.target[parameter]
@@ -247,8 +284,10 @@ class Ablation(AbstractEvaluator):
             round_performances = []
             round_variances = []
             for candidate_tuple in self.delta:
+                self.logger.debug('candidate(s): %s' % str(candidate_tuple))
 
                 for candidate in candidate_tuple:
+                    self.logger.debug(' {:<25s} -> {:^10s}'.format(str(candidate), str(self.target[candidate])))
                     modifiable_config_dict[candidate] = self.target[candidate]
 
                 modifiable_config_dict = self._check_children(modifiable_config_dict, candidate_tuple)
@@ -329,6 +368,7 @@ class Ablation(AbstractEvaluator):
             List of parameters that are modified from the source to the target
         """
         delta = []
+        active = {}
         for parameter in self.source:
             tmp = ' not'
             if self.source[parameter] != self.target[parameter] and self.target[parameter] is not None:
@@ -337,7 +377,10 @@ class Ablation(AbstractEvaluator):
             self.logger.debug('%s was%s modified from source to target (%s, %s) [s, t]' % (parameter, tmp,
                                                                                            self.source[parameter],
                                                                                            self.target[parameter]))
-        return delta
+            self.target_active[parameter] = True if self.target[parameter] is not None else False
+            active[parameter] = True if self.source[parameter] is not None else False
+        self.source_active = copy.deepcopy(active)
+        return delta, active
 
 ########################################################################################################################
 # PLOTTING # PLOTTING # PLOTTING # PLOTTING # PLOTTING # PLOTTING # PLOTTING # PLOTTING # PLOTTING # PLOTTING # PLOTTING
