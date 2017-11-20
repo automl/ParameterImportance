@@ -95,8 +95,8 @@ class Ablation(AbstractEvaluator):
                 for child in children:
                     if child.name not in modified_delta[idx]:
                         for condition in self.cs.get_parent_conditions_of(child):
-                            if type(condition) in [AndConjunction, OrConjunction]:  # Case where parents of parents are not
-                                                                                    # set get checked here
+                            if type(condition) in [AndConjunction, OrConjunction]:  # Case where parents of parents are
+                                                                                    # not set get checked here
                                 skip_this = False
                                 for component in condition.components:
                                     if self.source.get(component.parent.name) is None:
@@ -125,9 +125,12 @@ class Ablation(AbstractEvaluator):
                                 if child.name not in modified_delta[idx]:
                                     modified_delta[idx].append(child.name)  # Now at idx delta has two combined entries
                                     indices_to_check.append(idx)
-                                tmp_idx = modified_delta.index([child.name])
-                                if [child.name] in modified_delta and tmp_idx not in to_remove:
-                                    to_remove.append(modified_delta.index([child.name]))
+                                try:
+                                    tmp_idx = modified_delta.index([child.name])
+                                    if [child.name] in modified_delta and tmp_idx not in to_remove:
+                                        to_remove.append(modified_delta.index([child.name]))
+                                except ValueError:
+                                    continue
         return to_remove, modified_delta
 
     def _determine_combined_flipps(self):
