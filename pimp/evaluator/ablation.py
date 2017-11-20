@@ -167,7 +167,6 @@ class Ablation(AbstractEvaluator):
         for tuple_ in single_remove:
             del self.delta[tuple_[0]][tuple_[1]]
         to_remove = sorted(to_remove, reverse=True)  # reverse sort necessary to not delete the wrong items
-        self.logger.info(to_remove)
         for idx in to_remove:
             self.delta.pop(idx)
 
