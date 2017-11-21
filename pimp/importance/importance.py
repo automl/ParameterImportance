@@ -209,14 +209,12 @@ class Importance(object):
         elif model_short_name == 'rfi':
             self._model = RandomForestWithInstances(self.types, self.bounds,
                                                     instance_features=self.scenario.feature_array,
-                                                    seed=self.rng.randint(99999),
-                                                    num_trees=100)
+                                                    seed=self.rng.randint(99999))
         elif model_short_name == 'urfi':
             self._model = UnloggedRandomForestWithInstances(self.types, self.bounds,
                                                             self.scenario.feature_array,
                                                             seed=self.rng.randint(99999),
-                                                            cutoff=self.cutoff, threshold=self.threshold,
-                                                            num_trees=100)
+                                                            cutoff=self.cutoff, threshold=self.threshold)
         self._model.rf_opts.compute_oob_error = True
 
     @property
@@ -247,6 +245,7 @@ class Importance(object):
                                  Incumbent has to be read from a trajectory file before ablation can be used!'
                                  % self.incumbent)
             self.logger.info('Using model %s' % str(self.model))
+            self.logger.info('X shape %s' % str(self.model.X.shape))
             evaluator = Ablation(scenario=self.scenario,
                                  cs=self.scenario.cs,
                                  model=self._model,
@@ -255,6 +254,7 @@ class Importance(object):
                                  logy=self.logged_y, rng=self.rng)
         elif evaluation_method == 'influence-model':
             self.logger.info('Using model %s' % str(self.model))
+            self.logger.info('X shape %s' % str(self.model.X.shape))
             evaluator = InfluenceModel(scenario=self.scenario,
                                        cs=self.scenario.cs,
                                        model=self._model,
@@ -263,6 +263,7 @@ class Importance(object):
                                        threshold=self.threshold, rng=self.rng)
         elif evaluation_method == 'fanova':
             self.logger.info('Using model %s' % str(self.model))
+            self.logger.info('X shape %s' % str(self.model.X.shape))
             evaluator = fANOVA(scenario=self.scenario,
                                cs=self.scenario.cs,
                                model=self._model,
@@ -274,6 +275,7 @@ class Importance(object):
                                  Incumbent has to be read from a trajectory file before ablation can be used!'
                                  % self.incumbent)
             self.logger.info('Using model %s' % str(self.model))
+            self.logger.info('X shape %s' % str(self.model.X.shape))
             evaluator = IncNeighbor(scenario=self.scenario,
                                     cs=self.scenario.cs,
                                     model=self._model,
