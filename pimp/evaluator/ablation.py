@@ -2,6 +2,8 @@ import copy
 from collections import OrderedDict
 
 import numpy as np
+import matplotlib as mpl
+mpl.use('Agg')
 from matplotlib import pyplot as plt
 
 from pimp.configspace import AndConjunction, Configuration, OrConjunction, impute_inactive_values
@@ -20,14 +22,16 @@ class Ablation(AbstractEvaluator):
     Implementation of Ablation via surrogates
     """
 
-    def __init__(self, scenario, cs, model, to_evaluate: int, incumbent=None, **kwargs):
-        super().__init__(scenario, cs, model, to_evaluate, **kwargs)
+    def __init__(self, scenario, cs, model, to_evaluate: int, rng, incumbent=None, **kwargs):
+        super().__init__(scenario, cs, model, to_evaluate, rng, **kwargs)
         self.name = 'Ablation'
         self.logger = self.name
 
         self.target = incumbent
         self.source = self.cs.get_default_configuration()
-        self.delta = self._diff_in_source_and_target()
+        self.target_active = {}
+        self.source_active = {}
+        self.delta, self.active = self._diff_in_source_and_target()
         self.default = self.cs.get_default_configuration()
         self._determine_combined_flipps()
         self.inactive = []
@@ -93,8 +97,8 @@ class Ablation(AbstractEvaluator):
                 for child in children:
                     if child.name not in modified_delta[idx]:
                         for condition in self.cs.get_parent_conditions_of(child):
-                            if type(condition) in [AndConjunction, OrConjunction]:  # Case where parents of parents are not
-                                                                                    # set get checked here
+                            if type(condition) in [AndConjunction, OrConjunction]:  # Case where parents of parents are
+                                                                                    # not set get checked here
                                 skip_this = False
                                 for component in condition.components:
                                     if self.source.get(component.parent.name) is None:
@@ -117,15 +121,24 @@ class Ablation(AbstractEvaluator):
                                         skip_this = True
                                 if skip_this:
                                     continue
-                            source_conditions_met = condition.evaluate(self.source)
-                            target_conditions_met = condition.evaluate(self.target)
+                            try:
+                                source_conditions_met = condition.evaluate(self.source)
+                            except ValueError:
+                                source_conditions_met = False
+                            try:
+                                target_conditions_met = condition.evaluate(self.target)
+                            except ValueError:
+                                target_conditions_met = False
                             if target_conditions_met and not source_conditions_met:
                                 if child.name not in modified_delta[idx]:
                                     modified_delta[idx].append(child.name)  # Now at idx delta has two combined entries
                                     indices_to_check.append(idx)
-                                tmp_idx = modified_delta.index([child.name])
-                                if [child.name] in modified_delta and tmp_idx not in to_remove:
-                                    to_remove.append(modified_delta.index([child.name]))
+                                try:
+                                    tmp_idx = modified_delta.index([child.name])
+                                    if [child.name] in modified_delta and tmp_idx not in to_remove:
+                                        to_remove.append(modified_delta.index([child.name]))
+                                except ValueError:
+                                    pass
         return to_remove, modified_delta
 
     def _determine_combined_flipps(self):
@@ -137,13 +150,35 @@ class Ablation(AbstractEvaluator):
         to_remove = sorted(to_remove, reverse=True)  # reverse sort necessary to not delete the wrong items
         for idx in to_remove:
             self.delta.pop(idx)
+        to_remove = []
+        single_remove = []
+        for i in range(len(self.delta) - 1):
+            flip_1 = self.delta[i]
+            for j in range(i + 1, len(self.delta)):
+                flip_2 = self.delta[j]
+                for idx, entry in enumerate(flip_2):
+                    if entry in flip_1:
+                        if idx == 0:
+                            to_remove.append(j)
+                            self.logger.info('Removing %s' % str(self.delta[j]))
+                        else:
+                            single_remove.append((j, idx))
+        single_remove = sorted(single_remove, reverse=True)
+        for tuple_ in single_remove:
+            del self.delta[tuple_[0]][tuple_[1]]
+        to_remove = sorted(to_remove, reverse=True)  # reverse sort necessary to not delete the wrong items
+        for idx in to_remove:
+            self.delta.pop(idx)
 
     def _check_child_conditions(self, _dict, children):
         dict_ = {}
         for child in children:
             all_child_conditions_fulfilled = True
             for condition in self.cs.get_parent_conditions_of(child):
-                all_child_conditions_fulfilled = all_child_conditions_fulfilled and condition.evaluate(_dict)
+                try:
+                    all_child_conditions_fulfilled = all_child_conditions_fulfilled and condition.evaluate(_dict)
+                except ValueError:
+                    all_child_conditions_fulfilled = False  # Parent not set!
             dict_[child.name] = all_child_conditions_fulfilled
         return dict_
 
@@ -178,6 +213,14 @@ class Ablation(AbstractEvaluator):
                                 self.logger.debug('%s, %s' % (str([child]), str(item)))
                             self.logger.critical('Removing deactivated parameter %s' % child)
                             self.delta.pop(self.delta.index([child]))
+                    else:
+                        if self.source_active[child] and not self.target_active[child]:
+                            modded_dict[child] = self.source[child]
+                        elif self.target_active[child]:
+                            modded_dict[child] = self.target[child]
+                        else:
+                            modded_dict[child] = self.cs.get_hyperparameter(child).default
+                        modded_dict = self._check_children(modded_dict, [child])
         return modded_dict
 
     def _set_child_of_child_to_none(self, child, modded_dict):
@@ -230,7 +273,8 @@ class Ablation(AbstractEvaluator):
 
         while len(self.delta) > length_:  # Main loop. While parameters still left ...
             modifiable_config_dict = copy.deepcopy(prev_modifiable_config_dict)
-            self.logger.debug('Round %d of %d:' % (start_delta - len(self.delta) + 1, min(start_delta, self.to_evaluate)))
+            self.logger.debug('Round %d of %d:' % (start_delta - len(self.delta) + 1, min(start_delta,
+                                                                                          self.to_evaluate)))
             for param_tuple in modified_so_far:  # necessary due to combined flips
                 for parameter in param_tuple:
                     modifiable_config_dict[parameter] = self.target[parameter]
@@ -239,8 +283,10 @@ class Ablation(AbstractEvaluator):
             round_performances = []
             round_variances = []
             for candidate_tuple in self.delta:
+                self.logger.debug('candidate(s): %s' % str(candidate_tuple))
 
                 for candidate in candidate_tuple:
+                    self.logger.debug(' {:<25s} -> {:^10s}'.format(str(candidate), str(self.target[candidate])))
                     modifiable_config_dict[candidate] = self.target[candidate]
 
                 modifiable_config_dict = self._check_children(modifiable_config_dict, candidate_tuple)
@@ -271,7 +317,7 @@ class Ablation(AbstractEvaluator):
             param_str = '; '.join(self.delta[best_idx])
             self.evaluated_parameter_importance[param_str] = improvement_in_percentage.flatten()[0]
             self.predicted_parameter_performances[param_str] = best_performance.flatten()[0]
-            self.predicted_parameter_variances[param_str] = best_variance
+            self.predicted_parameter_variances[param_str] = best_variance.flatten()[0]
 
             for winning_param in self.delta[best_idx]:  # Delete parameters that were set to inactive by the last
                                                         # best parameter
@@ -288,7 +334,9 @@ class Ablation(AbstractEvaluator):
         #     print(key, self.evaluated_parameter_importance[key])
         #     sum_ += self.evaluated_parameter_importance[key]
         # print(sum_)
-        return self.evaluated_parameter_importance
+        all_res = {'perf': self.predicted_parameter_performances, 'var': self.predicted_parameter_variances,
+                'imp': self.evaluated_parameter_importance, 'order': list(self.evaluated_parameter_importance.keys())}
+        return all_res
 
 ########################################################################################################################
 # HELPER METHODS # HELPER METHODS # HELPER METHODS # HELPER METHODS # HELPER METHODS # HELPER METHODS # HELPER METHODS
@@ -319,6 +367,7 @@ class Ablation(AbstractEvaluator):
             List of parameters that are modified from the source to the target
         """
         delta = []
+        active = {}
         for parameter in self.source:
             tmp = ' not'
             if self.source[parameter] != self.target[parameter] and self.target[parameter] is not None:
@@ -327,7 +376,10 @@ class Ablation(AbstractEvaluator):
             self.logger.debug('%s was%s modified from source to target (%s, %s) [s, t]' % (parameter, tmp,
                                                                                            self.source[parameter],
                                                                                            self.target[parameter]))
-        return delta
+            self.target_active[parameter] = True if self.target[parameter] is not None else False
+            active[parameter] = True if self.source[parameter] is not None else False
+        self.source_active = copy.deepcopy(active)
+        return delta, active
 
 ########################################################################################################################
 # PLOTTING # PLOTTING # PLOTTING # PLOTTING # PLOTTING # PLOTTING # PLOTTING # PLOTTING # PLOTTING # PLOTTING # PLOTTING
@@ -343,8 +395,8 @@ class Ablation(AbstractEvaluator):
         Method to plot a barchart of individual parameter contributions of the improvement from source to target
         """
         fig = plt.figure()
-        plt.subplots_adjust(bottom=0.25, top=0.9, left=0.05, right=.95)
         ax1 = fig.add_subplot(111)
+        plt.subplots_adjust(bottom=0.25, top=0.9, left=0.05, right=.95)
 
         path = list(self.evaluated_parameter_importance.keys())[1:-1]
         true_path = np.array(copy.deepcopy(path))
@@ -353,15 +405,11 @@ class Ablation(AbstractEvaluator):
                 p = p[:18] + '...'
                 path[idx] = p
         performances = list(self.evaluated_parameter_importance.values())
-        performances = 100 * np.array(performances).reshape((-1, 1))
+        performances = 100 * np.array(performances).reshape((1, -1)).squeeze()
         path = np.array(path)
         max_to_plot = min(len(path), self.MAX_PARAMS_TO_PLOT)
-        try:
-            ax1.bar(list(range(len(path))),
-                    performances[1:-1], width=.75, color=self.area_color)
-        except TypeError as e:
-            self.logger.debug(e)
-            self.logger.debug('pyplot encountered a strange error which however does not affect the plots')
+        ax1.bar(list(range(len(path))),
+                performances[1:-1], color=self.area_color)
 
         ax1.set_xticks(np.arange(len(path)))
         ax1.set_xlim(-0.5, max_to_plot - .25)
@@ -426,9 +474,11 @@ class Ablation(AbstractEvaluator):
 
         upper = np.array(list(map(lambda x, y: x + np.sqrt(y), performances, variances))).flatten()
         if self.scenario.run_obj == "runtime":
-            lower = np.array(list(map(lambda x, y: max(x - np.sqrt(y), 0), performances, variances))).flatten()
+            lower = np.array(list(map(lambda x, y: max(x - np.sqrt(y), np.array([0])), performances,
+                                      variances))).squeeze()
         else:
-            lower = np.array(list(map(lambda x, y: max(x - np.sqrt(y), 0), performances, variances))).flatten()
+            lower = np.array(list(map(lambda x, y: x - np.sqrt(y), performances,
+                                      variances))).squeeze()
         ax1.fill_between(list(range(len(performances))), lower, upper, label='std', color=self.area_color)
 
         ax1.set_xticks(list(range(len(path))))
@@ -441,7 +491,10 @@ class Ablation(AbstractEvaluator):
             t.set_color(color_)
 
         ax1.set_xlim(0, max_to_plot - 1)
-        ax1.set_ylim(min(lower) - max(.1 * min(lower), 0.1), max(upper) + .1 * max(upper))
+        if self.scenario.run_obj == "runtime":
+            ax1.set_ylim(max(min(lower) - max(.1 * min(lower), 0.1), 0), max(upper) + .1 * max(upper))
+        else:
+            ax1.set_ylim(min(lower) - max(.1 * min(lower), 0.1), max(upper) + .1 * max(upper))
 
         ax1.legend()
         if self.scenario.run_obj == 'runtime':

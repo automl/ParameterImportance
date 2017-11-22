@@ -1,5 +1,8 @@
 import os
 import json
+import datetime
+import logging
+import time
 from typing import List
 from typing import Dict
 from typing import Union
@@ -12,14 +15,21 @@ from smac.optimizer.objective import average_cost
 from smac.tae.execute_ta_run_aclib import StatusType
 from ConfigSpace.configuration_space import Configuration
 
-
 from pimp.importance.importance import Importance
+from pimp.utils.io.cmd_reader import CMDs
+
+
+__author__ = "Andre Biedenkapp"
+__copyright__ = "Copyright 2016, ML4AAD"
+__license__ = "3-clause BSD"
+__maintainer__ = "Andre Biedenkapp"
+__email__ = "biedenka@cs.uni-freiburg.de"
 
 
 class PIMP:
     def __init__(self, scenario: Scenario, smac: Union[SMAC, None]=None, mode: str='all',
                  X: Union[None, List[list], np.ndarray]=None, y: Union[None, List[list], np.ndarray]=None,
-                 numParams: int=-1, impute: bool=False, seed: int=12345, run: bool=False):
+                 numParams: int=-1, impute: bool=False, seed: int=12345, run: bool=False, max_sample_size: int = -1):
         """
         Interface to be used with SMAC or with X and y matrices.
         :param scenario: The scenario object, that knows the configuration space.
@@ -39,7 +49,7 @@ class PIMP:
         if smac is not None:
             self.imp = Importance(scenario=scenario, runhistory=smac.runhistory, incumbent=smac.solver.incumbent,
                                   seed=seed, parameters_to_evaluate=numParams, save_folder='PIMP',
-                                  impute_censored=impute)
+                                  impute_censored=impute, max_sample_size=max_sample_size)
         elif X is not None and y is not None:
             X = np.array(X)
             y = np.array(y)
@@ -112,3 +122,52 @@ class PIMP:
                 json.dump(result, out_file, sort_keys=True, indent=4, separators=(',', ': '))
 
             self.imp.plot_results(name=os.path.join(save_folder, self.mode), show=show)
+
+
+def cmd_line_call():
+    """
+    Main Parameter importance script.
+    """
+    cmd_reader = CMDs()
+    args, misc_ = cmd_reader.read_cmd()  # read cmd args
+    logging.basicConfig(level=args.verbose_level)
+    ts = time.time()
+    ts = datetime.datetime.fromtimestamp(ts).strftime('%Y_%m_%d_%H:%M:%S')
+    if not args.out_folder:
+        save_folder = 'PIMP_%s_%s' % (args.modus, ts)
+    else:
+        if os.path.exists(os.path.abspath(args.out_folder)) or os.path.exists(os.path.abspath(
+                        args.out_folder + '_%s' % args.modus)):
+            save_folder = args.out_folder + '_%s_%s' % (args.modus, ts)
+        else:
+            save_folder = args.out_folder + '_%s' % args.modus
+
+    importance = Importance(scenario_file=args.scenario_file, runhistory_file=args.history,
+                            parameters_to_evaluate=args.num_params,
+                            traj_file=args.trajectory, seed=args.seed,
+                            save_folder=save_folder,
+                            impute_censored=args.impute,
+                            max_sample_size=args.max_sample_size)  # create importance object
+    with open(os.path.join(save_folder, 'pimp_args.json'), 'w') as out_file:
+        json.dump(args.__dict__, out_file, sort_keys=True, indent=4, separators=(',', ': '))
+    result = importance.evaluate_scenario(args.modus, sort_by=args.order)
+
+    if args.modus == 'all':
+        with open(os.path.join(save_folder, 'pimp_values_%s.json' % args.modus), 'w') as out_file:
+            json.dump(result[0], out_file, sort_keys=True, indent=4, separators=(',', ': '))
+        importance.plot_results(list(map(lambda x: os.path.join(save_folder, x.name.lower()), result[1])),
+                                result[1], show=False)
+        if args.table:
+            importance.table_for_comparison(evaluators=result[1], name=os.path.join(
+                save_folder, 'pimp_table_%s.tex' % args.modus), style='latex')
+        else:
+            importance.table_for_comparison(evaluators=result[1], style='cmd')
+    else:
+        with open(os.path.join(save_folder, 'pimp_values_%s.json' % args.modus), 'w') as out_file:
+            json.dump(result, out_file, sort_keys=True, indent=4, separators=(',', ': '))
+
+        importance.plot_results(name=os.path.join(save_folder, args.modus), show=False)
+
+
+if __name__ == '__main__':
+    cmd_line_call()

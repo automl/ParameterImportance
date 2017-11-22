@@ -2,6 +2,8 @@ import time
 from collections import OrderedDict
 
 import numpy as np
+import matplotlib as mpl
+mpl.use('Agg')
 from matplotlib import pyplot as plt
 from sklearn.decomposition import PCA
 
@@ -16,7 +18,7 @@ __email__ = "biedenka@cs.uni-freiburg.de"
 
 class ForwardSelector(AbstractEvaluator):
 
-    def __init__(self, scenario, cs, model, to_evaluate: int, feature_imp: bool=False, **kwargs):
+    def __init__(self, scenario, cs, model, to_evaluate: int, rng, feature_imp: bool=False, **kwargs):
         """
         Constructor
         :parameter:
@@ -29,7 +31,7 @@ class ForwardSelector(AbstractEvaluator):
         to_evaluate
             int. Indicates for how many parameters the Importance values have to be computed
         """
-        super().__init__(scenario, cs, model, to_evaluate, **kwargs)
+        super().__init__(scenario, cs, model, to_evaluate, rng, **kwargs)
         self.name = 'Forward Selection'
         self.logger = self.name
         self.feature_importance = feature_imp
@@ -96,7 +98,8 @@ class ForwardSelector(AbstractEvaluator):
             else:
                 self.logger.info('%s: %.4f' % (best_parameter.name, lowest_error))
                 self.evaluated_parameter_importance[best_parameter.name] = lowest_error
-        return self.evaluated_parameter_importance
+        all_res = {'imp': self.evaluated_parameter_importance, 'order': list(self.evaluated_parameter_importance.keys())}
+        return all_res
 
     def _plot_result(self, name, bar=True, show=True):
         """

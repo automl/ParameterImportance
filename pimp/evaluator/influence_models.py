@@ -4,6 +4,8 @@ import time
 from collections import OrderedDict
 
 import numpy as np
+import matplotlib as mpl
+mpl.use('Agg')
 from matplotlib import pyplot as plt
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics.regression import mean_squared_error
@@ -23,8 +25,8 @@ class InfluenceModel(AbstractEvaluator):
     Implementation of Influence Models
     """
 
-    def __init__(self, scenario, cs, model, to_evaluate: int, margin: float=None, threshold: float=None, **kwargs):
-        super().__init__(scenario, cs, model, to_evaluate, **kwargs)
+    def __init__(self, scenario, cs, model, to_evaluate: int, rng, margin: float=None, threshold: float=None, **kwargs):
+        super().__init__(scenario, cs, model, to_evaluate, rng, **kwargs)
         self.name = 'InfluenceModel'
         self.logger = self.name
         self.model = LinearRegression()
@@ -132,9 +134,8 @@ class InfluenceModel(AbstractEvaluator):
         for idx, id in enumerate(used):
             self.evaluated_parameter_importance[start_params[id].name] = coeffs[idx]
 
-        # print(self.evaluated_parameter_importance)
-
-        return self.evaluated_parameter_importance
+        all_res = {'imp': self.evaluated_parameter_importance, 'order': list(self.evaluated_parameter_importance.keys())}
+        return all_res
 
     def plot_result(self, name=None, show=True):
         # TODO find out what a sensible way of plotting this would be.

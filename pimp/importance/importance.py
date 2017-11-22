@@ -13,10 +13,12 @@ from smac.tae.execute_ta_run import StatusType
 from smac.epm.rfr_imputator import RFRImputator
 from smac.epm.rf_with_instances import RandomForestWithInstances
 
-from pimp.configspace import CategoricalHyperparameter, Configuration, FloatHyperparameter, IntegerHyperparameter
+from pimp.configspace import CategoricalHyperparameter, Configuration, \
+    FloatHyperparameter, IntegerHyperparameter, impute_inactive_values
 from pimp.epm.unlogged_rf_with_instances import UnloggedRandomForestWithInstances
 from pimp.evaluator.ablation import Ablation
 from pimp.evaluator.fanova import fANOVA
+from pimp.evaluator.incumbent_neighborhood import IncNeighbor
 from pimp.evaluator.forward_selection import ForwardSelector, AbstractEvaluator
 from pimp.evaluator.influence_models import InfluenceModel
 from pimp.utils import RunHistory, RunHistory2EPM4Cost, RunHistory2EPM4LogCost, Scenario, average_cost
@@ -29,11 +31,11 @@ __email__ = "biedenka@cs.uni-freiburg.de"
 
 
 class Importance(object):
-    def __init__(self, scenario_file: Union[None, str]=None, scenario: Union[None, Scenario]=None,
-                 runhistory_file: Union[str, None]= None, runhistory: Union[None, RunHistory]=None,
-                 traj_file: Union[None, List[str]]=None, incumbent: Union[None, Configuration]=None,
-                 seed: int = 12345, parameters_to_evaluate: int = -1, margin: Union[None, float]=None,
-                 save_folder: str='PIMP', impute_censored: bool = False):
+    def __init__(self, scenario_file: Union[None, str] = None, scenario: Union[None, Scenario] = None,
+                 runhistory_file: Union[str, None] = None, runhistory: Union[None, RunHistory] = None,
+                 traj_file: Union[None, List[str]] = None, incumbent: Union[None, Configuration] = None,
+                 seed: int = 12345, parameters_to_evaluate: int = -1, margin: Union[None, float] = None,
+                 save_folder: str = 'PIMP', impute_censored: bool = False, max_sample_size: int = -1):
         """
         Importance Object. Handles the construction of the data and training of the model. Easy interface to the
         different evaluators.
@@ -65,8 +67,17 @@ class Importance(object):
 
         self._setup_scenario(scenario, scenario_file, save_folder)
         self._load_runhist(runhistory, runhistory_file)
-        self ._load_incumbent(traj_file, runhistory_file, incumbent)
         self._setup_model()
+        self._load_incumbent(traj_file, runhistory_file, incumbent)
+        if 0 < max_sample_size < len(self.X):
+            idx = list(range(len(self.X)))
+            np.random.shuffle(idx)
+            idx = idx[:max_sample_size]
+            self.X = self.X[idx]
+            self.y = self.y[idx]
+            self.logger.info('Remaining %d datapoints' % len(self.X))
+            self.model.train(self.X, self.y)
+
 
     def _setup_scenario(self, scenario: Union[None, Scenario], scenario_file: Union[None, str], save_folder: str) -> \
             None:
@@ -79,13 +90,15 @@ class Importance(object):
             self.scenario = scenario
         elif scenario_file is not None:
             self.logger.info('Reading Scenario file and files specified in the scenario')
-            self.scenario = Scenario(scenario=scenario_file, cmd_args={'output_dir': save_folder}, run_id=1)
+            self.scenario = Scenario(scenario=scenario_file, cmd_args={'output_dir': ""}, run_id=1)
+            self.scenario.output_dir = save_folder
+            self.scenario.out_writer.write_scenario_file(self.scenario)
         else:
             raise Exception('Either a scenario has to be given or a file to load it from! Both were set to None!')
 
-    def _load_incumbent(self, traj_file, runhistory_file, incumbent) -> None:
+    def _load_incumbent(self, traj_file, runhistory_file, incumbent, predict_best=True) -> None:
         """
-        Handels the loading of the incumbent according to the given parameters.
+        Handles the loading of the incumbent according to the given parameters.
         Helper method to have the init method less cluttered.
         For parameter specifications, see __init__
         """
@@ -95,13 +108,16 @@ class Importance(object):
             self.logger.debug('Incumbent %s' % str(self.incumbent))
         elif traj_file is None and runhistory_file is not None:
             traj_files = os.path.join(os.path.dirname(runhistory_file), 'traj_aclib2.json')
-            traj_files = glob.glob(traj_files, recursive=True)
+            traj_files = sorted(glob.glob(traj_files, recursive=True))
             incumbents = []
             for traj_ in traj_files:
                 self.logger.info('Reading traj_file: %s' % traj_)
                 incumbents.append(self._read_traj_file(traj_))
+                incumbents[-1].extend(self._model.predict_marginalized_over_instances(
+                    np.array([impute_inactive_values(incumbents[-1][0]).get_array()])))
                 self.logger.debug(incumbents[-1])
-            incumbents = sorted(incumbents, key=lambda x: x[1])
+            sort_idx = 2 if predict_best else 1
+            incumbents = sorted(incumbents, key=lambda x: x[sort_idx])
             self.incumbent = incumbents[0][0]
             self.logger.info('Incumbent %s' % str(self.incumbent))
         elif incumbent is not None:
@@ -179,7 +195,7 @@ class Importance(object):
                 inc_dict[key] = int(val)
         incumbent = Configuration(self.scenario.cs, inc_dict)
         incumbent_cost = incumbent_dict['cost']
-        return incumbent, incumbent_cost
+        return [incumbent, incumbent_cost]
 
     @property
     def model(self):
@@ -193,14 +209,12 @@ class Importance(object):
         elif model_short_name == 'rfi':
             self._model = RandomForestWithInstances(self.types, self.bounds,
                                                     instance_features=self.scenario.feature_array,
-                                                    seed=self.rng.randint(99999),
-                                                    num_trees=100)
+                                                    seed=self.rng.randint(99999))
         elif model_short_name == 'urfi':
             self._model = UnloggedRandomForestWithInstances(self.types, self.bounds,
                                                             self.scenario.feature_array,
                                                             seed=self.rng.randint(99999),
-                                                            cutoff=self.cutoff, threshold=self.threshold,
-                                                            num_trees=100)
+                                                            cutoff=self.cutoff, threshold=self.threshold)
         self._model.rf_opts.compute_oob_error = True
 
     @property
@@ -219,52 +233,61 @@ class Importance(object):
         :param evaluation_method: Name of the evaluation method to use
         :return: None
         """
+        if self._model is None:
+            self._setup_model()
         self.logger.info('Setting up Evaluation Method')
-        if evaluation_method not in ['ablation', 'fanova', 'forward-selection', 'influence-model']:
+        if evaluation_method not in ['ablation', 'fanova', 'forward-selection', 'influence-model',
+                                     'incneighbor']:
             raise ValueError('Specified evaluation method %s does not exist!' % evaluation_method)
         if evaluation_method == 'ablation':
-            if self.scenario.run_obj == "runtime":
-                self.cutoff = self.scenario.cutoff
-                self.threshold = self.scenario.cutoff * self.scenario.par_factor
-                self.model = 'urfi'
-                self.logged_y = True
-            else:
-                self.model = 'rfi'
-            self.model.train(self.X, self.y)
             if self.incumbent is None:
                 raise ValueError('Incumbent is %s!\n \
                                  Incumbent has to be read from a trajectory file before ablation can be used!'
                                  % self.incumbent)
+            self.logger.info('Using model %s' % str(self.model))
+            self.logger.info('X shape %s' % str(self.model.X.shape))
             evaluator = Ablation(scenario=self.scenario,
                                  cs=self.scenario.cs,
                                  model=self._model,
                                  to_evaluate=self._parameters_to_evaluate,
                                  incumbent=self.incumbent,
-                                 logy=self.logged_y)
+                                 logy=self.logged_y, rng=self.rng)
         elif evaluation_method == 'influence-model':
-            self.model = 'rfi'
-            self.model.train(self.X, self.y)
+            self.logger.info('Using model %s' % str(self.model))
+            self.logger.info('X shape %s' % str(self.model.X.shape))
             evaluator = InfluenceModel(scenario=self.scenario,
                                        cs=self.scenario.cs,
                                        model=self._model,
                                        to_evaluate=self._parameters_to_evaluate,
                                        margin=self.margin,
-                                       threshold=self.threshold)
+                                       threshold=self.threshold, rng=self.rng)
         elif evaluation_method == 'fanova':
-            self.model = 'rfi'
-            self.model.train(self.X, self.y)
+            self.logger.info('Using model %s' % str(self.model))
+            self.logger.info('X shape %s' % str(self.model.X.shape))
             evaluator = fANOVA(scenario=self.scenario,
                                cs=self.scenario.cs,
                                model=self._model,
                                to_evaluate=self._parameters_to_evaluate,
-                               runhist=self.runhistory)
+                               runhist=self.runhistory, rng=self.rng)
+        elif evaluation_method == 'incneighbor':
+            if self.incumbent is None:
+                raise ValueError('Incumbent is %s!\n \
+                                 Incumbent has to be read from a trajectory file before ablation can be used!'
+                                 % self.incumbent)
+            self.logger.info('Using model %s' % str(self.model))
+            self.logger.info('X shape %s' % str(self.model.X.shape))
+            evaluator = IncNeighbor(scenario=self.scenario,
+                                    cs=self.scenario.cs,
+                                    model=self._model,
+                                    to_evaluate=self._parameters_to_evaluate,
+                                    incumbent=self.incumbent,
+                                    logy=self.logged_y, rng=self.rng)
         else:
-            self.model = 'rfi'
-            self.model.train(self.X, self.y)
+            self.logger.info('Using model %s' % str(self.model))
             evaluator = ForwardSelector(scenario=self.scenario,
                                         cs=self.scenario.cs,
                                         model=self._model,
-                                        to_evaluate=self._parameters_to_evaluate)
+                                        to_evaluate=self._parameters_to_evaluate, rng=self.rng)
         self._evaluator = evaluator
 
     def _convert_data(self) -> None:  # From Marius
@@ -328,6 +351,7 @@ class Importance(object):
                                          success_states=None,
                                          impute_censored_data=self.impute,
                                          impute_state=None)
+        self.logger.info('Using model %s' % str(self.model))
         X, Y = rh2EPM.transform(self.runhistory)
 
         self.X = X
@@ -340,8 +364,8 @@ class Importance(object):
         self.model.train(X, Y)
 
     def evaluate_scenario(self, evaluation_method='all',
-                          sort_by: int=0) -> Union[Tuple[Dict[str, Dict[str, float]], List[AbstractEvaluator]],
-                                                   Dict[str, Dict[str, float]]]:
+                          sort_by: int = 0) -> Union[Tuple[Dict[str, Dict[str, float]], List[AbstractEvaluator]],
+                                                     Dict[str, Dict[str, float]]]:
         """
         Evaluate the given scenario
         :param evaluation_method: name of the method to use
@@ -359,22 +383,22 @@ class Importance(object):
         """
         # influence-model currently not supported
         # influence-model currently not supported
-        methods = ['ablation', 'fanova', 'forward-selection']
+        methods = ['ablation', 'fanova', 'forward-selection', 'incneighbor']
         if sort_by == 1:
-            methods = ['ablation', 'forward-selection', 'fanova']
+            methods = ['ablation', 'forward-selection', 'fanova', 'incneighbor']
         elif sort_by == 2:
-            methods = ['fanova', 'forward-selection', 'ablation']
+            methods = ['fanova', 'forward-selection', 'ablation', 'incneighbor']
         elif sort_by == 3:
-            methods = ['fanova', 'ablation', 'forward-selection']
+            methods = ['fanova', 'ablation', 'forward-selection', 'incneighbor']
         elif sort_by == 4:
-            methods = ['forward-selection', 'ablation', 'fanova']
+            methods = ['forward-selection', 'ablation', 'fanova', 'incneighbor']
         elif sort_by == 5:
-            methods = ['forward-selection', 'fanova', 'ablation']
+            methods = ['forward-selection', 'fanova', 'ablation', 'incneighbor']
         if evaluation_method == 'all':
             evaluators = []
             dict_ = {}
             for method in methods:
-                self.logger.info('Running %s' %method)
+                self.logger.info('Running %s' % method)
                 self.evaluator = method
                 dict_[method] = self.evaluator.run()
                 evaluators.append(self.evaluator)
@@ -384,9 +408,9 @@ class Importance(object):
             self.logger.info('Running evaluation method %s' % self.evaluator.name)
             return {evaluation_method: self.evaluator.run()}
 
-    def plot_results(self, name: Union[List[str], str, None]=None, evaluators: Union[List[AbstractEvaluator],
-                                                                                     None]=None,
-                     show: bool=True):
+    def plot_results(self, name: Union[List[str], str, None] = None, evaluators: Union[List[AbstractEvaluator],
+                                                                                       None] = None,
+                     show: bool = True):
         """
         Method to handle the plotting in case of plots for multiple evaluation methods or only one
         :param name: name(s) to save the plot(s) with

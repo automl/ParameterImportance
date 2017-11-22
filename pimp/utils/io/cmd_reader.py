@@ -35,7 +35,8 @@ class CMDs(CMDReader):
                               help="scenario file in AClib format")
         req_opts.add_argument("-M", "--modus", required=True,
                               help='Analysis method to use', choices=['ablation', 'forward-selection',
-                                                                      'influence-model', 'all', 'fanova'])
+                                                                      'influence-model', 'all', 'fanova',
+                                                                      'incneighbor'])
         req_opts.add_argument("-H", "--history", required=True,
                               help="runhistory file")
 
@@ -49,6 +50,8 @@ class CMDs(CMDReader):
                               help="Path to trajectory file")
         req_opts.add_argument("-N", "--num_params", default=0, type=int,
                               help="Number of parameters to evaluate")
+        req_opts.add_argument("-P", "--max_sample_size", default=-1, type=int,
+                              help="Number of samples from runhistorie(s) used. -1 -> use all")
         req_opts.add_argument("-I", "--impute", action='store_true',
                               help="Impute censored data")
         req_opts.add_argument("-C", "--table", action='store_true',
@@ -61,7 +64,8 @@ class CMDs(CMDReader):
                                     3 => fANOVA, Ablation, Forward Selection\n\
                                     4 => Forward Selection, Ablation, fANOVA\n\
                                     5 => Forward Selection, fANOVA, Ablation', default=3)
-
+        req_opts.add_argument('-F', '--out-folder', default=None, help='Folder to store results in',
+                dest='out_folder')
         args_, misc = parser.parse_known_args()
         self._check_args(args_)
 
