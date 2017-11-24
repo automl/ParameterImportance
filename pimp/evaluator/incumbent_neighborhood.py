@@ -101,8 +101,11 @@ class IncNeighbor(AbstractEvaluator):
                     iteration += 1
             self.logger.info('>'.join(['-'*50, ' Found {:>3d} valid neighbors'.format(len(checked_neighbors))]))
             sort_idx = list(map(lambda x: x[0], sorted(enumerate(checked_neighbors), key=lambda y: y[1])))
-            neighborhood_dict[param] = [np.array(checked_neighbors)[sort_idx],
-                                        np.array(checked_neighbors_non_unit_cube)[sort_idx]]
+            if isinstance(self.cs.get_hyperparameter(param), CategoricalHyperparameter):
+                checked_neighbors_non_unit_cube = list(np.array(checked_neighbors_non_unit_cube)[sort_idx])
+            else:
+                checked_neighbors_non_unit_cube = np.array(checked_neighbors_non_unit_cube)[sort_idx]
+            neighborhood_dict[param] = [np.array(checked_neighbors)[sort_idx], checked_neighbors_non_unit_cube]
         return neighborhood_dict
 
     def run(self) -> OrderedDict:
