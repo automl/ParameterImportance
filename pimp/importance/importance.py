@@ -68,13 +68,30 @@ class Importance(object):
         self._setup_scenario(scenario, scenario_file, save_folder)
         self._load_runhist(runhistory, runhistory_file)
         self._setup_model()
+        self.best_dir = None
         self._load_incumbent(traj_file, runhistory_file, incumbent)
         if 0 < max_sample_size < len(self.X):
-            idx = list(range(len(self.X)))
-            np.random.shuffle(idx)
-            idx = idx[:max_sample_size]
-            self.X = self.X[idx]
-            self.y = self.y[idx]
+            self.logger.warning('Reducing the amount of datapoints!')
+            if self.best_dir:
+                self.logger.warning('Only using the runhistory that contains the incumbent!')
+                self._load_runhist(None, os.path.join(self.best_dir, '*history*'))
+                self._convert_data(fit=False)
+                self._load_incumbent(glob.glob(os.path.join(self.best_dir, '*traj_aclib2*'), recursive=True)[0], None,
+                                     incumbent)
+                if max_sample_size < len(self.X):
+                    self.logger.warning('Also downsampling as requested!')
+                    idx = list(range(len(self.X)))
+                    np.random.shuffle(idx)
+                    idx = idx[:max_sample_size]
+                    self.X = self.X[idx]
+                    self.y = self.y[idx]
+            else:
+                self.logger.warning('Downsampling as requested!')
+                idx = list(range(len(self.X)))
+                np.random.shuffle(idx)
+                idx = idx[:max_sample_size]
+                self.X = self.X[idx]
+                self.y = self.y[idx]
             self.logger.info('Remaining %d datapoints' % len(self.X))
             self.model.train(self.X, self.y)
 
@@ -117,8 +134,9 @@ class Importance(object):
                     np.array([impute_inactive_values(incumbents[-1][0]).get_array()])))
                 self.logger.debug(incumbents[-1])
             sort_idx = 2 if predict_best else 1
-            incumbents = sorted(incumbents, key=lambda x: x[sort_idx])
-            self.incumbent = incumbents[0][0]
+            incumbents = sorted(enumerate(incumbents), key=lambda x: x[1][sort_idx])
+            self.best_dir = os.path.dirname(traj_files[incumbents[0][0]])
+            self.incumbent = incumbents[0][1][0]
             self.logger.info('Incumbent %s' % str(self.incumbent))
         elif incumbent is not None:
             self.incumbent = incumbent
@@ -139,7 +157,7 @@ class Importance(object):
         self.bounds = None
         self._model = None
         self.logged_y = False
-        self._convert_data()
+        self._convert_data(fit=True)
 
     def _load_runhist(self, runhistory, runhistory_file) -> None:
         """
@@ -290,7 +308,7 @@ class Importance(object):
                                         to_evaluate=self._parameters_to_evaluate, rng=self.rng)
         self._evaluator = evaluator
 
-    def _convert_data(self) -> None:  # From Marius
+    def _convert_data(self, fit=True) -> None:  # From Marius
         '''
             converts data from runhistory into EPM format
 
@@ -361,7 +379,9 @@ class Importance(object):
         self.logger.info('Data was %s imputed' % ('not' if not self.impute else ''))
         if not self.impute:
             self.logger.info('Thus the size of X might be smaller than the datapoints in the RunHistory')
-        self.model.train(X, Y)
+        if fit:
+            self.logger.info('Fitting Model')
+            self.model.train(X, Y)
 
     def evaluate_scenario(self, evaluation_method='all',
                           sort_by: int = 0) -> Union[Tuple[Dict[str, Dict[str, float]], List[AbstractEvaluator]],
