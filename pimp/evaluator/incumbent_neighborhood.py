@@ -7,7 +7,7 @@ mpl.use('Agg')
 from matplotlib import pyplot as plt
 
 from pimp.configspace import change_hp_value, Configuration, ForbiddenValueError,\
-    impute_inactive_values, CategoricalHyperparameter
+    impute_inactive_values, CategoricalHyperparameter, check_forbidden
 from pimp.evaluator.base_evaluator import AbstractEvaluator
 
 __author__ = "Andre Biedenkapp"
@@ -23,16 +23,71 @@ class IncNeighbor(AbstractEvaluator):
     Implementation of Ablation via surrogates
     """
 
-    def __init__(self, scenario, cs, model, to_evaluate: int, incumbent=None, **kwargs):
+    def __init__(self, scenario, cs, model, to_evaluate: int, incumbent=None, continous_neighbors=500,
+                 old_sampling=False, show_query_points=False, **kwargs):
         super().__init__(scenario, cs, model, to_evaluate, **kwargs)
         self.name = 'IncNeighbor'
         self.logger = self.name
         self.incumbent = incumbent
-        self.incumbent._populate_values()  # type: Configuration
-        self._continous_param_neighbor_samples = 100
+        self.incumbent_dict = self.incumbent.get_dictionary()
+        self._continous_param_neighbor_samples = continous_neighbors
+        self.show_query_points = show_query_points
+        self.old_sampling = old_sampling
         self.neighborhood_dict = None
         self.performance_dict = {}
         self.variance_dict = {}
+
+    def _old_sampling_of_one_exchange_neighborhood(self, param, array, index):
+        neighbourhood = []
+        number_of_sampled_neighbors = 0
+        iteration = 0
+        checked_neighbors = []
+        checked_neighbors_non_unit_cube = []
+        while True:
+            hp = self.incumbent.configuration_space.get_hyperparameter(param)
+            num_neighbors = hp.get_num_neighbors(self.incumbent.get(param))
+            self.logger.debug('\t' + str(num_neighbors))
+
+            # Obtain neigbors differently for different possible numbers of
+            # neighbors
+            if num_neighbors == 0:
+                self.logger.debug('\tNo neighbors!')
+                break
+            # No infinite loops
+            elif iteration > 500:
+                self.logger.debug('\tMax iter')
+                break
+            elif np.isinf(num_neighbors):
+                num_samples_to_go = min(10, self._continous_param_neighbor_samples - number_of_sampled_neighbors)
+                if number_of_sampled_neighbors >= self._continous_param_neighbor_samples or num_samples_to_go <= 0:
+                    break
+                neighbors = hp.get_neighbors(array[index], self.rng,
+                                             number=num_samples_to_go)
+            else:
+                if iteration > 0:
+                    break
+                neighbors = hp.get_neighbors(array[index], self.rng)
+            self.logger.debug('\t\t' + str(neighbors))
+            # Check all newly obtained neighbors
+            for neighbor in neighbors:
+                if neighbor in checked_neighbors:
+                    iteration += 1
+                    continue
+                new_array = array.copy()
+                new_array = change_hp_value(self.incumbent.configuration_space, new_array, param, neighbor,
+                                            index)
+                try:
+                    new_configuration = Configuration(self.incumbent.configuration_space, vector=new_array)
+                    neighbourhood.append(new_configuration)
+                    new_configuration.is_valid_configuration()
+                    check_forbidden(self.cs.forbidden_clauses, new_array)
+                    number_of_sampled_neighbors += 1
+                    checked_neighbors.append(neighbor)
+                    checked_neighbors_non_unit_cube.append(new_configuration[param])
+                except (ForbiddenValueError, ValueError) as e:
+                    pass
+                iteration += 1
+        return checked_neighbors, checked_neighbors_non_unit_cube
 
     def _get_one_exchange_neighborhood_by_parameter(self):
         """
@@ -44,46 +99,39 @@ class IncNeighbor(AbstractEvaluator):
         self.logger.debug('params: ' + str(params))
         for index, param in enumerate(params):
             self.logger.info('Sampling neighborhood of %s' % param)
-            neighbourhood = []
-            number_of_sampled_neighbors = 0
             array = self.incumbent.get_array()
 
             if not np.isfinite(array[index]):
                 self.logger.info('>'.join(['-'*50, ' Not active!']))
                 continue
-
-            iteration = 0
-            checked_neighbors = []
-            checked_neighbors_non_unit_cube = []
-            while True:
+            if self.old_sampling:
+                checked_neighbors, checked_neighbors_non_unit_cube = self._old_sampling_of_one_exchange_neighborhood(
+                    param, array, index
+                )
+            else:
+                neighbourhood = []
+                checked_neighbors = []
+                checked_neighbors_non_unit_cube = []
                 hp = self.incumbent.configuration_space.get_hyperparameter(param)
                 num_neighbors = hp.get_num_neighbors(self.incumbent.get(param))
                 self.logger.debug('\t' + str(num_neighbors))
-
-                # Obtain neigbors differently for different possible numbers of
-                # neighbors
                 if num_neighbors == 0:
                     self.logger.debug('\tNo neighbors!')
-                    break
-                # No infinite loops
-                elif iteration > 500:
-                    self.logger.debug('\tMax iter')
-                    break
-                elif np.isinf(num_neighbors):
-                    num_samples_to_go = min(10, self._continous_param_neighbor_samples - number_of_sampled_neighbors)
-                    if number_of_sampled_neighbors >= self._continous_param_neighbor_samples or num_samples_to_go <= 0:
-                        break
-                    neighbors = hp.get_neighbors(array[index], self.rng,
-                                                 number=num_samples_to_go)
+                    continue
+                elif np.isinf(num_neighbors):  # Continous Parameters
+                    if hp.log:
+                        base = np.e
+                        log_lower = np.log(hp.lower) / np.log(base)
+                        log_upper = np.log(hp.upper) / np.log(base)
+                        neighbors = np.logspace(log_lower, log_upper, self._continous_param_neighbor_samples,
+                                                endpoint=True, base=base)
+                    else:
+                        neighbors = np.linspace(hp.lower, hp.upper, self._continous_param_neighbor_samples)
+                    neighbors = list(map(lambda x: hp._inverse_transform(x), neighbors))
                 else:
-                    if iteration > 0:
-                        break
                     neighbors = hp.get_neighbors(array[index], self.rng)
-                self.logger.debug('\t\t' + str(neighbors))
-                # Check all newly obtained neighbors
                 for neighbor in neighbors:
                     if neighbor in checked_neighbors:
-                        iteration += 1
                         continue
                     new_array = array.copy()
                     new_array = change_hp_value(self.incumbent.configuration_space, new_array, param, neighbor,
@@ -92,13 +140,11 @@ class IncNeighbor(AbstractEvaluator):
                         new_configuration = Configuration(self.incumbent.configuration_space, vector=new_array)
                         neighbourhood.append(new_configuration)
                         new_configuration.is_valid_configuration()
-                        self.incumbent.configuration_space._check_forbidden(new_array)
-                        number_of_sampled_neighbors += 1
+                        check_forbidden(self.cs.forbidden_clauses, new_array)
                         checked_neighbors.append(neighbor)
                         checked_neighbors_non_unit_cube.append(new_configuration[param])
-                    except ForbiddenValueError as e:
+                    except (ForbiddenValueError, ValueError) as e:
                         pass
-                    iteration += 1
             self.logger.info('>'.join(['-'*50, ' Found {:>3d} valid neighbors'.format(len(checked_neighbors))]))
             sort_idx = list(map(lambda x: x[0], sorted(enumerate(checked_neighbors), key=lambda y: y[1])))
             if isinstance(self.cs.get_hyperparameter(param), CategoricalHyperparameter):
@@ -147,8 +193,6 @@ class IncNeighbor(AbstractEvaluator):
                     mean, var = self._predict_over_instance_set(new_configuration)
                     performance_dict[param].append(mean)
                     variance_dict[param].append(var)
-                # self.logger.info(str(neighborhood_dict[param][0]) + ' ' + str(incumbent_array[index]))
-                # self.logger.info(str(neighborhood_dict[param][1]) + ' ' + str(self.incumbent[param]))
                 if len(neighborhood_dict[param][0]) > 0:
                     neighborhood_dict[param][0] = np.insert(neighborhood_dict[param][0], inc_at, incumbent_array[index])
                     neighborhood_dict[param][1] = np.insert(neighborhood_dict[param][1], inc_at, self.incumbent[param])
@@ -206,7 +250,7 @@ class IncNeighbor(AbstractEvaluator):
                     for n_idx, neighbor in enumerate(self.neighborhood_dict[param][1]):
                         if neighbor == self.incumbent[param]:
                             ax1.scatter(neighbor, p[n_idx], label='incumbent', c='r', marker='.', zorder=999)
-                        else:
+                        elif self.show_query_points:
                             if label:
                                 ax1.scatter(neighbor, p[n_idx], label='query points', c='w', marker='.',
                                             zorder=100, edgecolors='k')
