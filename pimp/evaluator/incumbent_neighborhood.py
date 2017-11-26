@@ -147,8 +147,8 @@ class IncNeighbor(AbstractEvaluator):
                     mean, var = self._predict_over_instance_set(new_configuration)
                     performance_dict[param].append(mean)
                     variance_dict[param].append(var)
-                self.logger.info(str(neighborhood_dict[param][0]) + ' ' + str(incumbent_array[index]))
-                self.logger.info(str(neighborhood_dict[param][1]) + ' ' + str(self.incumbent[param]))
+                # self.logger.info(str(neighborhood_dict[param][0]) + ' ' + str(incumbent_array[index]))
+                # self.logger.info(str(neighborhood_dict[param][1]) + ' ' + str(self.incumbent[param]))
                 if len(neighborhood_dict[param][0]) > 0:
                     neighborhood_dict[param][0] = np.insert(neighborhood_dict[param][0], inc_at, incumbent_array[index])
                     neighborhood_dict[param][1] = np.insert(neighborhood_dict[param][1], inc_at, self.incumbent[param])

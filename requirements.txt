@@ -1,8 +1,8 @@
 numpy
 sklearn
 matplotlib
-ConfigSpace
+ConfigSpace>=0.4
 scipy
 pyrfr>=0.5.0
-git+http://github.com/automl/fanova.git@master
-smac>=0.6.0
+git+http:/github.com/AndreBiedenkapp/fanova.git@master
+smac>=0.8.0
