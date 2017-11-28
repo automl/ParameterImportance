@@ -219,7 +219,7 @@ class Ablation(AbstractEvaluator):
                         elif self.target_active[child]:
                             modded_dict[child] = self.target[child]
                         else:
-                            modded_dict[child] = self.cs.get_hyperparameter(child).default
+                            modded_dict[child] = self.cs.get_hyperparameter(child).default_value
                         modded_dict = self._check_children(modded_dict, [child])
         return modded_dict
 
