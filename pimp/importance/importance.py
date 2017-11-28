@@ -74,6 +74,7 @@ class Importance(object):
             self.logger.warning('Reducing the amount of datapoints!')
             if self.best_dir:
                 self.logger.warning('Only using the runhistory that contains the incumbent!')
+                self.logger.info('Loading from %s' % self.best_dir)
                 self._load_runhist(None, os.path.join(self.best_dir, '*history*'))
                 self._convert_data(fit=False)
                 self._load_incumbent(glob.glob(os.path.join(self.best_dir, '*traj_aclib2*'), recursive=True)[0], None,
@@ -122,6 +123,7 @@ class Importance(object):
         """
         self.incumbent = (None, None)
         if traj_file is not None:
+            self.logger.info('Reading traj_file: %s' % traj_file)
             self.incumbent = self._read_traj_file(traj_file)[0]
             self.logger.debug('Incumbent %s' % str(self.incumbent))
         elif traj_file is None and runhistory_file is not None:
