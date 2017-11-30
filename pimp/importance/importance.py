@@ -35,7 +35,8 @@ class Importance(object):
                  runhistory_file: Union[str, None] = None, runhistory: Union[None, RunHistory] = None,
                  traj_file: Union[None, List[str]] = None, incumbent: Union[None, Configuration] = None,
                  seed: int = 12345, parameters_to_evaluate: int = -1, margin: Union[None, float] = None,
-                 save_folder: str = 'PIMP', impute_censored: bool = False, max_sample_size: int = -1):
+                 save_folder: str = 'PIMP', impute_censored: bool = False, max_sample_size: int = -1,
+                 cut_fANOVA_at_default=False):
         """
         Importance Object. Handles the construction of the data and training of the model. Easy interface to the
         different evaluators.
@@ -64,6 +65,7 @@ class Importance(object):
         self.threshold = None
         self.seed = seed
         self.impute = impute_censored
+        self.cut_def_fan = cut_fANOVA_at_default
 
         self._setup_scenario(scenario, scenario_file, save_folder)
         self._load_runhist(runhistory, runhistory_file)
@@ -285,11 +287,14 @@ class Importance(object):
         elif evaluation_method == 'fanova':
             self.logger.info('Using model %s' % str(self.model))
             self.logger.info('X shape %s' % str(self.model.X.shape))
+            mini = None
+            if self.cut_def_fan:
+                mini = True         # TODO what about scenarios where we analyze maximization?
             evaluator = fANOVA(scenario=self.scenario,
                                cs=self.scenario.cs,
                                model=self._model,
                                to_evaluate=self._parameters_to_evaluate,
-                               runhist=self.runhistory, rng=self.rng)
+                               runhist=self.runhistory, rng=self.rng, minimize=mini)
         elif evaluation_method == 'incneighbor':
             if self.incumbent is None:
                 raise ValueError('Incumbent is %s!\n \

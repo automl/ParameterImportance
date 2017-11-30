@@ -57,8 +57,7 @@ class CMDs(CMDReader):
         req_opts.add_argument("-C", "--table", action='store_true',
                               help="Save result table")
         req_opts.add_argument('-O', '--order', type=int, choices=[0, 1, 2, 3, 4, 5],
-                              help='\
-                                    0 => Ablation, fANOVA, Forward Selection\n\
+                              help='0 => Ablation, fANOVA, Forward Selection\n\
                                     1 => Ablation, Forward Selection, fANOVA\n\
                                     2 => fANOVA, Forward Selection, Ablation\n\
                                     3 => fANOVA, Ablation, Forward Selection\n\
@@ -66,6 +65,10 @@ class CMDs(CMDReader):
                                     5 => Forward Selection, fANOVA, Ablation', default=3)
         req_opts.add_argument('-F', '--out-folder', default=None, help='Folder to store results in',
                 dest='out_folder')
+        req_opts.add_argument('--fanova_cut_at_default', action='store_true', help='Cut fANOVA results at the default.'
+                                                                                   'This quantifies importance only in'
+                                                                                   'terms of improvement over the'
+                                                                                   'default.')
         args_, misc = parser.parse_known_args()
         self._check_args(args_)
 

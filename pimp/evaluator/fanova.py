@@ -27,7 +27,7 @@ __email__ = "biedenka@cs.uni-freiburg.de"
 class fANOVA(AbstractEvaluator):
 
     def __init__(self, scenario, cs, model, to_evaluate: int, runhist: RunHistory, rng,
-                 n_pairs=5, **kwargs):
+                 n_pairs=5, minimize=True, **kwargs):
         super().__init__(scenario, cs, model, to_evaluate, rng, **kwargs)
         self.name = 'fANOVA'
         self.logger = self.name
@@ -36,7 +36,16 @@ class fANOVA(AbstractEvaluator):
             self.logger.debug('No preprocessing necessary')
         else:
             self._preprocess(runhist)
-        self.evaluator = fanova_pyrfr(X=self.X, Y=self.y.flatten(), config_space=cs)
+        cutoffs = (-np.inf, np.inf)
+        if minimize:
+            cutoffs = (-np.inf, self.model.predict_marginalized_over_instances(
+                np.array([impute_inactive_values(self.cs.get_default_configuration()).get_array()]))[0].flatten()[0]
+                       )
+        elif minimize is False:
+            cutoffs = (self.model.predict_marginalized_over_instances(
+                np.array([impute_inactive_values( self.cs.get_default_configuration()).get_array()]))[0].flatten()[0],
+                       np.inf)
+        self.evaluator = fanova_pyrfr(X=self.X, Y=self.y.flatten(), config_space=cs, cutoffs=cutoffs)
         self.n_most_imp_pairs = n_pairs
         self.num_single = None
 
