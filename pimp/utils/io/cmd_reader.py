@@ -64,11 +64,13 @@ class CMDs(CMDReader):
                                     4 => Forward Selection, Ablation, fANOVA\n\
                                     5 => Forward Selection, fANOVA, Ablation', default=3)
         req_opts.add_argument('-F', '--out-folder', default=None, help='Folder to store results in',
-                dest='out_folder')
+                              dest='out_folder')
         req_opts.add_argument('--fanova_cut_at_default', action='store_true', help='Cut fANOVA results at the default.'
                                                                                    'This quantifies importance only in'
                                                                                    'terms of improvement over the'
                                                                                    'default.')
+        req_opts.add_argument('--fanova_no_pairs', action='store_false', help="fANOVA won't compute pairwise marginals",
+                              dest='fanova_pairwise')
         args_, misc = parser.parse_known_args()
         self._check_args(args_)
 

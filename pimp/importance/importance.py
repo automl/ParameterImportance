@@ -36,7 +36,7 @@ class Importance(object):
                  traj_file: Union[None, List[str]] = None, incumbent: Union[None, Configuration] = None,
                  seed: int = 12345, parameters_to_evaluate: int = -1, margin: Union[None, float] = None,
                  save_folder: str = 'PIMP', impute_censored: bool = False, max_sample_size: int = -1,
-                 cut_fANOVA_at_default=False):
+                 fANOVA_cut_at_default=False, fANOVA_pairwise=True):
         """
         Importance Object. Handles the construction of the data and training of the model. Easy interface to the
         different evaluators.
@@ -65,7 +65,8 @@ class Importance(object):
         self.threshold = None
         self.seed = seed
         self.impute = impute_censored
-        self.cut_def_fan = cut_fANOVA_at_default
+        self.cut_def_fan = fANOVA_cut_at_default
+        self.pairiwse_fANOVA = fANOVA_pairwise
 
         self._setup_scenario(scenario, scenario_file, save_folder)
         self._load_runhist(runhistory, runhistory_file)
@@ -294,7 +295,7 @@ class Importance(object):
                                cs=self.scenario.cs,
                                model=self._model,
                                to_evaluate=self._parameters_to_evaluate,
-                               runhist=self.runhistory, rng=self.rng, minimize=mini)
+                               runhist=self.runhistory, rng=self.rng, minimize=mini, pairwise=self.pairiwse_fANOVA)
         elif evaluation_method == 'incneighbor':
             if self.incumbent is None:
                 raise ValueError('Incumbent is %s!\n \
