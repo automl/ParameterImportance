@@ -168,19 +168,27 @@ class IncNeighbor(AbstractEvaluator):
         performance_dict = {}
         variance_dict = {}
         incumbent_array = self.incumbent.get_array()
+        overall_var = {}
+        overall_imp = {}
+        all_preds = []
+        def_perf, def_var = self._predict_over_instance_set(impute_inactive_values(self.cs.get_default_configuration()))
+        inc_perf, inc_var = self._predict_over_instance_set(impute_inactive_values(self.incumbent))
+        delta = def_perf - inc_perf
         for index, param in enumerate(self.incumbent.keys()):
             if param in neighborhood_dict:
                 self.logger.info('Predicting performances for neighbors of %s' % param)
                 performance_dict[param] = []
                 variance_dict[param] = []
+                variance_dict[param] = []
+                overall_var[param] = []
                 added_inc = False
                 inc_at = 0
                 for unit_neighbor, neighbor in zip(neighborhood_dict[param][0], neighborhood_dict[param][1]):
                     if not added_inc:
                         if unit_neighbor > incumbent_array[index]:
-                            mean, var = self._predict_over_instance_set(impute_inactive_values(self.incumbent))
-                            performance_dict[param].append(mean)
-                            variance_dict[param].append(var)
+                            performance_dict[param].append(inc_perf)
+                            overall_var[param].append(inc_perf)
+                            variance_dict[param].append(inc_var)
                             added_inc = True
                         else:
                             inc_at += 1
@@ -192,6 +200,7 @@ class IncNeighbor(AbstractEvaluator):
                                                                              vector=new_array))
                     mean, var = self._predict_over_instance_set(new_configuration)
                     performance_dict[param].append(mean)
+                    overall_var[param].append(mean)
                     variance_dict[param].append(var)
                 if len(neighborhood_dict[param][0]) > 0:
                     neighborhood_dict[param][0] = np.insert(neighborhood_dict[param][0], inc_at, incumbent_array[index])
@@ -202,9 +211,31 @@ class IncNeighbor(AbstractEvaluator):
                 if not added_inc:
                     mean, var = self._predict_over_instance_set(impute_inactive_values(self.incumbent))
                     performance_dict[param].append(mean)
+                    overall_var[param].append(mean)
                     variance_dict[param].append(var)
+                all_preds.extend(performance_dict[param])
+                tmp_perf = performance_dict[param][:inc_at]
+                tmp_perf.extend(performance_dict[param][inc_at + 1:])
+                imp_over_mea = (np.mean(tmp_perf) - performance_dict[param][inc_at]) / delta
+                imp_over_med = (np.median(tmp_perf) - performance_dict[param][inc_at]) / delta
+                imp_over_max = (np.max(tmp_perf) - performance_dict[param][inc_at]) / delta
+                overall_imp[param] = np.array([imp_over_mea, imp_over_med, imp_over_max])
             else:
                 self.logger.info('Parameter is inactive')
+        print('{:<30s}  {:^22s}, {:^22s}'.format(
+            ' ', 'perf impro', 'variance'
+        ))
+        print('{:<30s}: [{:^5s}, {:^5s}, {:^5s}], {:^5s}, {:^5s}, {:^5s}'.format(
+            'Parameter', 'Mean', 'Median', 'Max', 'p_var', 't_var', 'frac'
+        ))
+        print('-'*74)
+        for param in sorted(list(overall_var.keys())):
+            overall_var[param].extend([inc_perf for _ in range(len(all_preds) - len(overall_var[param]))])
+            overall_var[param] = np.var(overall_var[param])
+            print('{:<30s}: [{: >5.2f}, {: >5.2f}, {: >5.2f}], {: >5.2f}, {: >5.2f}, {: >5.2f}'.format(
+                param, *overall_imp[param]*100, overall_var[param], np.var(all_preds),
+                overall_var[param] / np.var(all_preds)
+            ))
         self.neighborhood_dict = neighborhood_dict
         self.performance_dict = performance_dict
         self.variance_dict = variance_dict
