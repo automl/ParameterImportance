@@ -30,7 +30,7 @@ class PIMP:
     def __init__(self, scenario: Scenario, smac: Union[SMAC, None]=None, mode: str='all',
                  X: Union[None, List[list], np.ndarray]=None, y: Union[None, List[list], np.ndarray]=None,
                  numParams: int=-1, impute: bool=False, seed: int=12345, run: bool=False, max_sample_size: int = -1,
-                 fanova_cut_at_default: bool=False, fANOVA_pairwise: bool=True):
+                 fanova_cut_at_default: bool=False, fANOVA_pairwise: bool=True, forwardsel_feat_imp: bool=False):
         """
         Interface to be used with SMAC or with X and y matrices.
         :param scenario: The scenario object, that knows the configuration space.
@@ -48,10 +48,17 @@ class PIMP:
         self.mode = mode
         self.save_folder = scenario.output_dir
         if smac is not None:
-            self.imp = Importance(scenario=scenario, runhistory=smac.runhistory, incumbent=smac.solver.incumbent,
-                                  seed=seed, parameters_to_evaluate=numParams, save_folder='PIMP',
-                                  impute_censored=impute, max_sample_size=max_sample_size,
-                                  fANOVA_cut_at_default=fanova_cut_at_default, fANOVA_pairwise=fANOVA_pairwise)
+            self.imp = Importance(scenario=scenario,
+                                  runhistory=smac.runhistory,
+                                  incumbent=smac.solver.incumbent,
+                                  seed=seed,
+                                  parameters_to_evaluate=numParams,
+                                  save_folder='PIMP',
+                                  impute_censored=impute,
+                                  max_sample_size=max_sample_size,
+                                  fANOVA_cut_at_default=fanova_cut_at_default,
+                                  fANOVA_pairwise=fANOVA_pairwise,
+                                  forwardsel_feat_imp=forwardsel_feat_imp)
         elif X is not None and y is not None:
             X = np.array(X)
             y = np.array(y)
@@ -93,9 +100,16 @@ class PIMP:
                 if best_ is None or best_[0] > mean:
                     best_ = (mean, config)
             incumbent = best_[1]
-            self.imp = Importance(scenario=scenario, runhistory=runHist, seed=seed, parameters_to_evaluate=numParams,
-                                  save_folder='PIMP', impute_censored=impute, incumbent=incumbent,
-                                  fANOVA_cut_at_default=fanova_cut_at_default)
+            self.imp = Importance(scenario=scenario,
+                                  runhistory=runHist,
+                                  seed=seed,
+                                  parameters_to_evaluate=numParams,
+                                  save_folder='PIMP',
+                                  impute_censored=impute,
+                                  incumbent=incumbent,
+                                  fANOVA_cut_at_default=fanova_cut_at_default,
+                                  fANOVA_pairwise=fANOVA_pairwise,
+                                  forwardsel_feat_imp=forwardsel_feat_imp)
         else:
             raise Exception('Neither X and y matrices nor a SMAC object were specified to compute the importance '
                             'values from!')
@@ -145,14 +159,16 @@ def cmd_line_call():
         else:
             save_folder = args.out_folder + '_%s' % args.modus
 
-    importance = Importance(scenario_file=args.scenario_file, runhistory_file=args.history,
+    importance = Importance(scenario_file=args.scenario_file,
+                            runhistory_file=args.history,
                             parameters_to_evaluate=args.num_params,
                             traj_file=args.trajectory, seed=args.seed,
                             save_folder=save_folder,
                             impute_censored=args.impute,
                             max_sample_size=args.max_sample_size,
                             fANOVA_cut_at_default=args.fanova_cut_at_default,
-                            fANOVA_pairwise=args.fanova_pairwise)  # create importance object
+                            fANOVA_pairwise=args.fanova_pairwise,
+                            forwardsel_feat_imp=args.forwardsel_feat_imp)  # create importance object
     with open(os.path.join(save_folder, 'pimp_args.json'), 'w') as out_file:
         json.dump(args.__dict__, out_file, sort_keys=True, indent=4, separators=(',', ': '))
     result = importance.evaluate_scenario(args.modus, sort_by=args.order)
