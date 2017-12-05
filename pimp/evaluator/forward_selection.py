@@ -5,8 +5,6 @@ import numpy as np
 import matplotlib as mpl
 mpl.use('Agg')
 from matplotlib import pyplot as plt
-from sklearn.decomposition import PCA
-
 from pimp.evaluator.base_evaluator import AbstractEvaluator
 
 __author__ = "Andre Biedenkapp"

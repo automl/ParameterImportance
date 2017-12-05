@@ -18,7 +18,6 @@ from ConfigSpace.configuration_space import Configuration
 from pimp.importance.importance import Importance
 from pimp.utils.io.cmd_reader import CMDs
 
-
 __author__ = "Andre Biedenkapp"
 __copyright__ = "Copyright 2016, ML4AAD"
 __license__ = "3-clause BSD"
@@ -27,10 +26,12 @@ __email__ = "biedenka@cs.uni-freiburg.de"
 
 
 class PIMP:
-    def __init__(self, scenario: Scenario, smac: Union[SMAC, None]=None, mode: str='all',
-                 X: Union[None, List[list], np.ndarray]=None, y: Union[None, List[list], np.ndarray]=None,
-                 numParams: int=-1, impute: bool=False, seed: int=12345, run: bool=False, max_sample_size: int = -1,
-                 fanova_cut_at_default: bool=False, fANOVA_pairwise: bool=True, forwardsel_feat_imp: bool=False):
+    def __init__(self, scenario: Scenario, smac: Union[SMAC, None] = None, mode: str = 'all',
+                 X: Union[None, List[list], np.ndarray] = None, y: Union[None, List[list], np.ndarray] = None,
+                 numParams: int = -1, impute: bool = False, seed: int = 12345, run: bool = False,
+                 max_sample_size: int = -1,
+                 fanova_cut_at_default: bool = False, fANOVA_pairwise: bool = True, forwardsel_feat_imp: bool = False,
+                 incn_quant_var=True):
         """
         Interface to be used with SMAC or with X and y matrices.
         :param scenario: The scenario object, that knows the configuration space.
@@ -58,7 +59,8 @@ class PIMP:
                                   max_sample_size=max_sample_size,
                                   fANOVA_cut_at_default=fanova_cut_at_default,
                                   fANOVA_pairwise=fANOVA_pairwise,
-                                  forwardsel_feat_imp=forwardsel_feat_imp)
+                                  forwardsel_feat_imp=forwardsel_feat_imp,
+                                  incn_quant_var=incn_quant_var)
         elif X is not None and y is not None:
             X = np.array(X)
             y = np.array(y)
@@ -109,7 +111,9 @@ class PIMP:
                                   incumbent=incumbent,
                                   fANOVA_cut_at_default=fanova_cut_at_default,
                                   fANOVA_pairwise=fANOVA_pairwise,
-                                  forwardsel_feat_imp=forwardsel_feat_imp)
+                                  forwardsel_feat_imp=forwardsel_feat_imp,
+                                  incn_quant_var=incn_quant_var
+                                  )
         else:
             raise Exception('Neither X and y matrices nor a SMAC object were specified to compute the importance '
                             'values from!')
@@ -117,11 +121,18 @@ class PIMP:
         if run:
             return self.compute_importances()
 
-    def compute_importances(self, order=3):
-        result = self.imp.evaluate_scenario(self.mode, sort_by=order)
+    def compute_importances(self):
+        if self.mode == 'all':
+            self.mode = ['ablation',
+                         'forward-selection',
+                         'fanova',
+                         'incneighbor']
+        elif not isinstance(self.mode, list):
+            self.mode == [self.mode]
+        result = self.imp.evaluate_scenario(self.mode)
         return result
 
-    def plot_results(self, result: Union[List[Dict[str, float]], Dict[str, float]], save_table: bool=True,
+    def plot_results(self, result: Union[List[Dict[str, float]], Dict[str, float]], save_table: bool = True,
                      show=False):
         save_folder = self.save_folder
         if self.mode == 'all':
@@ -150,14 +161,24 @@ def cmd_line_call():
     logging.basicConfig(level=args.verbose_level)
     ts = time.time()
     ts = datetime.datetime.fromtimestamp(ts).strftime('%Y_%m_%d_%H:%M:%S')
+    if 'all' in args.modus:
+        choices = ['ablation',
+                   'forward-selection',
+                   'fanova',
+                   'incneighbor']
+        del args.modus[args.modus.index('all')]
+        if len(args.modus) == len(choices):
+            pass
+        else:
+            args.modus = choices
     if not args.out_folder:
-        save_folder = 'PIMP_%s_%s' % (args.modus, ts)
+        save_folder = 'PIMP_%s_%s' % ('_'.join(list(map(lambda x: x[:2], args.modus))), ts)
     else:
         if os.path.exists(os.path.abspath(args.out_folder)) or os.path.exists(os.path.abspath(
-                        args.out_folder + '_%s' % args.modus)):
-            save_folder = args.out_folder + '_%s_%s' % (args.modus, ts)
+                        args.out_folder + '_%s' % '_'.join(list(map(lambda x: x[:2], args.modus))))):
+            save_folder = args.out_folder + '_%s_%s' % ('_'.join(list(map(lambda x: x[:2], args.modus))), ts)
         else:
-            save_folder = args.out_folder + '_%s' % args.modus
+            save_folder = args.out_folder + '_%s' % '_'.join(list(map(lambda x: x[:2], args.modus)))
 
     importance = Importance(scenario_file=args.scenario_file,
                             runhistory_file=args.history,
@@ -168,26 +189,21 @@ def cmd_line_call():
                             max_sample_size=args.max_sample_size,
                             fANOVA_cut_at_default=args.fanova_cut_at_default,
                             fANOVA_pairwise=args.fanova_pairwise,
-                            forwardsel_feat_imp=args.forwardsel_feat_imp)  # create importance object
+                            forwardsel_feat_imp=args.forwardsel_feat_imp,
+                            incn_quant_var=args.incn_quant_var)  # create importance object
     with open(os.path.join(save_folder, 'pimp_args.json'), 'w') as out_file:
         json.dump(args.__dict__, out_file, sort_keys=True, indent=4, separators=(',', ': '))
-    result = importance.evaluate_scenario(args.modus, sort_by=args.order)
-
-    if args.modus == 'all':
-        with open(os.path.join(save_folder, 'pimp_values_%s.json' % args.modus), 'w') as out_file:
-            json.dump(result[0], out_file, sort_keys=True, indent=4, separators=(',', ': '))
-        importance.plot_results(list(map(lambda x: os.path.join(save_folder, x.name.lower()), result[1])),
-                                result[1], show=False)
-        if args.table:
-            importance.table_for_comparison(evaluators=result[1], name=os.path.join(
-                save_folder, 'pimp_table_%s.tex' % args.modus), style='latex')
-        else:
-            importance.table_for_comparison(evaluators=result[1], style='cmd')
+    result = importance.evaluate_scenario(args.modus)
+    args.modus = '_'.join(list(map(lambda x: x[:2], args.modus)))
+    with open(os.path.join(save_folder, 'pimp_values_%s.json' % args.modus), 'w') as out_file:
+        json.dump(result[0], out_file, sort_keys=True, indent=4, separators=(',', ': '))
+    importance.plot_results(list(map(lambda x: os.path.join(save_folder, x.name.lower()), result[1])),
+                            result[1], show=False)
+    if args.table:
+        importance.table_for_comparison(evaluators=result[1], name=os.path.join(
+            save_folder, 'pimp_table_%s.tex' % args.modus), style='latex')
     else:
-        with open(os.path.join(save_folder, 'pimp_values_%s.json' % args.modus), 'w') as out_file:
-            json.dump(result, out_file, sort_keys=True, indent=4, separators=(',', ': '))
-
-        importance.plot_results(name=os.path.join(save_folder, args.modus), show=False)
+        importance.table_for_comparison(evaluators=result[1], style='cmd')
 
 
 if __name__ == '__main__':

@@ -36,7 +36,8 @@ class CMDs(CMDReader):
                               help="scenario file in AClib format")
         req_opts.add_argument("-M", "--modus",
                               required=True,
-                              help='Analysis method to use',
+                              nargs='+',
+                              help='Analysis method(s) to use',
                               choices=['ablation',
                                        'forward-selection',
                                        'influence-model',
@@ -73,15 +74,6 @@ class CMDs(CMDReader):
         req_opts.add_argument("-C", "--table",
                               action='store_true',
                               help="Save result table")
-        req_opts.add_argument('-O', '--order',
-                              type=int,
-                              choices=[0, 1, 2, 3, 4, 5],
-                              help='0 => Ablation, fANOVA, Forward Selection\n\
-                                    1 => Ablation, Forward Selection, fANOVA\n\
-                                    2 => fANOVA, Forward Selection, Ablation\n\
-                                    3 => fANOVA, Ablation, Forward Selection\n\
-                                    4 => Forward Selection, Ablation, fANOVA\n\
-                                    5 => Forward Selection, fANOVA, Ablation', default=3)
         req_opts.add_argument('-F', '--out-folder',
                               default=None,
                               help='Folder to store results in',
@@ -95,6 +87,10 @@ class CMDs(CMDReader):
                               action='store_false',
                               help="fANOVA won't compute pairwise marginals",
                               dest='fanova_pairwise')
+        req_opts.add_argument('--incneigh_quantify_perf_improvement',
+                              action='store_false',
+                              help="incumbent neighborhood computes importance via performance improvement",
+                              dest='incn_quant_var')
         req_opts.add_argument('--forward_sel_feat_imp',
                               action='store_true',
                               help="forward selection for feature importance",

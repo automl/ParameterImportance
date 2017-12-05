@@ -24,7 +24,7 @@ class IncNeighbor(AbstractEvaluator):
     """
 
     def __init__(self, scenario, cs, model, to_evaluate: int, incumbent=None, continous_neighbors=500,
-                 old_sampling=False, show_query_points=False, **kwargs):
+                 old_sampling=False, show_query_points=False, quant_var=True, **kwargs):
         super().__init__(scenario, cs, model, to_evaluate, **kwargs)
         self.name = 'IncNeighbor'
         self.logger = self.name
@@ -36,6 +36,7 @@ class IncNeighbor(AbstractEvaluator):
         self.neighborhood_dict = None
         self.performance_dict = {}
         self.variance_dict = {}
+        self.quantify_importance_via_variance = quant_var
 
     def _old_sampling_of_one_exchange_neighborhood(self, param, array, index):
         neighbourhood = []
@@ -222,23 +223,33 @@ class IncNeighbor(AbstractEvaluator):
                 overall_imp[param] = np.array([imp_over_mea, imp_over_med, imp_over_max])
             else:
                 self.logger.info('Parameter is inactive')
-        print('{:<30s}  {:^22s}, {:^22s}'.format(
+        self.logger.info('{:<30s}  {:^22s}, {:^22s}'.format(
             ' ', 'perf impro', 'variance'
         ))
-        print('{:<30s}: [{:^5s}, {:^5s}, {:^5s}], {:^5s}, {:^5s}, {:^5s}'.format(
+        self.logger.info('{:<30s}: [{:^5s}, {:^5s}, {:^5s}], {:^5s}, {:^5s}, {:^5s}'.format(
             'Parameter', 'Mean', 'Median', 'Max', 'p_var', 't_var', 'frac'
         ))
-        print('-'*74)
+        self.logger.info('-'*74)
+        tmp = []
         for param in sorted(list(overall_var.keys())):
             overall_var[param].extend([inc_perf for _ in range(len(all_preds) - len(overall_var[param]))])
             overall_var[param] = np.var(overall_var[param])
-            print('{:<30s}: [{: >5.2f}, {: >5.2f}, {: >5.2f}], {: >5.2f}, {: >5.2f}, {: >5.2f}'.format(
+            self.logger.info('{:<30s}: [{: >5.2f}, {: >5.2f}, {: >5.2f}], {: >5.2f}, {: >5.2f}, {: >5.2f}'.format(
                 param, *overall_imp[param]*100, overall_var[param], np.var(all_preds),
-                overall_var[param] / np.var(all_preds)
+                overall_var[param] / np.var(all_preds) * 100
             ))
+            if self.quantify_importance_via_variance:
+                tmp.append([param, overall_var[param] / np.var(all_preds) * 100])
+            else:
+                tmp.append([param, overall_imp[param][0]])
+        tmp = sorted(tmp, key=lambda x: x[1], reverse=True)
         self.neighborhood_dict = neighborhood_dict
         self.performance_dict = performance_dict
         self.variance_dict = variance_dict
+        self.evaluated_parameter_importance = OrderedDict(tmp)
+        all_res = {'imp': self.evaluated_parameter_importance,
+                   'order': list(self.evaluated_parameter_importance.keys())}
+        return all_res
 
     def _predict_over_instance_set(self, config):
         """

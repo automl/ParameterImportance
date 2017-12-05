@@ -36,7 +36,8 @@ class Importance(object):
                  traj_file: Union[None, List[str]] = None, incumbent: Union[None, Configuration] = None,
                  seed: int = 12345, parameters_to_evaluate: int = -1, margin: Union[None, float] = None,
                  save_folder: str = 'PIMP', impute_censored: bool = False, max_sample_size: int = -1,
-                 fANOVA_cut_at_default=False, fANOVA_pairwise=True, forwardsel_feat_imp=False):
+                 fANOVA_cut_at_default=False, fANOVA_pairwise=True, forwardsel_feat_imp=False,
+                 incn_quant_var=True):
         """
         Importance Object. Handles the construction of the data and training of the model. Easy interface to the
         different evaluators.
@@ -68,6 +69,7 @@ class Importance(object):
         self.cut_def_fan = fANOVA_cut_at_default
         self.pairiwse_fANOVA = fANOVA_pairwise
         self.forwardsel_feat_imp = forwardsel_feat_imp
+        self.incn_quant_var = incn_quant_var
 
         self._setup_scenario(scenario, scenario_file, save_folder)
         self._load_runhist(runhistory, runhistory_file)
@@ -276,7 +278,8 @@ class Importance(object):
                                  model=self._model,
                                  to_evaluate=self._parameters_to_evaluate,
                                  incumbent=self.incumbent,
-                                 logy=self.logged_y, rng=self.rng)
+                                 logy=self.logged_y,
+                                 rng=self.rng)
         elif evaluation_method == 'influence-model':
             self.logger.info('Using model %s' % str(self.model))
             self.logger.info('X shape %s' % str(self.model.X.shape))
@@ -285,7 +288,8 @@ class Importance(object):
                                        model=self._model,
                                        to_evaluate=self._parameters_to_evaluate,
                                        margin=self.margin,
-                                       threshold=self.threshold, rng=self.rng)
+                                       threshold=self.threshold,
+                                       rng=self.rng)
         elif evaluation_method == 'fanova':
             self.logger.info('Using model %s' % str(self.model))
             self.logger.info('X shape %s' % str(self.model.X.shape))
@@ -296,7 +300,10 @@ class Importance(object):
                                cs=self.scenario.cs,
                                model=self._model,
                                to_evaluate=self._parameters_to_evaluate,
-                               runhist=self.runhistory, rng=self.rng, minimize=mini, pairwise=self.pairiwse_fANOVA)
+                               runhist=self.runhistory,
+                               rng=self.rng,
+                               minimize=mini,
+                               pairwise=self.pairiwse_fANOVA)
         elif evaluation_method == 'incneighbor':
             if self.incumbent is None:
                 raise ValueError('Incumbent is %s!\n \
@@ -309,13 +316,16 @@ class Importance(object):
                                     model=self._model,
                                     to_evaluate=self._parameters_to_evaluate,
                                     incumbent=self.incumbent,
-                                    logy=self.logged_y, rng=self.rng)
+                                    logy=self.logged_y,
+                                    rng=self.rng,
+                                    quant_var=self.incn_quant_var)
         else:
             self.logger.info('Using model %s' % str(self.model))
             evaluator = ForwardSelector(scenario=self.scenario,
                                         cs=self.scenario.cs,
                                         model=self._model,
-                                        to_evaluate=self._parameters_to_evaluate, rng=self.rng,
+                                        to_evaluate=self._parameters_to_evaluate,
+                                        rng=self.rng,
                                         feature_imp=self.forwardsel_feat_imp)
         self._evaluator = evaluator
 
@@ -394,9 +404,8 @@ class Importance(object):
             self.logger.info('Fitting Model')
             self.model.train(X, Y)
 
-    def evaluate_scenario(self, evaluation_method='all',
-                          sort_by: int = 0) -> Union[Tuple[Dict[str, Dict[str, float]], List[AbstractEvaluator]],
-                                                     Dict[str, Dict[str, float]]]:
+    def evaluate_scenario(self, methods) -> Union[
+            Tuple[Dict[str, Dict[str, float]], List[AbstractEvaluator]], Dict[str, Dict[str, float]]]:
         """
         Evaluate the given scenario
         :param evaluation_method: name of the method to use
@@ -414,30 +423,15 @@ class Importance(object):
         """
         # influence-model currently not supported
         # influence-model currently not supported
-        methods = ['ablation', 'fanova', 'forward-selection', 'incneighbor']
-        if sort_by == 1:
-            methods = ['ablation', 'forward-selection', 'fanova', 'incneighbor']
-        elif sort_by == 2:
-            methods = ['fanova', 'forward-selection', 'ablation', 'incneighbor']
-        elif sort_by == 3:
-            methods = ['fanova', 'ablation', 'forward-selection', 'incneighbor']
-        elif sort_by == 4:
-            methods = ['forward-selection', 'ablation', 'fanova', 'incneighbor']
-        elif sort_by == 5:
-            methods = ['forward-selection', 'fanova', 'ablation', 'incneighbor']
-        if evaluation_method == 'all':
-            evaluators = []
-            dict_ = {}
-            for method in methods:
-                self.logger.info('Running %s' % method)
-                self.evaluator = method
-                dict_[method] = self.evaluator.run()
-                evaluators.append(self.evaluator)
-            return dict_, evaluators
-        else:
-            self.evaluator = evaluation_method
-            self.logger.info('Running evaluation method %s' % self.evaluator.name)
-            return {evaluation_method: self.evaluator.run()}
+        assert(len(methods) >= 1)
+        evaluators = []
+        dict_ = {}
+        for method in methods:
+            self.logger.info('Running %s' % method)
+            self.evaluator = method
+            dict_[method] = self.evaluator.run()
+            evaluators.append(self.evaluator)
+        return dict_, evaluators
 
     def plot_results(self, name: Union[List[str], str, None] = None, evaluators: Union[List[AbstractEvaluator],
                                                                                        None] = None,
