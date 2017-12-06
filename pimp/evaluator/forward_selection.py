@@ -72,9 +72,9 @@ class ForwardSelector(AbstractEvaluator):
 
                 start = time.time()
                 self._refit_model(self.types[sorted(used)], self.bounds[sorted(used_bounds)],
-                                  self.X[:, sorted(used)], self.y)  # refit the model every round
-                errors.append(np.sqrt(
-                    np.mean((self.model.predict(self.X[:, sorted(used)])[0].flatten() - self.y) ** 2)))
+                                  self.X[:, sorted(used)],
+                                  self.y, n_points_per_tree=int(self.X.shape[0] * 0.8))  # refit the model every round
+                errors.append(self.model.rf.out_of_bag_error())
                 used.pop()
                 if not self.feature_importance:
                     used_bounds.pop()

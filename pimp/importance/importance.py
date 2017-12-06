@@ -366,8 +366,7 @@ class Importance(object):
                                  self.scenario.par_factor)
             model = RandomForestWithInstances(self.types, self.bounds,
                                               instance_features=self.scenario.feature_array,
-                                              seed=self.rng.randint(99999), do_bootstrapping=True,
-                                              num_trees=80, n_points_per_tree=50000)
+                                              seed=self.rng.randint(99999))
 
             imputor = RFRImputator(rng=self.rng,
                                    cutoff=cutoff,
