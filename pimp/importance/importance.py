@@ -15,7 +15,7 @@ from smac.epm.rf_with_instances import RandomForestWithInstances
 
 from pimp.configspace import CategoricalHyperparameter, Configuration, \
     FloatHyperparameter, IntegerHyperparameter, impute_inactive_values
-from pimp.epm.unlogged_rf_with_instances import UnloggedRandomForestWithInstances
+from pimp.epm.unlogged_epar_x_rfwi import UnloggedEPARXrfi
 from pimp.evaluator.ablation import Ablation
 from pimp.evaluator.fanova import fANOVA
 from pimp.evaluator.incumbent_neighborhood import IncNeighbor
@@ -37,7 +37,7 @@ class Importance(object):
                  seed: int = 12345, parameters_to_evaluate: int = -1, margin: Union[None, float] = None,
                  save_folder: str = 'PIMP', impute_censored: bool = False, max_sample_size: int = -1,
                  fANOVA_cut_at_default=False, fANOVA_pairwise=True, forwardsel_feat_imp=False,
-                 incn_quant_var=True):
+                 incn_quant_var=True, preprocess=True):
         """
         Importance Object. Handles the construction of the data and training of the model. Easy interface to the
         different evaluators.
@@ -70,6 +70,7 @@ class Importance(object):
         self.pairiwse_fANOVA = fANOVA_pairwise
         self.forwardsel_feat_imp = forwardsel_feat_imp
         self.incn_quant_var = incn_quant_var
+        self.preprocess = preprocess
 
         self._setup_scenario(scenario, scenario_file, save_folder)
         self._load_runhist(runhistory, runhistory_file)
@@ -102,6 +103,34 @@ class Importance(object):
             self.logger.info('Remaining %d datapoints' % len(self.X))
             self.model.train(self.X, self.y)
 
+    def _preprocess(self, runhistory):
+        """
+        Method to marginalize over instances such that fANOVA can determine the parameter importance without
+        having to deal with instance features.
+        :param runhistory: RunHistory that knows all configurations that were run. For all these configurations
+                           we have to marginalize away the instance features with which fANOVA will make it's
+                           predictions
+        """
+        self.logger.info('PREPROCESSING PREPROCESSING PREPROCESSING PREPROCESSING PREPROCESSING PREPROCESSING')
+        self.logger.info('Marginalizing away all instances!')
+        configs = runhistory.get_all_configs()
+        X_non_hyper, X_prime = [], []
+        for config in configs:
+            config = impute_inactive_values(config).get_array()
+            X_prime.append(config)
+            X_non_hyper.append(config)
+            for idx, param in enumerate(self.cs.get_hyperparameters()):
+                if not isinstance(param, CategoricalHyperparameter):
+                    X_non_hyper[-1][idx] = param._transform(X_non_hyper[-1][idx])
+        X_non_hyper = np.array(X_non_hyper)
+        X_prime = np.array(X_prime)
+        y_prime = np.array(self.model.predict_marginalized_over_instances(X_prime)[0])
+        self.X = X_prime
+        self.X_non_hyper = X_non_hyper
+        self.y = y_prime
+        self.logger.info('Size of training X after preprocessing: %s' % str(self.X.shape))
+        self.logger.info('Size of training y after preprocessing: %s' % str(self.y.shape))
+        self.logger.info('Finished Preprocessing')
 
     def _setup_scenario(self, scenario: Union[None, Scenario], scenario_file: Union[None, str], save_folder: str) -> \
             None:
@@ -167,6 +196,9 @@ class Importance(object):
         self._model = None
         self.logged_y = False
         self._convert_data(fit=True)
+        if self.preprocess:
+            self._preprocess(self.runhistory)
+            # TODO setup model without instances
 
     def _load_runhist(self, runhistory, runhistory_file) -> None:
         """
@@ -238,10 +270,10 @@ class Importance(object):
                                                     instance_features=self.scenario.feature_array,
                                                     seed=self.rng.randint(99999))
         elif model_short_name == 'urfi':
-            self._model = UnloggedRandomForestWithInstances(self.types, self.bounds,
-                                                            instance_features=self.scenario.feature_array,
-                                                            seed=self.rng.randint(99999),
-                                                            cutoff=self.cutoff, threshold=self.threshold)
+            self._model = UnloggedEPARXrfi(self.types, self.bounds,
+                                           instance_features=self.scenario.feature_array,
+                                           seed=self.rng.randint(99999),
+                                           cutoff=self.cutoff, threshold=self.threshold)
         self._model.rf_opts.compute_oob_error = True
 
     @property
