@@ -172,7 +172,9 @@ def cmd_line_call():
         else:
             args.modus = choices
     if not args.out_folder:
-        save_folder = 'PIMP_%s_%s' % ('_'.join(list(map(lambda x: x[:2], args.modus))), ts)
+        save_folder = 'PIMP_%s' % '_'.join(list(map(lambda x: x[:2], args.modus)))
+        if os.path.exists(os.path.abspath(save_folder)):
+            save_folder ='PIMP_%s_%s' % ('_'.join(list(map(lambda x: x[:2], args.modus))), ts)
     else:
         if os.path.exists(os.path.abspath(args.out_folder)) or os.path.exists(os.path.abspath(
                         args.out_folder + '_%s' % '_'.join(list(map(lambda x: x[:2], args.modus))))):
