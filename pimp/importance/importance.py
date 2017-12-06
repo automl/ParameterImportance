@@ -239,7 +239,7 @@ class Importance(object):
                                                     seed=self.rng.randint(99999))
         elif model_short_name == 'urfi':
             self._model = UnloggedRandomForestWithInstances(self.types, self.bounds,
-                                                            self.scenario.feature_array,
+                                                            instance_features=self.scenario.feature_array,
                                                             seed=self.rng.randint(99999),
                                                             cutoff=self.cutoff, threshold=self.threshold)
         self._model.rf_opts.compute_oob_error = True

@@ -12,9 +12,9 @@ __email__ = "biedenka@cs.uni-freiburg.de"
 
 class UnloggedRandomForestWithInstances(SMACrfi):
 
-    def __init__(self, types, bounds, instance_features=None, num_trees=30, do_bootstrapping=True, n_points_per_tree=0,
-                 ratio_features=5. / 6., min_samples_split=3, min_samples_leaf=3, max_depth=20, eps_purity=1e-8,
-                 max_num_nodes=1000, seed=42, cutoff=0, threshold=0):
+    def __init__(self, types, bounds,
+                 cutoff=0,
+                 threshold=0, **kwargs):
         """
         Interface to the random forest that takes instance features
         into account.
@@ -57,11 +57,7 @@ class UnloggedRandomForestWithInstances(SMACrfi):
         threshold:
             Maximal possible value
         """
-        super().__init__(types=types, bounds=bounds, instance_features=instance_features, num_trees=num_trees,
-                         do_bootstrapping=do_bootstrapping, n_points_per_tree=n_points_per_tree,
-                         ratio_features=ratio_features, min_samples_split=min_samples_split,
-                         min_samples_leaf=min_samples_leaf, max_depth=max_depth,
-                         eps_purity=eps_purity, max_num_nodes=max_num_nodes, seed=seed)
+        super().__init__(types=types, bounds=bounds, **kwargs)
         self.cutoff = cutoff
         self.threshold = threshold
 
