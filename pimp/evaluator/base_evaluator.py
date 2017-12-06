@@ -89,7 +89,7 @@ class AbstractEvaluator(object):
     def logger(self, value):
         self._logger = logging.getLogger(value)
 
-    def _refit_model(self, types, bounds, X, y, n_points_per_tree):
+    def _refit_model(self, types, bounds, X, y):
         """
         Easily allows for refitting of the model.
         Parameters
@@ -101,7 +101,6 @@ class AbstractEvaluator(object):
         y:ndarray
             corresponding y vector
         """
-        self.model = RandomForestWithInstances(types, bounds, do_bootstrapping=True,
-                                               n_points_per_tree=n_points_per_tree)
+        self.model = RandomForestWithInstances(types, bounds, do_bootstrapping=True)
         self.model.rf_opts.compute_oob_error = True
         self.model.train(X, y)
