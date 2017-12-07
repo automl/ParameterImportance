@@ -87,8 +87,8 @@ class Unloggedrfwi(SMACrfi):
             tree_mean_predictions.append(list(map(lambda x_: np.mean(x_), tmpx)))  # calculate mean and var
             tree_mean_variances.append(list(map(lambda x_: np.var(x_), tmpx)))  # over individual trees
 
-        mean = np.mean(tree_mean_predictions, axis=0)
-        var = np.mean(tree_mean_variances, axis=0)
+        mean = np.mean(tree_mean_predictions, axis=1)
+        var = np.mean(tree_mean_variances, axis=1)
 
         return mean.reshape((-1, 1)), var.reshape((-1, 1))
 

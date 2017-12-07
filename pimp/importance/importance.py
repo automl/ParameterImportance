@@ -16,6 +16,7 @@ from smac.epm.rf_with_instances import RandomForestWithInstances
 from pimp.configspace import CategoricalHyperparameter, Configuration, \
     FloatHyperparameter, IntegerHyperparameter, impute_inactive_values
 from pimp.epm.unlogged_epar_x_rfwi import UnloggedEPARXrfi
+from pimp.epm.unlogged_rfwi import Unloggedrfwi
 from pimp.evaluator.ablation import Ablation
 from pimp.evaluator.fanova import fANOVA
 from pimp.evaluator.incumbent_neighborhood import IncNeighbor
@@ -71,6 +72,9 @@ class Importance(object):
         self.forwardsel_feat_imp = forwardsel_feat_imp
         self.incn_quant_var = incn_quant_var
         self.preprocess = preprocess
+        self._preprocessed = False
+        self.X_fanova = None
+        self.y_fanova = None
 
         self._setup_scenario(scenario, scenario_file, save_folder)
         self._load_runhist(runhistory, runhistory_file)
@@ -119,18 +123,20 @@ class Importance(object):
             config = impute_inactive_values(config).get_array()
             X_prime.append(config)
             X_non_hyper.append(config)
-            for idx, param in enumerate(self.cs.get_hyperparameters()):
+            for idx, param in enumerate(self.scenario.cs.get_hyperparameters()):
                 if not isinstance(param, CategoricalHyperparameter):
                     X_non_hyper[-1][idx] = param._transform(X_non_hyper[-1][idx])
         X_non_hyper = np.array(X_non_hyper)
         X_prime = np.array(X_prime)
         y_prime = np.array(self.model.predict_marginalized_over_instances(X_prime)[0])
         self.X = X_prime
-        self.X_non_hyper = X_non_hyper
+        self.X_fanova = X_non_hyper
+        self.y_fanova = y_prime
         self.y = y_prime
         self.logger.info('Size of training X after preprocessing: %s' % str(self.X.shape))
         self.logger.info('Size of training y after preprocessing: %s' % str(self.y.shape))
         self.logger.info('Finished Preprocessing')
+        self._preprocessed = True
 
     def _setup_scenario(self, scenario: Union[None, Scenario], scenario_file: Union[None, str], save_folder: str) -> \
             None:
@@ -198,7 +204,10 @@ class Importance(object):
         self._convert_data(fit=True)
         if self.preprocess:
             self._preprocess(self.runhistory)
-            # TODO setup model without instances
+            if self.scenario.run_obj == "runtime":
+                self.y = np.log10(self.y)
+            self.model = 'urfi'
+            self.model.train(self.X, self.y)
 
     def _load_runhist(self, runhistory, runhistory_file) -> None:
         """
@@ -262,18 +271,25 @@ class Importance(object):
 
     @model.setter
     def model(self, model_short_name='urfi'):
-        self.types, self.bounds = get_types(self.scenario.cs, self.scenario.feature_array)
         if model_short_name not in ['urfi', 'rfi']:
             raise ValueError('Specified model %s does not exist or not supported!' % model_short_name)
         elif model_short_name == 'rfi':
+            self.types, self.bounds = get_types(self.scenario.cs, self.scenario.feature_array)
             self._model = RandomForestWithInstances(self.types, self.bounds,
                                                     instance_features=self.scenario.feature_array,
                                                     seed=self.rng.randint(99999))
         elif model_short_name == 'urfi':
-            self._model = UnloggedEPARXrfi(self.types, self.bounds,
-                                           instance_features=self.scenario.feature_array,
-                                           seed=self.rng.randint(99999),
-                                           cutoff=self.cutoff, threshold=self.threshold)
+            if not self._preprocessed:
+                self.types, self.bounds = get_types(self.scenario.cs, self.scenario.feature_array)
+                self._model = UnloggedEPARXrfi(self.types, self.bounds,
+                                               instance_features=self.scenario.feature_array,
+                                               seed=self.rng.randint(99999),
+                                               cutoff=self.cutoff, threshold=self.threshold)
+            else:
+                self.types, self.bounds = get_types(self.scenario.cs, None)
+                self._model = Unloggedrfwi(self.types, self.bounds,
+                                           instance_features=None,
+                                           seed=self.rng.randint(99999))
         self._model.rf_opts.compute_oob_error = True
 
     @property
@@ -327,7 +343,7 @@ class Importance(object):
             self.logger.info('X shape %s' % str(self.model.X.shape))
             mini = None
             if self.cut_def_fan:
-                mini = True         # TODO what about scenarios where we analyze maximization?
+                mini = True         # TODO what about scenarios where we maximize?
             evaluator = fANOVA(scenario=self.scenario,
                                cs=self.scenario.cs,
                                model=self._model,
@@ -335,7 +351,9 @@ class Importance(object):
                                runhist=self.runhistory,
                                rng=self.rng,
                                minimize=mini,
-                               pairwise=self.pairiwse_fANOVA)
+                               pairwise=self.pairiwse_fANOVA,
+                               preprocessed_X=self.X_fanova,
+                               preprocessed_y=self.y_fanova)
         elif evaluation_method == 'incneighbor':
             if self.incumbent is None:
                 raise ValueError('Incumbent is %s!\n \

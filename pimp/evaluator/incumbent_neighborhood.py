@@ -289,9 +289,11 @@ class IncNeighbor(AbstractEvaluator):
                     ax1.plot(self.neighborhood_dict[param][1], p, label='Predicted Performance', ls='-', zorder=80,
                              **self.LINE_FONT)
                     label = True
+                    c_inc = True
                     for n_idx, neighbor in enumerate(self.neighborhood_dict[param][1]):
-                        if neighbor == self.incumbent[param]:
+                        if neighbor == self.incumbent[param] and c_inc:
                             ax1.scatter(neighbor, p[n_idx], label='incumbent', c='r', marker='.', zorder=999)
+                            c_inc = False
                         elif self.show_query_points:
                             if label:
                                 ax1.scatter(neighbor, p[n_idx], label='query points', c='w', marker='.',

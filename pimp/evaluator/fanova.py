@@ -27,13 +27,16 @@ __email__ = "biedenka@cs.uni-freiburg.de"
 class fANOVA(AbstractEvaluator):
 
     def __init__(self, scenario, cs, model, to_evaluate: int, runhist: RunHistory, rng,
-                 n_pairs=5, minimize=True, pairwise=True, **kwargs):
+                 n_pairs=5, minimize=True, pairwise=True, preprocessed_X=None, preprocessed_y=None, **kwargs):
         super().__init__(scenario, cs, model, to_evaluate, rng, **kwargs)
         self.name = 'fANOVA'
         self.logger = self.name
         # This way the instance features in X are ignored and a new forest is constructed
         if self.model.instance_features is None:
-            self.logger.debug('No preprocessing necessary')
+            self.logger.info('No preprocessing necessary')
+            if preprocessed_X is not None and preprocessed_y is not None:
+                self.X = preprocessed_X
+                self.y = preprocessed_y
         else:
             self._preprocess(runhist)
         cutoffs = (-np.inf, np.inf)
