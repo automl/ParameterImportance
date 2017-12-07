@@ -26,12 +26,22 @@ __email__ = "biedenka@cs.uni-freiburg.de"
 
 
 class PIMP:
-    def __init__(self, scenario: Scenario, smac: Union[SMAC, None] = None, mode: str = 'all',
-                 X: Union[None, List[list], np.ndarray] = None, y: Union[None, List[list], np.ndarray] = None,
-                 numParams: int = -1, impute: bool = False, seed: int = 12345, run: bool = False,
+    def __init__(self,
+                 scenario: Scenario,
+                 smac: Union[SMAC, None] = None,
+                 mode: str = 'all',
+                 X: Union[None, List[list], np.ndarray] = None,
+                 y: Union[None, List[list], np.ndarray] = None,
+                 numParams: int = -1,
+                 impute: bool = False,
+                 seed: int = 12345,
+                 run: bool = False,
                  max_sample_size: int = -1,
-                 fanova_cut_at_default: bool = False, fANOVA_pairwise: bool = True, forwardsel_feat_imp: bool = False,
-                 incn_quant_var=True):
+                 fanova_cut_at_default: bool = False,
+                 fANOVA_pairwise: bool = True,
+                 forwardsel_feat_imp: bool = False,
+                 incn_quant_var: bool = True,
+                 marginalize_away_instances: bool = True):
         """
         Interface to be used with SMAC or with X and y matrices.
         :param scenario: The scenario object, that knows the configuration space.
@@ -60,7 +70,8 @@ class PIMP:
                                   fANOVA_cut_at_default=fanova_cut_at_default,
                                   fANOVA_pairwise=fANOVA_pairwise,
                                   forwardsel_feat_imp=forwardsel_feat_imp,
-                                  incn_quant_var=incn_quant_var)
+                                  incn_quant_var=incn_quant_var,
+                                  preprocess=marginalize_away_instances)
         elif X is not None and y is not None:
             X = np.array(X)
             y = np.array(y)
@@ -112,7 +123,8 @@ class PIMP:
                                   fANOVA_cut_at_default=fanova_cut_at_default,
                                   fANOVA_pairwise=fANOVA_pairwise,
                                   forwardsel_feat_imp=forwardsel_feat_imp,
-                                  incn_quant_var=incn_quant_var
+                                  incn_quant_var=incn_quant_var,
+                                  preprocess=marginalize_away_instances
                                   )
         else:
             raise Exception('Neither X and y matrices nor a SMAC object were specified to compute the importance '
@@ -200,15 +212,14 @@ def cmd_line_call():
                             fANOVA_cut_at_default=args.fanova_cut_at_default,
                             fANOVA_pairwise=args.fanova_pairwise,
                             forwardsel_feat_imp=args.forwardsel_feat_imp,
-                            incn_quant_var=args.incn_quant_var)  # create importance object
+                            incn_quant_var=args.incn_quant_var,
+                            preprocess=args.marg_inst)  # create importance object
     with open(os.path.join(save_folder, 'pimp_args.json'), 'w') as out_file:
         json.dump(args.__dict__, out_file, sort_keys=True, indent=4, separators=(',', ': '))
-    result = importance.evaluate_scenario(args.modus)
+    result = importance.evaluate_scenario(args.modus, save_folder=save_folder)
     args.modus = '_'.join(list(map(lambda x: x[:2], args.modus)))
     with open(os.path.join(save_folder, 'pimp_values_%s.json' % args.modus), 'w') as out_file:
         json.dump(result[0], out_file, sort_keys=True, indent=4, separators=(',', ': '))
-    importance.plot_results(list(map(lambda x: os.path.join(save_folder, x.name.lower()), result[1])),
-                            result[1], show=False)
     if args.table:
         importance.table_for_comparison(evaluators=result[1], name=os.path.join(
             save_folder, 'pimp_table_%s.tex' % args.modus), style='latex')

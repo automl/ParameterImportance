@@ -58,6 +58,7 @@ class EPARrfi(SMACrfi):
             Maximal possible value
         """
         super().__init__(types=types, bounds=bounds, **kwargs)
+        np.seterr(divide='ignore', invalid='ignore')
         self.cutoff = cutoff
         self.threshold = threshold
 

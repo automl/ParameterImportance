@@ -4,6 +4,7 @@ import pickle
 import os
 import numpy as np
 import matplotlib as mpl
+from tqdm import tqdm
 mpl.use('Agg')
 from matplotlib import pyplot as plt
 
@@ -86,7 +87,8 @@ class fANOVA(AbstractEvaluator):
             os.mkdir(name)
         vis = Visualizer(self.evaluator, self.cs, directory=name)
         self.logger.info('Getting Marginals!')
-        for i in range(self.to_evaluate):
+        pbar = tqdm(range(self.to_evaluate), ascii=True)
+        for i in pbar:
             plt.close('all')
             plt.clf()
             param = list(self.evaluated_parameter_importance.keys())[i]
@@ -96,7 +98,7 @@ class fANOVA(AbstractEvaluator):
             fig.savefig(outfile_name)
             if show:
                 plt.show()
-            self.logger.info('Creating fANOVA plot: %s' % outfile_name)
+            pbar.set_description('Creating fANOVA plot: {: <.30s}'.format(outfile_name.split(os.path.sep)[-1]))
         if self.pairwise:
             self.logger.info('Plotting Pairwise-Marginals!')
             most_important_ones = list(self.evaluated_parameter_importance.keys())[

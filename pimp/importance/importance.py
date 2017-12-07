@@ -7,6 +7,7 @@ from typing import Union, List, Dict, Tuple
 from collections import OrderedDict
 
 import numpy as np
+from tqdm import tqdm
 
 from smac.utils.util_funcs import get_types
 from smac.tae.execute_ta_run import StatusType
@@ -118,17 +119,19 @@ class Importance(object):
         self.logger.info('PREPROCESSING PREPROCESSING PREPROCESSING PREPROCESSING PREPROCESSING PREPROCESSING')
         self.logger.info('Marginalizing away all instances!')
         configs = runhistory.get_all_configs()
-        X_non_hyper, X_prime = [], []
-        for config in configs:
+        X_non_hyper, X_prime, y_prime = [], [], []
+        for c_id, config in tqdm(enumerate(configs), ascii=True, desc='Completed: ', total=len(configs)):
             config = impute_inactive_values(config).get_array()
             X_prime.append(config)
             X_non_hyper.append(config)
+            y_prime.append(self.model.predict_marginalized_over_instances(np.array([X_prime[-1]]))[0].flatten())
             for idx, param in enumerate(self.scenario.cs.get_hyperparameters()):
                 if not isinstance(param, CategoricalHyperparameter):
                     X_non_hyper[-1][idx] = param._transform(X_non_hyper[-1][idx])
         X_non_hyper = np.array(X_non_hyper)
         X_prime = np.array(X_prime)
-        y_prime = np.array(self.model.predict_marginalized_over_instances(X_prime)[0])
+        y_prime = np.array(y_prime)
+        # y_prime = np.array(self.model.predict_marginalized_over_instances(X_prime)[0])
         self.X = X_prime
         self.X_fanova = X_non_hyper
         self.y_fanova = y_prime
@@ -453,7 +456,7 @@ class Importance(object):
             self.logger.info('Fitting Model')
             self.model.train(X, Y)
 
-    def evaluate_scenario(self, methods) -> Union[
+    def evaluate_scenario(self, methods, save_folder=None) -> Union[
             Tuple[Dict[str, Dict[str, float]], List[AbstractEvaluator]], Dict[str, Dict[str, float]]]:
         """
         Evaluate the given scenario
@@ -471,7 +474,6 @@ class Importance(object):
                       dict[evalution_method] -> importance values
         """
         # influence-model currently not supported
-        # influence-model currently not supported
         assert(len(methods) >= 1)
         evaluators = []
         dict_ = {}
@@ -480,6 +482,8 @@ class Importance(object):
             self.evaluator = method
             dict_[method] = self.evaluator.run()
             evaluators.append(self.evaluator)
+            if save_folder:
+                self.evaluator.plot_result(os.path.join(save_folder, self.evaluator.name.lower()), show=False)
         return dict_, evaluators
 
     def plot_results(self, name: Union[List[str], str, None] = None, evaluators: Union[List[AbstractEvaluator],

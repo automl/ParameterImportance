@@ -2,6 +2,7 @@ import os
 from collections import OrderedDict
 
 import numpy as np
+from tqdm import tqdm
 import matplotlib as mpl
 mpl.use('Agg')
 from matplotlib import pyplot as plt
@@ -165,7 +166,6 @@ class IncNeighbor(AbstractEvaluator):
         """
         neighborhood_dict = self._get_one_exchange_neighborhood_by_parameter()  # sampled on a unit-hypercube!
         self.neighborhood_dict = neighborhood_dict
-        # TODO get some kind of importance measure in this
         performance_dict = {}
         variance_dict = {}
         incumbent_array = self.incumbent.get_array()
@@ -175,9 +175,10 @@ class IncNeighbor(AbstractEvaluator):
         def_perf, def_var = self._predict_over_instance_set(impute_inactive_values(self.cs.get_default_configuration()))
         inc_perf, inc_var = self._predict_over_instance_set(impute_inactive_values(self.incumbent))
         delta = def_perf - inc_perf
-        for index, param in enumerate(self.incumbent.keys()):
+        pbar = tqdm(enumerate(self.incumbent.keys()), ascii=True, total=len(self.incumbent.keys()))
+        for index, param in pbar:
             if param in neighborhood_dict:
-                self.logger.info('Predicting performances for neighbors of %s' % param)
+                pbar.set_description('Predicting performances for neighbors of {: >.30s}'.format(param))
                 performance_dict[param] = []
                 variance_dict[param] = []
                 variance_dict[param] = []
@@ -222,19 +223,19 @@ class IncNeighbor(AbstractEvaluator):
                 imp_over_max = (np.max(tmp_perf) - performance_dict[param][inc_at]) / delta
                 overall_imp[param] = np.array([imp_over_mea, imp_over_med, imp_over_max])
             else:
-                self.logger.info('Parameter is inactive')
-        self.logger.info('{:<30s}  {:^22s}, {:^22s}'.format(
+                pbar.set_description('{: >.70s}'.format('Parameter %s is inactive' % param))
+        self.logger.info('{:<30s}  {:^24s}, {:^25s}'.format(
             ' ', 'perf impro', 'variance'
         ))
-        self.logger.info('{:<30s}: [{:^5s}, {:^5s}, {:^5s}], {:^5s}, {:^5s}, {:^5s}'.format(
+        self.logger.info('{:<30s}: [{:>6s}, {:>6s}, {:>6s}], {:>6s}, {:>6s}, {:>6s}'.format(
             'Parameter', 'Mean', 'Median', 'Max', 'p_var', 't_var', 'frac'
         ))
-        self.logger.info('-'*74)
+        self.logger.info('-'*80)
         tmp = []
         for param in sorted(list(overall_var.keys())):
             overall_var[param].extend([inc_perf for _ in range(len(all_preds) - len(overall_var[param]))])
             overall_var[param] = np.var(overall_var[param])
-            self.logger.info('{:<30s}: [{: >5.2f}, {: >5.2f}, {: >5.2f}], {: >5.2f}, {: >5.2f}, {: >5.2f}'.format(
+            self.logger.info('{:<30s}: [{: >6.2f}, {: >6.2f}, {: >6.2f}], {: >6.2f}, {: >6.2f}, {: >6.2f}'.format(
                 param, *overall_imp[param]*100, overall_var[param], np.var(all_preds),
                 overall_var[param] / np.var(all_preds) * 100
             ))
@@ -271,7 +272,9 @@ class IncNeighbor(AbstractEvaluator):
     def plot_result(self, name='incneighbor', show=True):
         if not os.path.exists(name):
             os.mkdir(name)
-        for param in self.incumbent.keys():
+        pbar = tqdm(self.incumbent.keys(), ascii=True, total=len(self.incumbent.keys()))
+        for param in pbar:
+            pbar.set_description('Plotting results for %s' % param)
             if param in self.performance_dict:
                 fig = plt.figure(dpi=250)
                 ax1 = fig.add_subplot(111)
