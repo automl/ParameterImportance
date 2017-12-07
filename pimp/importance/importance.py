@@ -7,6 +7,7 @@ from typing import Union, List, Dict, Tuple
 from collections import OrderedDict
 
 import numpy as np
+from tqdm import tqdm
 
 from smac.utils.util_funcs import get_types
 from smac.tae.execute_ta_run import StatusType
@@ -15,7 +16,8 @@ from smac.epm.rf_with_instances import RandomForestWithInstances
 
 from pimp.configspace import CategoricalHyperparameter, Configuration, \
     FloatHyperparameter, IntegerHyperparameter, impute_inactive_values
-from pimp.epm.unlogged_rf_with_instances import UnloggedRandomForestWithInstances
+from pimp.epm.unlogged_epar_x_rfwi import UnloggedEPARXrfi
+from pimp.epm.unlogged_rfwi import Unloggedrfwi
 from pimp.evaluator.ablation import Ablation
 from pimp.evaluator.fanova import fANOVA
 from pimp.evaluator.incumbent_neighborhood import IncNeighbor
@@ -37,7 +39,7 @@ class Importance(object):
                  seed: int = 12345, parameters_to_evaluate: int = -1, margin: Union[None, float] = None,
                  save_folder: str = 'PIMP', impute_censored: bool = False, max_sample_size: int = -1,
                  fANOVA_cut_at_default=False, fANOVA_pairwise=True, forwardsel_feat_imp=False,
-                 incn_quant_var=True):
+                 incn_quant_var=True, preprocess=True):
         """
         Importance Object. Handles the construction of the data and training of the model. Easy interface to the
         different evaluators.
@@ -70,6 +72,10 @@ class Importance(object):
         self.pairiwse_fANOVA = fANOVA_pairwise
         self.forwardsel_feat_imp = forwardsel_feat_imp
         self.incn_quant_var = incn_quant_var
+        self.preprocess = preprocess
+        self._preprocessed = False
+        self.X_fanova = None
+        self.y_fanova = None
 
         self._setup_scenario(scenario, scenario_file, save_folder)
         self._load_runhist(runhistory, runhistory_file)
@@ -102,6 +108,38 @@ class Importance(object):
             self.logger.info('Remaining %d datapoints' % len(self.X))
             self.model.train(self.X, self.y)
 
+    def _preprocess(self, runhistory):
+        """
+        Method to marginalize over instances such that fANOVA can determine the parameter importance without
+        having to deal with instance features.
+        :param runhistory: RunHistory that knows all configurations that were run. For all these configurations
+                           we have to marginalize away the instance features with which fANOVA will make it's
+                           predictions
+        """
+        self.logger.info('PREPROCESSING PREPROCESSING PREPROCESSING PREPROCESSING PREPROCESSING PREPROCESSING')
+        self.logger.info('Marginalizing away all instances!')
+        configs = runhistory.get_all_configs()
+        X_non_hyper, X_prime, y_prime = [], [], []
+        for c_id, config in tqdm(enumerate(configs), ascii=True, desc='Completed: ', total=len(configs)):
+            config = impute_inactive_values(config).get_array()
+            X_prime.append(config)
+            X_non_hyper.append(config)
+            y_prime.append(self.model.predict_marginalized_over_instances(np.array([X_prime[-1]]))[0].flatten())
+            for idx, param in enumerate(self.scenario.cs.get_hyperparameters()):
+                if not isinstance(param, CategoricalHyperparameter):
+                    X_non_hyper[-1][idx] = param._transform(X_non_hyper[-1][idx])
+        X_non_hyper = np.array(X_non_hyper)
+        X_prime = np.array(X_prime)
+        y_prime = np.array(y_prime)
+        # y_prime = np.array(self.model.predict_marginalized_over_instances(X_prime)[0])
+        self.X = X_prime
+        self.X_fanova = X_non_hyper
+        self.y_fanova = y_prime
+        self.y = y_prime
+        self.logger.info('Size of training X after preprocessing: %s' % str(self.X.shape))
+        self.logger.info('Size of training y after preprocessing: %s' % str(self.y.shape))
+        self.logger.info('Finished Preprocessing')
+        self._preprocessed = True
 
     def _setup_scenario(self, scenario: Union[None, Scenario], scenario_file: Union[None, str], save_folder: str) -> \
             None:
@@ -167,6 +205,12 @@ class Importance(object):
         self._model = None
         self.logged_y = False
         self._convert_data(fit=True)
+        if self.preprocess:
+            self._preprocess(self.runhistory)
+            if self.scenario.run_obj == "runtime":
+                self.y = np.log10(self.y)
+            self.model = 'urfi'
+            self.model.train(self.X, self.y)
 
     def _load_runhist(self, runhistory, runhistory_file) -> None:
         """
@@ -230,18 +274,25 @@ class Importance(object):
 
     @model.setter
     def model(self, model_short_name='urfi'):
-        self.types, self.bounds = get_types(self.scenario.cs, self.scenario.feature_array)
         if model_short_name not in ['urfi', 'rfi']:
             raise ValueError('Specified model %s does not exist or not supported!' % model_short_name)
         elif model_short_name == 'rfi':
+            self.types, self.bounds = get_types(self.scenario.cs, self.scenario.feature_array)
             self._model = RandomForestWithInstances(self.types, self.bounds,
                                                     instance_features=self.scenario.feature_array,
                                                     seed=self.rng.randint(99999))
         elif model_short_name == 'urfi':
-            self._model = UnloggedRandomForestWithInstances(self.types, self.bounds,
-                                                            instance_features=self.scenario.feature_array,
-                                                            seed=self.rng.randint(99999),
-                                                            cutoff=self.cutoff, threshold=self.threshold)
+            if not self._preprocessed:
+                self.types, self.bounds = get_types(self.scenario.cs, self.scenario.feature_array)
+                self._model = UnloggedEPARXrfi(self.types, self.bounds,
+                                               instance_features=self.scenario.feature_array,
+                                               seed=self.rng.randint(99999),
+                                               cutoff=self.cutoff, threshold=self.threshold)
+            else:
+                self.types, self.bounds = get_types(self.scenario.cs, None)
+                self._model = Unloggedrfwi(self.types, self.bounds,
+                                           instance_features=None,
+                                           seed=self.rng.randint(99999))
         self._model.rf_opts.compute_oob_error = True
 
     @property
@@ -295,7 +346,7 @@ class Importance(object):
             self.logger.info('X shape %s' % str(self.model.X.shape))
             mini = None
             if self.cut_def_fan:
-                mini = True         # TODO what about scenarios where we analyze maximization?
+                mini = True         # TODO what about scenarios where we maximize?
             evaluator = fANOVA(scenario=self.scenario,
                                cs=self.scenario.cs,
                                model=self._model,
@@ -303,7 +354,9 @@ class Importance(object):
                                runhist=self.runhistory,
                                rng=self.rng,
                                minimize=mini,
-                               pairwise=self.pairiwse_fANOVA)
+                               pairwise=self.pairiwse_fANOVA,
+                               preprocessed_X=self.X_fanova,
+                               preprocessed_y=self.y_fanova)
         elif evaluation_method == 'incneighbor':
             if self.incumbent is None:
                 raise ValueError('Incumbent is %s!\n \
@@ -403,7 +456,7 @@ class Importance(object):
             self.logger.info('Fitting Model')
             self.model.train(X, Y)
 
-    def evaluate_scenario(self, methods) -> Union[
+    def evaluate_scenario(self, methods, save_folder=None) -> Union[
             Tuple[Dict[str, Dict[str, float]], List[AbstractEvaluator]], Dict[str, Dict[str, float]]]:
         """
         Evaluate the given scenario
@@ -421,7 +474,6 @@ class Importance(object):
                       dict[evalution_method] -> importance values
         """
         # influence-model currently not supported
-        # influence-model currently not supported
         assert(len(methods) >= 1)
         evaluators = []
         dict_ = {}
@@ -430,6 +482,8 @@ class Importance(object):
             self.evaluator = method
             dict_[method] = self.evaluator.run()
             evaluators.append(self.evaluator)
+            if save_folder:
+                self.evaluator.plot_result(os.path.join(save_folder, self.evaluator.name.lower()), show=False)
         return dict_, evaluators
 
     def plot_results(self, name: Union[List[str], str, None] = None, evaluators: Union[List[AbstractEvaluator],

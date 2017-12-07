@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib as mpl
 mpl.use('Agg')
 from matplotlib import pyplot as plt
+from tqdm import tqdm
 from pimp.evaluator.base_evaluator import AbstractEvaluator
 
 __author__ = "Andre Biedenkapp"
@@ -60,7 +61,8 @@ class ForwardSelector(AbstractEvaluator):
             names = params
             ids = param_ids
 
-        for _ in range(self.to_evaluate):  # Main Loop
+        pbar = tqdm(range(self.to_evaluate), ascii=True)
+        for _ in pbar:  # Main Loop
             errors = []
             for idx, name in zip(ids, names):
                 self.logger.debug('Evaluating %s' % name)
@@ -91,7 +93,7 @@ class ForwardSelector(AbstractEvaluator):
                 self.logger.info('%s: %.4f' % (best_parameter, lowest_error))
                 self.evaluated_parameter_importance[best_parameter] = lowest_error
             else:
-                self.logger.info('%s: %.4f' % (best_parameter.name, lowest_error))
+                pbar.set_description('{: >.30s}: {: >7.4f} (OOB)'.format(best_parameter.name, lowest_error))
                 self.evaluated_parameter_importance[best_parameter.name] = lowest_error
         all_res = {'imp': self.evaluated_parameter_importance, 'order': list(self.evaluated_parameter_importance.keys())}
         return all_res
