@@ -240,7 +240,7 @@ class Ablation(AbstractEvaluator):
                     modded_dict = self._set_child_of_child_to_none(c, modded_dict)
         return modded_dict
 
-    def _rm_inactive(self, candidates, modifiable_config_dict):
+    def _rm_inactive(self, candidates, modifiable_config_dict, prev_modifiable_config_dict, removed=[]):
         for candidate in candidates:
             parent_conditions = self.cs.get_parent_conditions_of(candidate)
             passing = True
@@ -250,10 +250,16 @@ class Ablation(AbstractEvaluator):
                 except ValueError:
                     passing = False
             if not passing:
-                modifiable_config_dict[candidate] = None
-                modifiable_config_dict = self._rm_inactive(
-                    list(map(lambda x: x.name, self.cs.get_children_of(candidate))), modifiable_config_dict)
-        return  modifiable_config_dict
+                if candidate in modifiable_config_dict:
+                    try:
+                        modifiable_config_dict[candidate] = prev_modifiable_config_dict[candidate]
+                    except KeyError:
+                        del modifiable_config_dict[candidate]
+                    removed.append(candidate)
+                modifiable_config_dict, removed = self._rm_inactive(
+                    list(map(lambda x: x.name, self.cs.get_children_of(candidate))), modifiable_config_dict,
+                    prev_modifiable_config_dict, removed)
+        return  modifiable_config_dict, removed
 
 ########################################################################################################################
     # MAIN METHOD # MAIN METHOD # MAIN METHOD # MAIN METHOD # MAIN METHOD # MAIN METHOD # MAIN METHOD # MAIN METHOD
@@ -314,8 +320,8 @@ class Ablation(AbstractEvaluator):
                 try:
                     modifiable_config = Configuration(self.cs, modifiable_config_dict)
                 except ValueError:
-                    modifiable_config = Configuration(self.cs, self._rm_inactive(candidate_tuple[1:],
-                                                                                 modifiable_config))
+                    modifiable_config_dict, rmed = self._rm_inactive(candidate_tuple[1:], modifiable_config, prev_modifiable_config_dict)
+                    modifiable_config = Configuration(self.cs, modifiable_config_dict)
 
                 mean, var = self._predict_over_instance_set(impute_inactive_values(modifiable_config))  # ... predict their performance
                 self.logger.debug('%s: %.6f' % (candidate_tuple, mean[0]))
