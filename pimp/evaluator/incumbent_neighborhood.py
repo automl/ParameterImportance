@@ -37,6 +37,7 @@ class IncNeighbor(AbstractEvaluator):
         self.old_sampling = old_sampling
         self.neighborhood_dict = None
         self.performance_dict = {}
+        self._sampled_neighbors = 0
         self.variance_dict = {}
         self.quantify_importance_via_variance = quant_var
 
@@ -149,6 +150,7 @@ class IncNeighbor(AbstractEvaluator):
                     except (ForbiddenValueError, ValueError) as e:
                         pass
             self.logger.info('>'.join(['-'*50, ' Found {:>3d} valid neighbors'.format(len(checked_neighbors))]))
+            self._sampled_neighbors += len(checked_neighbors) + 1
             sort_idx = list(map(lambda x: x[0], sorted(enumerate(checked_neighbors), key=lambda y: y[1])))
             if isinstance(self.cs.get_hyperparameter(param), CategoricalHyperparameter):
                 checked_neighbors_non_unit_cube = list(np.array(checked_neighbors_non_unit_cube)[sort_idx])
@@ -176,9 +178,9 @@ class IncNeighbor(AbstractEvaluator):
         def_perf, def_var = self._predict_over_instance_set(impute_inactive_values(self.cs.get_default_configuration()))
         inc_perf, inc_var = self._predict_over_instance_set(impute_inactive_values(self.incumbent))
         delta = def_perf - inc_perf
-        pbar = tqdm(enumerate(self.incumbent.keys()), ascii=True, total=len(self.incumbent.keys()))
+        pbar = tqdm(range(self._sampled_neighbors), ascii=True)
         sum_var = 0
-        for index, param in pbar:
+        for index, param in enumerate(self.incumbent.keys()):
             if param in neighborhood_dict:
                 pbar.set_description('Predicting performances for neighbors of {: >.30s}'.format(param))
                 performance_dict[param] = []
@@ -193,6 +195,7 @@ class IncNeighbor(AbstractEvaluator):
                             performance_dict[param].append(inc_perf)
                             overall_var[param].append(inc_perf)
                             variance_dict[param].append(inc_var)
+                            pbar.update(1)
                             added_inc = True
                         else:
                             inc_at += 1
@@ -206,6 +209,7 @@ class IncNeighbor(AbstractEvaluator):
                     performance_dict[param].append(mean)
                     overall_var[param].append(mean)
                     variance_dict[param].append(var)
+                    pbar.update(1)
                 if len(neighborhood_dict[param][0]) > 0:
                     neighborhood_dict[param][0] = np.insert(neighborhood_dict[param][0], inc_at, incumbent_array[index])
                     neighborhood_dict[param][1] = np.insert(neighborhood_dict[param][1], inc_at, self.incumbent[param])
@@ -217,6 +221,7 @@ class IncNeighbor(AbstractEvaluator):
                     performance_dict[param].append(mean)
                     overall_var[param].append(mean)
                     variance_dict[param].append(var)
+                    pbar.update(1)
                 all_preds.extend(performance_dict[param])
                 tmp_perf = performance_dict[param][:inc_at]
                 tmp_perf.extend(performance_dict[param][inc_at + 1:])
