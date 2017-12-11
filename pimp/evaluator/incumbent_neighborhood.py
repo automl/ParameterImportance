@@ -1,5 +1,6 @@
 import os
 from collections import OrderedDict
+from copy import deepcopy
 
 import numpy as np
 from tqdm import tqdm
@@ -176,6 +177,7 @@ class IncNeighbor(AbstractEvaluator):
         inc_perf, inc_var = self._predict_over_instance_set(impute_inactive_values(self.incumbent))
         delta = def_perf - inc_perf
         pbar = tqdm(enumerate(self.incumbent.keys()), ascii=True, total=len(self.incumbent.keys()))
+        sum_var = 0
         for index, param in pbar:
             if param in neighborhood_dict:
                 pbar.set_description('Predicting performances for neighbors of {: >.30s}'.format(param))
@@ -225,6 +227,8 @@ class IncNeighbor(AbstractEvaluator):
                 except ValueError:
                     imp_over_max = np.nan  # Hacky fix as this is never used anyway
                 overall_imp[param] = np.array([imp_over_mea, imp_over_med, imp_over_max])
+                overall_var[param] = np.var(overall_var[param])
+                sum_var += overall_var[param]
             else:
                 pbar.set_description('{: >.70s}'.format('Parameter %s is inactive' % param))
         self.logger.info('{:<30s}  {:^24s}, {:^25s}'.format(
@@ -236,14 +240,14 @@ class IncNeighbor(AbstractEvaluator):
         self.logger.info('-'*80)
         tmp = []
         for param in sorted(list(overall_var.keys())):
-            overall_var[param].extend([inc_perf for _ in range(len(all_preds) - len(overall_var[param]))])
-            overall_var[param] = np.var(overall_var[param])
+            # overall_var[param].extend([inc_perf for _ in range(len(all_preds) - len(overall_var[param]))])
+            # overall_var[param] = np.var(overall_var[param])
             self.logger.info('{:<30s}: [{: >6.2f}, {: >6.2f}, {: >6.2f}], {: >6.2f}, {: >6.2f}, {: >6.2f}'.format(
                 param, *overall_imp[param]*100, overall_var[param], np.var(all_preds),
-                overall_var[param] / np.var(all_preds) * 100
+                overall_var[param] / sum_var * 100
             ))
             if self.quantify_importance_via_variance:
-                tmp.append([param, overall_var[param] / np.var(all_preds) * 100])
+                tmp.append([param, overall_var[param] / sum_var * 100])
             else:
                 tmp.append([param, overall_imp[param][0]])
         tmp = sorted(tmp, key=lambda x: x[1], reverse=True)

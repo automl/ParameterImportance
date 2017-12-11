@@ -95,8 +95,8 @@ class CMDs(CMDReader):
                               action='store_true',
                               help="forward selection for feature importance",
                               dest='forwardsel_feat_imp')
-        req_opts.add_argument('--dont_marginalize_away_instances',
-                              action='store_false',
+        req_opts.add_argument('--marginalize_over_instances',
+                              action='store_true',
                               help='Deactivate preprocessing step in which instances are marginalized away to speedup'
                               ' ablation, forward-selection and incumbent neighborhood predictions',
                               dest='marg_inst')
