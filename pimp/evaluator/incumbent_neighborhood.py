@@ -220,7 +220,10 @@ class IncNeighbor(AbstractEvaluator):
                 tmp_perf.extend(performance_dict[param][inc_at + 1:])
                 imp_over_mea = (np.mean(tmp_perf) - performance_dict[param][inc_at]) / delta
                 imp_over_med = (np.median(tmp_perf) - performance_dict[param][inc_at]) / delta
-                imp_over_max = (np.max(tmp_perf) - performance_dict[param][inc_at]) / delta
+                try:
+                    imp_over_max = (np.max(tmp_perf) - performance_dict[param][inc_at]) / delta
+                except ValueError:
+                    imp_over_max = np.nan  # Hacky fix as this is never used anyway
                 overall_imp[param] = np.array([imp_over_mea, imp_over_med, imp_over_max])
             else:
                 pbar.set_description('{: >.70s}'.format('Parameter %s is inactive' % param))

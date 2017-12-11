@@ -82,6 +82,7 @@ class Importance(object):
         self._setup_model()
         self.best_dir = None
         self._load_incumbent(traj_file, runhistory_file, incumbent)
+        self.logger.info('Best incumbent found in %s' % self.best_dir)
         if 0 < max_sample_size < len(self.X):
             self.logger.warning('Reducing the amount of datapoints!')
             if self.best_dir:
