@@ -103,7 +103,10 @@ class fANOVA(AbstractEvaluator):
             self.logger.info('Plotting Pairwise-Marginals!')
             most_important_ones = list(self.evaluated_parameter_importance.keys())[
                                   :min(self.num_single, self.n_most_imp_pairs)]
-            vis.create_most_important_pairwise_marginal_plots(most_important_ones)
+            try:
+                vis.create_most_important_pairwise_marginal_plots(most_important_ones)
+            except TypeError:
+                self.logger.warning('Could not create pairwise plots!')
         plt.close('all')
 
     def run(self) -> OrderedDict:

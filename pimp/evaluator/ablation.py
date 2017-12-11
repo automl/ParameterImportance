@@ -259,7 +259,7 @@ class Ablation(AbstractEvaluator):
                 modifiable_config_dict, removed = self._rm_inactive(
                     list(map(lambda x: x.name, self.cs.get_children_of(candidate))), modifiable_config_dict,
                     prev_modifiable_config_dict, removed)
-        return  modifiable_config_dict, removed
+        return modifiable_config_dict, removed
 
 ########################################################################################################################
     # MAIN METHOD # MAIN METHOD # MAIN METHOD # MAIN METHOD # MAIN METHOD # MAIN METHOD # MAIN METHOD # MAIN METHOD
