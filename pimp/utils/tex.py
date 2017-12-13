@@ -57,8 +57,8 @@ def load_data_frames(directory, rerun=False, show=True):
         if show:
             print('Loading data from %s' % dir_)
         dn = dir_.split(os.path.sep)[-2]
-        data_dict[dn] = {'fanova': None, 'fanova_cut': None, 'ablation': None, 'forward-selection': None}
-        name_dict[dn] = {'fanova': None, 'fanova_cut': None, 'ablation': None, 'forward-selection': None}
+        data_dict[dn] = {'fanova': None, 'fanova_cut': None, 'ablation': None, 'incneighbor': None}
+        name_dict[dn] = {'fanova': None, 'fanova_cut': None, 'ablation': None, 'incneighbor': None}
         json_files = glob.glob(os.path.join(dir_, '*.json'))
         try:
             rm = json_files.index(os.path.join(dir_, 'pimp_args.json'))
@@ -69,7 +69,7 @@ def load_data_frames(directory, rerun=False, show=True):
         key_idx = 0
         jso_idx = 0
         while key_idx < len(keys) and jso_idx < len(json_files):
-            if keys[key_idx] in ['incneighbor', 'forward-selection']:
+            if keys[key_idx] in ['forward-selection']:
                 key_idx += 1
                 continue
             cut = False
@@ -100,6 +100,10 @@ def load_data_frames(directory, rerun=False, show=True):
                 key_idx += 1
     df = DataFrame.from_dict(data_dict, orient='index')
     dff = DataFrame.from_dict(name_dict, orient='index')
+    cols = list(df.columns)
+    cols[cols.index('incneighbor')] = 'local improvement analysis'
+    df.columns = cols
+    dff.columns = cols
     return df, dff
 
 
@@ -252,10 +256,6 @@ def _pairwise(pd, methods, index, store_in=None, algo_name=None, show=True):
                 print('intersect: %3d/%3d' % (len(intersection_set_5), len(intersection_set_1)))
                 print('    union: %3d/%3d' % (len(union_set_5), len(union_set_1)))
                 print()
-            # print('          a5f1/f5a1')
-            # print('intersect: %3d/%3d' % (len(intersection_set_f), len(intersection_set_a)))
-            # print('    union: %3d/%3d' % (len(union_set_f), len(union_set_a)))
-            # print()
             if store_in is not None:
                 name = (i, methods[0], methods[1])
                 if name not in store_in:
@@ -266,8 +266,10 @@ def _pairwise(pd, methods, index, store_in=None, algo_name=None, show=True):
 
 def generate_table_structure(pd, methods=None, store_in=None, algo_name=None, show=True, diagonal=False):
     if methods is None:
-        methods = ['fanova', 'ablation', 'fanova_cut']
-        combos = [['fanova', 'ablation'], ['fanova_cut', 'ablation']]
+        methods = ['fanova', 'ablation', 'fanova_cut', 'local improvement analysis']
+        combos = [['fanova', 'ablation'], ['fanova_cut', 'ablation'],
+                  ['fanova', 'local improvement analysis'], ['fanova_cut', 'local improvement analysis'],
+                  ['ablation', 'local improvement analysis']]
         if show:
             print('#'*180)
         store_in = {}
@@ -294,7 +296,10 @@ def generate_table_structure(pd, methods=None, store_in=None, algo_name=None, sh
 
 
 def merge_data(result):
-    tmp = sorted(list(result.keys()), key=lambda x: (x[1], x[0], x[2]))
+    tmp = sorted(list(result.keys()), key=lambda x: (x[1], x[2], x[0]))
+    combos = [['fanova', 'ablation'], ['fanova_cut', 'ablation'],
+              ['fanova', 'local improvement analysis'], ['fanova_cut', 'local improvement analysis'],
+              ['ablation', 'local improvement analysis']]
     skip = False
     try:
         del tmp[tmp.index('fanova')]
@@ -308,37 +313,46 @@ def merge_data(result):
         del tmp[tmp.index('fanova_cut')]
     except ValueError:
         skip = True
+    try:
+        del tmp[tmp.index('local improvement analysis')]
+    except ValueError:
+        skip = True
     df_dict = {}
     if not skip:
         multi = []
         all = None
-        prev = tmp[0][1]
-        for benchmark in tmp:
-            if benchmark[1] != prev:
-                if 'cut' in prev[1]:
-                    cols = ['cap_ca', 'cup_ca']
+        prev = tmp[0]
+        for combo in combos:
+            tap = np.array(tmp)
+            indices = list(set.intersection(set(list(np.where(tap[:, 1] == combo[0]))[0]),
+                                            set(list(np.where(tap[:, 2] == combo[1]))[0])))
+            tap = list(tap[indices])
+            for benchmark in tap:
+                cols = ['cap_', 'cup_']
+                if 'fanova' == benchmark[1]:
+                    cols[0], cols[1] = cols[0] + 'f', cols[1] + 'f'
+                elif 'ab' in benchmark[1]:
+                    cols[0], cols[1] = cols[0] + 'a', cols[1] + 'a'
                 else:
-                    cols = ['cap_fa', 'cup_fa']
-                all.columns = cols
-                idx = list(map(lambda y: y[1], sorted(enumerate(list(all.index)), key=lambda x: x[1])))
-                df = all.loc[idx]
-                multi.append(df.copy())
-                all = None
-                prev = benchmark[1]
-            if all is None:
-                all = DataFrame.from_dict(result[benchmark], orient='index')
-            else:
-                all = pd_concat([all, DataFrame.from_dict(result[benchmark], orient='index')])
-        if 'cut' in benchmark[1]:
-            cols = ['cap_ca', 'cup_ca']
-        else:
-            cols = ['cap_fa', 'cup_fa']
-        all.columns = cols
-        idx = list(map(lambda y: y[1], sorted(enumerate(list(all.index)), key=lambda x: x[1])))
-        df = all.loc[idx]
-        multi.append(df)
+                    cols[0], cols[1] = cols[0] + 'c', cols[1] + 'c'
+                if 'ab' in benchmark[2]:
+                    cols[0], cols[1] = cols[0] + 'a', cols[1] + 'a'
+                else:
+                    cols[0], cols[1] = cols[0] + 'l', cols[1] + 'l'
+                benchmark = tuple(benchmark)
+                if all is None:
+                    all = DataFrame.from_dict(result[benchmark], orient='index')
+                    all.columns = cols
+                    idx = list(map(lambda y: y[1], sorted(enumerate(list(all.index)), key=lambda x: x[1])))
+                    all = all.loc[idx]
+                else:
+                    d = DataFrame.from_dict(result[benchmark], orient='index')
+                    d.columns = cols
+                    all = pd_concat([all, d])
+            multi.append(all.copy())
+            all = None
         df_dict['joint'] = pd_concat(multi, axis=1)
-    for key in ['ablation', 'fanova', 'fanova_cut']:
+    for key in ['ablation', 'fanova', 'fanova_cut', 'local improvement analysis']:
         try:
             df = DataFrame.from_dict(result[key], orient='index')
             df.columns = ['cap', 'cup']
@@ -359,20 +373,24 @@ def create_latex_output(result):
         skip = True
     if not skip:
         df = dfs['joint']
-        tmp = list(df.keys())[0]
-        if 'fa' in tmp:
-            df.columns = ['$\\cap_{f_{5\\%}a_{5\\%}}$', '$\\cup_{f_{5\\%}a_{5\\%}}$',
-                          '$\\cap_{f_{c5\\%}a_{5\\%}}$', '$\\cup_{f_{c5\\%}a_{5\\%}}$']
-        else:
-            df.columns = ['$\\cap_{f_{c5\\%}a_{5\\%}}$', '$\\cup_{f_{c5\\%}a_{5\\%}}$',
-                          '$\\cap_{f_{5\\%}a_{5\\%}}$', '$\\cup_{f_{5\\%}a_{5\\%}}$']
+        tmp = list(df.keys())
+        for idx, t in enumerate(tmp):
+            t = t.split('_')
+            t[0] = '$\\' + t[0]
+            t[1] = [t[1][0], t[1][1]]
+            t[1][0] = '{' + t[1][0] + '_{c5\\%}'
+            t[1][1] = t[1][1] + '_{c5\\%}}$'
+            t[1] = ''.join(t[1])
+            t = '_'.join(t)
+            tmp[idx] = t
+        df.columns = tmp
         print('\\begin{table}[htbp]')
         print('\\centering')
         print(df.to_latex(escape=False, column_format='l' + 'c'*len(df.columns)))
         print('\\caption{%s}' % 'Comparison of fANOVA and ablation results on the same instance sets.')
         print('\\end{table}')
         print()
-    for key in ['ablation', 'fanova', 'fanova_cut']:
+    for key in ['ablation', 'fanova', 'fanova_cut', 'local improvement analysis']:
         try:
             df = dfs[key]
             col = df['cap']
@@ -451,25 +469,15 @@ def collect_all_dfs(algo_names, diagonal=False):
 def create_stats_df(algo_names, show=True, diagonal=False):
     all_ = collect_all_dfs(algo_names, diagonal=diagonal)
     res = []
+    ros = []
     names = []
     for idx, algo in enumerate(algo_names):
         try:
-            stat = [np.mean(all_[algo]['joint']['cap_fa'] / all_[algo]['joint']['cup_fa']),
-                    np.std(all_[algo]['joint']['cap_fa'] / all_[algo]['joint']['cup_fa'])]
+            stat = [np.mean(all_[algo]['ablation']['cap'] / all_[algo]['ablation']['cup']),
+                    np.std(all_[algo]['ablation']['cap'] / all_[algo]['ablation']['cup'])]
         except KeyError:
+            stat.append(None)
             stat = [None, None]
-        try:
-            stat.append(np.mean(all_[algo]['joint']['cap_ca'] / all_[algo]['joint']['cup_ca']))
-            stat.append(np.std(all_[algo]['joint']['cap_ca'] / all_[algo]['joint']['cup_ca']))
-        except KeyError:
-            stat.append(None)
-            stat.append(None)
-        try:
-            stat.append(np.mean(all_[algo]['ablation']['cap'] / all_[algo]['ablation']['cup']))
-            stat.append(np.std(all_[algo]['ablation']['cap'] / all_[algo]['ablation']['cup']))
-        except KeyError:
-            stat.append(None)
-            stat.append(None)
         try:
             stat.append(np.mean(all_[algo]['fanova']['cap'] / all_[algo]['fanova']['cup']))
             stat.append(np.std(all_[algo]['fanova']['cap'] / all_[algo]['fanova']['cup']))
@@ -482,9 +490,48 @@ def create_stats_df(algo_names, show=True, diagonal=False):
         except KeyError:
             stat.append(None)
             stat.append(None)
-        print(np.var(all_[algo]['joint']['cap_fa'] / all_[algo]['joint']['cup_fa']))
-        print(np.std(all_[algo]['joint']['cap_fa'] / all_[algo]['joint']['cup_fa']))
+        try:
+            stat.append(np.mean(all_[algo][
+                                    'local improvement analysis'][
+                                    'cap'] / all_[algo]['local improvement analysis']['cup']))
+            stat.append(np.std(all_[algo][
+                                   'local improvement analysis'][
+                                   'cap'] / all_[algo]['local improvement analysis']['cup']))
+        except KeyError:
+            stat.append(None)
+            stat.append(None)
+
+        try:
+            stot = [np.mean(all_[algo]['joint']['cap_fa'] / all_[algo]['joint']['cup_fa']),
+                    np.std(all_[algo]['joint']['cap_fa'] / all_[algo]['joint']['cup_fa'])]
+        except KeyError:
+            stot = [None, None]
+        try:
+            stot.append(np.mean(all_[algo]['joint']['cap_fl'] / all_[algo]['joint']['cup_fl']))
+            stot.append(np.std(all_[algo]['joint']['cap_fl'] / all_[algo]['joint']['cup_fl']))
+        except KeyError:
+            stot.append(None)
+            stot.append(None)
+        try:
+            stot.append(np.mean(all_[algo]['joint']['cap_ca'] / all_[algo]['joint']['cup_ca']))
+            stot.append(np.std(all_[algo]['joint']['cap_ca'] / all_[algo]['joint']['cup_ca']))
+        except KeyError:
+            stot.append(None)
+            stot.append(None)
+        try:
+            stot.append(np.mean(all_[algo]['joint']['cap_cl'] / all_[algo]['joint']['cup_cl']))
+            stot.append(np.std(all_[algo]['joint']['cap_cl'] / all_[algo]['joint']['cup_cl']))
+        except KeyError:
+            stot.append(None)
+            stot.append(None)
+        try:
+            stot.append(np.mean(all_[algo]['joint']['cap_al'] / all_[algo]['joint']['cup_al']))
+            stot.append(np.std(all_[algo]['joint']['cap_al'] / all_[algo]['joint']['cup_al']))
+        except KeyError:
+            stot.append(None)
+            stot.append(None)
         res.append(stat)
+        ros.append(stot)
         if algo == 'cplex':
             names.append('CPLEX')
         elif algo == 'satenstein':
@@ -500,37 +547,56 @@ def create_stats_df(algo_names, show=True, diagonal=False):
             names.append(algo)
         else:
             names.append(algo)
-    df = DataFrame.from_records(res, columns=[('fANOVA', 'vs. ablation', '$\mu$'),
+
+    vs = DataFrame.from_records(ros, columns=[('fANOVA', 'vs. ablation', '$\mu$'),
                                               ('fANOVA', 'vs. ablation', '$\sigma$'),
+                                              ('fANOVA', 'vs. LIN', '$\mu$'),
+                                              ('fANOVA', 'vs. LIN', '$\sigma$'),
                                               ('fANOVA$\\_c$', 'vs. ablation', '$\mu$'),
                                               ('fANOVA$\\_c$', 'vs. ablation', '$\sigma$'),
+                                              ('fANOVA$\\_c$', 'vs. LIN', '$\mu$'),
+                                              ('fANOVA$\\_c$', 'vs. LIN', '$\sigma$'),
+                                              ('ablation', 'vs. LIN', '$\mu$'),
+                                              ('ablation', 'vs. LIN', '$\sigma$')
+                                              ])
+    df = DataFrame.from_records(res, columns=[
                                               ('Set vs. Set', 'ablation', '$\mu$'),
                                               ('Set vs. Set', 'ablation', '$\sigma$'),
                                               ('Set vs. Set', 'fANOVA', '$\mu$'),
                                               ('Set vs. Set', 'fANOVA', '$\sigma$'),
                                               ('Set vs. Set', 'fANOVA$\\_c$', '$\mu$'),
-                                              ('Set vs. Set', 'fANOVA$\\_c$', '$\sigma$')
+                                              ('Set vs. Set', 'fANOVA$\\_c$', '$\sigma$'),
+                                              ('Set vs. Set', 'LIN', '$\mu$'),
+                                              ('Set vs. Set', 'LIN', '$\sigma$')
                                               ])
     names = list(map(lambda x: x.replace('_', '\\_'), names))
     df *= 100
+    vs *= 100
     df.index = names
+    vs.index = names
     df.columns = pd.MultiIndex.from_tuples(df.columns, names=['', '', ''])
+    vs.columns = pd.MultiIndex.from_tuples(vs.columns, names=['', '', ''])
     pd.options.display.float_format = '{:.2f}'.format
     if show:
         print()
         print('\\begin{table}[htbp]')
         print('\\centering')
-        print(df.to_latex(escape=False, column_format='l|cc|cc|cc|cc|cc', multicolumn_format='|c|'))
-        print('\\caption{Column 1 \\& 2: Comparison of fANOVA and ablation results on the same instance sets. '
-              'Columns 3 - 6: Comparison of fANOVA/ablation results across different instance sets.}')
+        print(df.to_latex(escape=False, column_format='l|cc|cc|cc|cc|cc|cc', multicolumn_format='|c|'))
+        print('\\caption{Comparison of fANOVA/ablation/LIN results across different instance sets.}')
         print('\\end{table}')
-    return df
+        print()
+        print('\\begin{table}[htbp]')
+        print('\\centering')
+        print(vs.to_latex(escape=False, column_format='l|cc|cc|cc|cc|cc', multicolumn_format='|c|'))
+        print('\\caption{Comparison of x and y results on the same instance sets.}')
+        print('\\end{table}')
+    return df, vs
 
 
 def generate_all_possible_outputs(algo_names, diagonal=False):
     for algo in algo_names:
         jon_dirs(algo)
-    df = create_stats_df(algo_names, False, diagonal=diagonal)
+    df, vs = create_stats_df(algo_names, False, diagonal=diagonal)
     print('~*'*60)
     print('~*'*60)
     print('~*'*60)
@@ -541,7 +607,13 @@ def generate_all_possible_outputs(algo_names, diagonal=False):
     print('\\section{%s}' % "Aggregated results")
     print('\\begin{table}[htbp]')
     print('\\centering')
-    print(df.to_latex(escape=False, column_format='l|cc|cc|cc|cc|cc', multicolumn_format='|c|'))
-    print('\\caption{Column 1 \\& 2: Comparison of fANOVA and ablation results on the same instance sets. '
-          'Columns 3 - 6: Comparison of fANOVA/ablation results across different instance sets.}')
+    print(df.to_latex(escape=False, column_format='l|cc|cc|cc|cc|cc|cc', multicolumn_format='|c|'))
+    print('\\caption{Comparison of fANOVA/ablation/LIN results across different instance sets.}')
+    print('\\end{table}')
+    print()
+    print('\\begin{table}[htbp]')
+    print('\\centering')
+    print(vs.to_latex(escape=False, column_format='l|cc|cc|cc|cc|cc', multicolumn_format='|c|'))
+    print('\\caption{Column 1 \\& 2: Comparison of x and y results on the same instance sets.}')
+    print('\\end{table}')
     print('\\end{table}')
