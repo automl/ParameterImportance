@@ -5,8 +5,7 @@ import numpy as np
 import matplotlib as mpl
 mpl.use('Agg')
 from matplotlib import pyplot as plt
-from sklearn.decomposition import PCA
-
+from tqdm import tqdm
 from pimp.evaluator.base_evaluator import AbstractEvaluator
 
 __author__ = "Andre Biedenkapp"
@@ -35,6 +34,7 @@ class ForwardSelector(AbstractEvaluator):
         self.name = 'Forward Selection'
         self.logger = self.name
         self.feature_importance = feature_imp
+        self.logger.info('%slyzing feature importance' % ('A' if feature_imp else 'Not a'))
 
     def run(self) -> OrderedDict:
         """
@@ -50,9 +50,9 @@ class ForwardSelector(AbstractEvaluator):
         used = []
         used_bounds = []
         if self.feature_importance:
-            used.extend(range(0, len(params)))
-            used_bounds.extend(range(0, len(params)))
-            names = list(map(lambda x: str(len(feature_ids) + x - len(self.types)), feature_ids))
+            used.extend(range(0, len(self.bounds)))
+            used_bounds.extend(range(0, len(self.bounds)))
+            names = list(map(lambda x: 'Feat #' + str(len(feature_ids) + x - len(self.types)), feature_ids))
             ids = feature_ids
             if self.to_evaluate > len(feature_ids):
                 self.to_evaluate = len(feature_ids)
@@ -61,42 +61,39 @@ class ForwardSelector(AbstractEvaluator):
             names = params
             ids = param_ids
 
-        num_feats = len(self.types) - len(params)
-        if not self.feature_importance and num_feats > 0:
-            pca = PCA(n_components=min(7, num_feats))
-            self.scenario.feature_array = pca.fit_transform(self.scenario.feature_array)
-
-        for _ in range(self.to_evaluate):  # Main Loop
+        pbar = tqdm(range(self.to_evaluate), ascii=True)
+        for _ in pbar:  # Main Loop
             errors = []
             for idx, name in zip(ids, names):
                 self.logger.debug('Evaluating %s' % name)
                 used.append(idx)
-                used_bounds.append(idx)
+                if not self.feature_importance:
+                    used_bounds.append(idx)
                 self.logger.debug('Used parameters: %s' % str(used))
                 self.logger.debug('Used bounds of parameters: %s' % str(used_bounds))
 
                 start = time.time()
                 self._refit_model(self.types[sorted(used)], self.bounds[sorted(used_bounds)],
-                                  self.X[:, sorted(used)], self.y)  # refit the model every round
-                # print(self.model.rf_opts.compute_oob_error)
-                # self.model.rf.compute_out_of_bag_error = True
-                errors.append(np.sqrt(
-                    np.mean((self.model.predict(self.X[:, sorted(used)])[0].flatten() - self.y) ** 2)))
+                                  self.X[:, sorted(used)],
+                                  self.y)  # refit the model every round
+                errors.append(self.model.rf.out_of_bag_error())
                 used.pop()
-                used_bounds.pop()
+                if not self.feature_importance:
+                    used_bounds.pop()
                 self.logger.debug('Refitted RF (sec %.2f; error: %.4f)' % (time.time() - start, errors[-1]))
 
             best_idx = np.argmin(errors)
             lowest_error = errors[best_idx]
             best_parameter = names.pop(best_idx)
             used.append(ids.pop(best_idx))
-            used_bounds.append(used[-1])
+            if not self.feature_importance:
+                used_bounds.append(used[-1])
 
             if self.feature_importance:
                 self.logger.info('%s: %.4f' % (best_parameter, lowest_error))
                 self.evaluated_parameter_importance[best_parameter] = lowest_error
             else:
-                self.logger.info('%s: %.4f' % (best_parameter.name, lowest_error))
+                pbar.set_description('{: >.30s}: {: >7.4f} (OOB)'.format(best_parameter.name, lowest_error))
                 self.evaluated_parameter_importance[best_parameter.name] = lowest_error
         all_res = {'imp': self.evaluated_parameter_importance, 'order': list(self.evaluated_parameter_importance.keys())}
         return all_res

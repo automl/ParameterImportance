@@ -4,6 +4,7 @@ import pickle
 import os
 import numpy as np
 import matplotlib as mpl
+from tqdm import tqdm
 mpl.use('Agg')
 from matplotlib import pyplot as plt
 
@@ -27,18 +28,31 @@ __email__ = "biedenka@cs.uni-freiburg.de"
 class fANOVA(AbstractEvaluator):
 
     def __init__(self, scenario, cs, model, to_evaluate: int, runhist: RunHistory, rng,
-                 n_pairs=5, **kwargs):
+                 n_pairs=5, minimize=True, pairwise=True, preprocessed_X=None, preprocessed_y=None, **kwargs):
         super().__init__(scenario, cs, model, to_evaluate, rng, **kwargs)
         self.name = 'fANOVA'
         self.logger = self.name
         # This way the instance features in X are ignored and a new forest is constructed
         if self.model.instance_features is None:
-            self.logger.debug('No preprocessing necessary')
+            self.logger.info('No preprocessing necessary')
+            if preprocessed_X is not None and preprocessed_y is not None:
+                self.X = preprocessed_X
+                self.y = preprocessed_y
         else:
             self._preprocess(runhist)
-        self.evaluator = fanova_pyrfr(X=self.X, Y=self.y.flatten(), config_space=cs)
+        cutoffs = (-np.inf, np.inf)
+        if minimize:
+            cutoffs = (-np.inf, self.model.predict_marginalized_over_instances(
+                np.array([impute_inactive_values(self.cs.get_default_configuration()).get_array()]))[0].flatten()[0]
+                       )
+        elif minimize is False:
+            cutoffs = (self.model.predict_marginalized_over_instances(
+                np.array([impute_inactive_values( self.cs.get_default_configuration()).get_array()]))[0].flatten()[0],
+                       np.inf)
+        self.evaluator = fanova_pyrfr(X=self.X, Y=self.y.flatten(), config_space=cs, cutoffs=cutoffs)
         self.n_most_imp_pairs = n_pairs
         self.num_single = None
+        self.pairwise = pairwise
 
     def _preprocess(self, runhistory):
         """
@@ -73,7 +87,8 @@ class fANOVA(AbstractEvaluator):
             os.mkdir(name)
         vis = Visualizer(self.evaluator, self.cs, directory=name)
         self.logger.info('Getting Marginals!')
-        for i in range(self.to_evaluate):
+        pbar = tqdm(range(self.to_evaluate), ascii=True)
+        for i in pbar:
             plt.close('all')
             plt.clf()
             param = list(self.evaluated_parameter_importance.keys())[i]
@@ -83,11 +98,15 @@ class fANOVA(AbstractEvaluator):
             fig.savefig(outfile_name)
             if show:
                 plt.show()
-            self.logger.info('Creating fANOVA plot: %s' % outfile_name)
-        self.logger.info('Plotting Pairwise-Marginals!')
-        most_important_ones = list(self.evaluated_parameter_importance.keys())[
-                              :min(self.num_single, self.n_most_imp_pairs)]
-        vis.create_most_important_pairwise_marginal_plots(most_important_ones)
+            pbar.set_description('Creating fANOVA plot: {: <.30s}'.format(outfile_name.split(os.path.sep)[-1]))
+        if self.pairwise:
+            self.logger.info('Plotting Pairwise-Marginals!')
+            most_important_ones = list(self.evaluated_parameter_importance.keys())[
+                                  :min(self.num_single, self.n_most_imp_pairs)]
+            try:
+                vis.create_most_important_pairwise_marginal_plots(most_important_ones)
+            except TypeError:
+                self.logger.warning('Could not create pairwise plots!')
         plt.close('all')
 
     def run(self) -> OrderedDict:
@@ -110,19 +129,20 @@ class fANOVA(AbstractEvaluator):
                 self.evaluated_parameter_importance[params[idx].name] = tmp_res[idx]
                 count += 1
             self.num_single = len(list(self.evaluated_parameter_importance.keys()))
-            self.logger.info(
-                'Computing most important pairwise marginals using at most'
-                ' the %d most important ones.' % min(self.n_most_imp_pairs, self.num_single))
-            pairs = self.evaluator.get_most_important_pairwise_marginals(params=list(
-                self.evaluated_parameter_importance.keys())[:self.n_most_imp_pairs])
-            for pair in pairs:
-                a, b = pair
-                self.evaluated_parameter_importance[str([a, b])] = pairs[pair]
-                if len(a) > 13:
-                    a = str(a)[:5] + '...' + str(a)[-5:]
-                if len(b) > 13:
-                    b = str(b)[:5] + '...' + str(b)[-5:]
-                self.logger.info('{:>02d} {:<30s}: {:>02.4f}'.format(-1, a + ' <> ' + b, pairs[pair]))
+            if self.pairwise:
+                self.logger.info(
+                    'Computing most important pairwise marginals using at most'
+                    ' the %d most important ones.' % min(self.n_most_imp_pairs, self.num_single))
+                pairs = self.evaluator.get_most_important_pairwise_marginals(params=list(
+                    self.evaluated_parameter_importance.keys())[:self.n_most_imp_pairs])
+                for pair in pairs:
+                    a, b = pair
+                    self.evaluated_parameter_importance[str([a, b])] = pairs[pair]
+                    if len(a) > 13:
+                        a = str(a)[:5] + '...' + str(a)[-5:]
+                    if len(b) > 13:
+                        b = str(b)[:5] + '...' + str(b)[-5:]
+                    self.logger.info('{:>02d} {:<30s}: {:>02.4f}'.format(-1, a + ' <> ' + b, pairs[pair]))
             all_res = {'imp': self.evaluated_parameter_importance,
                        'order': list(self.evaluated_parameter_importance.keys())}
             return all_res

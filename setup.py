@@ -1,8 +1,11 @@
 from setuptools import setup
 
+with open("pimp/__version__.py") as fh:
+    version = fh.readlines()[-1].split()[-1].strip("\"'")
+
 setup(
     name='PIMP',
-    version='0.0.1',
+    version=version,
     packages=['pimp', 'pimp.epm', 'pimp.utils', 'pimp.utils.io', 'pimp.evaluator', 'pimp.importance',
               'pimp.configspace'],
     entry_points={

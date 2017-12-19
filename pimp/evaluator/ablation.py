@@ -219,7 +219,7 @@ class Ablation(AbstractEvaluator):
                         elif self.target_active[child]:
                             modded_dict[child] = self.target[child]
                         else:
-                            modded_dict[child] = self.cs.get_hyperparameter(child).default
+                            modded_dict[child] = self.cs.get_hyperparameter(child).default_value
                         modded_dict = self._check_children(modded_dict, [child])
         return modded_dict
 
@@ -239,6 +239,27 @@ class Ablation(AbstractEvaluator):
                     self.logger.debug('Deactivated sub-child %s found this round' % c)
                     modded_dict = self._set_child_of_child_to_none(c, modded_dict)
         return modded_dict
+
+    def _rm_inactive(self, candidates, modifiable_config_dict, prev_modifiable_config_dict, removed=[]):
+        for candidate in candidates:
+            parent_conditions = self.cs.get_parent_conditions_of(candidate)
+            passing = True
+            for condition in parent_conditions:
+                try:
+                    passing = condition.evaluate(modifiable_config_dict) and passing
+                except ValueError:
+                    passing = False
+            if not passing:
+                if candidate in modifiable_config_dict:
+                    try:
+                        modifiable_config_dict[candidate] = prev_modifiable_config_dict[candidate]
+                    except KeyError:
+                        del modifiable_config_dict[candidate]
+                    removed.append(candidate)
+                modifiable_config_dict, removed = self._rm_inactive(
+                    list(map(lambda x: x.name, self.cs.get_children_of(candidate))), modifiable_config_dict,
+                    prev_modifiable_config_dict, removed)
+        return modifiable_config_dict, removed
 
 ########################################################################################################################
     # MAIN METHOD # MAIN METHOD # MAIN METHOD # MAIN METHOD # MAIN METHOD # MAIN METHOD # MAIN METHOD # MAIN METHOD
@@ -296,7 +317,11 @@ class Ablation(AbstractEvaluator):
                 if not not_forbidden:  # othwerise skipp it
                     self.logger.critical('FOUND FORBIDDEN!!!!! SKIPPING!!!')
                     continue
-                modifiable_config = Configuration(self.cs, modifiable_config_dict)
+                try:
+                    modifiable_config = Configuration(self.cs, modifiable_config_dict)
+                except ValueError:
+                    modifiable_config_dict, rmed = self._rm_inactive(candidate_tuple[1:], modifiable_config, prev_modifiable_config_dict)
+                    modifiable_config = Configuration(self.cs, modifiable_config_dict)
 
                 mean, var = self._predict_over_instance_set(impute_inactive_values(modifiable_config))  # ... predict their performance
                 self.logger.debug('%s: %.6f' % (candidate_tuple, mean[0]))

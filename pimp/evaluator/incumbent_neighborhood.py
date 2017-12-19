@@ -1,13 +1,15 @@
 import os
 from collections import OrderedDict
+from copy import deepcopy
 
 import numpy as np
+from tqdm import tqdm
 import matplotlib as mpl
 mpl.use('Agg')
 from matplotlib import pyplot as plt
 
 from pimp.configspace import change_hp_value, Configuration, ForbiddenValueError,\
-    impute_inactive_values, CategoricalHyperparameter
+    impute_inactive_values, CategoricalHyperparameter, check_forbidden
 from pimp.evaluator.base_evaluator import AbstractEvaluator
 
 __author__ = "Andre Biedenkapp"
@@ -23,16 +25,73 @@ class IncNeighbor(AbstractEvaluator):
     Implementation of Ablation via surrogates
     """
 
-    def __init__(self, scenario, cs, model, to_evaluate: int, incumbent=None, **kwargs):
+    def __init__(self, scenario, cs, model, to_evaluate: int, incumbent=None, continous_neighbors=500,
+                 old_sampling=False, show_query_points=False, quant_var=True, **kwargs):
         super().__init__(scenario, cs, model, to_evaluate, **kwargs)
         self.name = 'IncNeighbor'
         self.logger = self.name
         self.incumbent = incumbent
-        self.incumbent._populate_values()  # type: Configuration
-        self._continous_param_neighbor_samples = 100
+        self.incumbent_dict = self.incumbent.get_dictionary()
+        self._continous_param_neighbor_samples = continous_neighbors
+        self.show_query_points = show_query_points
+        self.old_sampling = old_sampling
         self.neighborhood_dict = None
         self.performance_dict = {}
+        self._sampled_neighbors = 0
         self.variance_dict = {}
+        self.quantify_importance_via_variance = quant_var
+
+    def _old_sampling_of_one_exchange_neighborhood(self, param, array, index):
+        neighbourhood = []
+        number_of_sampled_neighbors = 0
+        iteration = 0
+        checked_neighbors = []
+        checked_neighbors_non_unit_cube = []
+        while True:
+            hp = self.incumbent.configuration_space.get_hyperparameter(param)
+            num_neighbors = hp.get_num_neighbors(self.incumbent.get(param))
+            self.logger.debug('\t' + str(num_neighbors))
+
+            # Obtain neigbors differently for different possible numbers of
+            # neighbors
+            if num_neighbors == 0:
+                self.logger.debug('\tNo neighbors!')
+                break
+            # No infinite loops
+            elif iteration > 500:
+                self.logger.debug('\tMax iter')
+                break
+            elif np.isinf(num_neighbors):
+                num_samples_to_go = min(10, self._continous_param_neighbor_samples - number_of_sampled_neighbors)
+                if number_of_sampled_neighbors >= self._continous_param_neighbor_samples or num_samples_to_go <= 0:
+                    break
+                neighbors = hp.get_neighbors(array[index], self.rng,
+                                             number=num_samples_to_go)
+            else:
+                if iteration > 0:
+                    break
+                neighbors = hp.get_neighbors(array[index], self.rng)
+            self.logger.debug('\t\t' + str(neighbors))
+            # Check all newly obtained neighbors
+            for neighbor in neighbors:
+                if neighbor in checked_neighbors:
+                    iteration += 1
+                    continue
+                new_array = array.copy()
+                new_array = change_hp_value(self.incumbent.configuration_space, new_array, param, neighbor,
+                                            index)
+                try:
+                    new_configuration = Configuration(self.incumbent.configuration_space, vector=new_array)
+                    neighbourhood.append(new_configuration)
+                    new_configuration.is_valid_configuration()
+                    check_forbidden(self.cs.forbidden_clauses, new_array)
+                    number_of_sampled_neighbors += 1
+                    checked_neighbors.append(neighbor)
+                    checked_neighbors_non_unit_cube.append(new_configuration[param])
+                except (ForbiddenValueError, ValueError) as e:
+                    pass
+                iteration += 1
+        return checked_neighbors, checked_neighbors_non_unit_cube
 
     def _get_one_exchange_neighborhood_by_parameter(self):
         """
@@ -44,46 +103,39 @@ class IncNeighbor(AbstractEvaluator):
         self.logger.debug('params: ' + str(params))
         for index, param in enumerate(params):
             self.logger.info('Sampling neighborhood of %s' % param)
-            neighbourhood = []
-            number_of_sampled_neighbors = 0
             array = self.incumbent.get_array()
 
             if not np.isfinite(array[index]):
                 self.logger.info('>'.join(['-'*50, ' Not active!']))
                 continue
-
-            iteration = 0
-            checked_neighbors = []
-            checked_neighbors_non_unit_cube = []
-            while True:
+            if self.old_sampling:
+                checked_neighbors, checked_neighbors_non_unit_cube = self._old_sampling_of_one_exchange_neighborhood(
+                    param, array, index
+                )
+            else:
+                neighbourhood = []
+                checked_neighbors = []
+                checked_neighbors_non_unit_cube = []
                 hp = self.incumbent.configuration_space.get_hyperparameter(param)
                 num_neighbors = hp.get_num_neighbors(self.incumbent.get(param))
                 self.logger.debug('\t' + str(num_neighbors))
-
-                # Obtain neigbors differently for different possible numbers of
-                # neighbors
                 if num_neighbors == 0:
                     self.logger.debug('\tNo neighbors!')
-                    break
-                # No infinite loops
-                elif iteration > 500:
-                    self.logger.debug('\tMax iter')
-                    break
-                elif np.isinf(num_neighbors):
-                    num_samples_to_go = min(10, self._continous_param_neighbor_samples - number_of_sampled_neighbors)
-                    if number_of_sampled_neighbors >= self._continous_param_neighbor_samples or num_samples_to_go <= 0:
-                        break
-                    neighbors = hp.get_neighbors(array[index], self.rng,
-                                                 number=num_samples_to_go)
+                    continue
+                elif np.isinf(num_neighbors):  # Continous Parameters
+                    if hp.log:
+                        base = np.e
+                        log_lower = np.log(hp.lower) / np.log(base)
+                        log_upper = np.log(hp.upper) / np.log(base)
+                        neighbors = np.logspace(log_lower, log_upper, self._continous_param_neighbor_samples,
+                                                endpoint=True, base=base)
+                    else:
+                        neighbors = np.linspace(hp.lower, hp.upper, self._continous_param_neighbor_samples)
+                    neighbors = list(map(lambda x: hp._inverse_transform(x), neighbors))
                 else:
-                    if iteration > 0:
-                        break
                     neighbors = hp.get_neighbors(array[index], self.rng)
-                self.logger.debug('\t\t' + str(neighbors))
-                # Check all newly obtained neighbors
                 for neighbor in neighbors:
                     if neighbor in checked_neighbors:
-                        iteration += 1
                         continue
                     new_array = array.copy()
                     new_array = change_hp_value(self.incumbent.configuration_space, new_array, param, neighbor,
@@ -92,17 +144,19 @@ class IncNeighbor(AbstractEvaluator):
                         new_configuration = Configuration(self.incumbent.configuration_space, vector=new_array)
                         neighbourhood.append(new_configuration)
                         new_configuration.is_valid_configuration()
-                        self.incumbent.configuration_space._check_forbidden(new_array)
-                        number_of_sampled_neighbors += 1
+                        check_forbidden(self.cs.forbidden_clauses, new_array)
                         checked_neighbors.append(neighbor)
                         checked_neighbors_non_unit_cube.append(new_configuration[param])
-                    except ForbiddenValueError as e:
+                    except (ForbiddenValueError, ValueError) as e:
                         pass
-                    iteration += 1
             self.logger.info('>'.join(['-'*50, ' Found {:>3d} valid neighbors'.format(len(checked_neighbors))]))
+            self._sampled_neighbors += len(checked_neighbors) + 1
             sort_idx = list(map(lambda x: x[0], sorted(enumerate(checked_neighbors), key=lambda y: y[1])))
-            neighborhood_dict[param] = [np.array(checked_neighbors)[sort_idx],
-                                        np.array(checked_neighbors_non_unit_cube)[sort_idx]]
+            if isinstance(self.cs.get_hyperparameter(param), CategoricalHyperparameter):
+                checked_neighbors_non_unit_cube = list(np.array(checked_neighbors_non_unit_cube)[sort_idx])
+            else:
+                checked_neighbors_non_unit_cube = np.array(checked_neighbors_non_unit_cube)[sort_idx]
+            neighborhood_dict[param] = [np.array(checked_neighbors)[sort_idx], checked_neighbors_non_unit_cube]
         return neighborhood_dict
 
     def run(self) -> OrderedDict:
@@ -115,23 +169,33 @@ class IncNeighbor(AbstractEvaluator):
         """
         neighborhood_dict = self._get_one_exchange_neighborhood_by_parameter()  # sampled on a unit-hypercube!
         self.neighborhood_dict = neighborhood_dict
-        # TODO get some kind of importance measure in this
         performance_dict = {}
         variance_dict = {}
         incumbent_array = self.incumbent.get_array()
+        overall_var = {}
+        overall_imp = {}
+        all_preds = []
+        def_perf, def_var = self._predict_over_instance_set(impute_inactive_values(self.cs.get_default_configuration()))
+        inc_perf, inc_var = self._predict_over_instance_set(impute_inactive_values(self.incumbent))
+        delta = def_perf - inc_perf
+        pbar = tqdm(range(self._sampled_neighbors), ascii=True)
+        sum_var = 0
         for index, param in enumerate(self.incumbent.keys()):
             if param in neighborhood_dict:
-                self.logger.info('Predicting performances for neighbors of %s' % param)
+                pbar.set_description('Predicting performances for neighbors of {: >.30s}'.format(param))
                 performance_dict[param] = []
                 variance_dict[param] = []
+                variance_dict[param] = []
+                overall_var[param] = []
                 added_inc = False
                 inc_at = 0
                 for unit_neighbor, neighbor in zip(neighborhood_dict[param][0], neighborhood_dict[param][1]):
                     if not added_inc:
                         if unit_neighbor > incumbent_array[index]:
-                            mean, var = self._predict_over_instance_set(impute_inactive_values(self.incumbent))
-                            performance_dict[param].append(mean)
-                            variance_dict[param].append(var)
+                            performance_dict[param].append(inc_perf)
+                            overall_var[param].append(inc_perf)
+                            variance_dict[param].append(inc_var)
+                            pbar.update(1)
                             added_inc = True
                         else:
                             inc_at += 1
@@ -143,9 +207,9 @@ class IncNeighbor(AbstractEvaluator):
                                                                              vector=new_array))
                     mean, var = self._predict_over_instance_set(new_configuration)
                     performance_dict[param].append(mean)
+                    overall_var[param].append(mean)
                     variance_dict[param].append(var)
-                self.logger.info(str(neighborhood_dict[param][0]) + ' ' + str(incumbent_array[index]))
-                self.logger.info(str(neighborhood_dict[param][1]) + ' ' + str(self.incumbent[param]))
+                    pbar.update(1)
                 if len(neighborhood_dict[param][0]) > 0:
                     neighborhood_dict[param][0] = np.insert(neighborhood_dict[param][0], inc_at, incumbent_array[index])
                     neighborhood_dict[param][1] = np.insert(neighborhood_dict[param][1], inc_at, self.incumbent[param])
@@ -155,12 +219,50 @@ class IncNeighbor(AbstractEvaluator):
                 if not added_inc:
                     mean, var = self._predict_over_instance_set(impute_inactive_values(self.incumbent))
                     performance_dict[param].append(mean)
+                    overall_var[param].append(mean)
                     variance_dict[param].append(var)
+                    pbar.update(1)
+                all_preds.extend(performance_dict[param])
+                tmp_perf = performance_dict[param][:inc_at]
+                tmp_perf.extend(performance_dict[param][inc_at + 1:])
+                imp_over_mea = (np.mean(tmp_perf) - performance_dict[param][inc_at]) / delta
+                imp_over_med = (np.median(tmp_perf) - performance_dict[param][inc_at]) / delta
+                try:
+                    imp_over_max = (np.max(tmp_perf) - performance_dict[param][inc_at]) / delta
+                except ValueError:
+                    imp_over_max = np.nan  # Hacky fix as this is never used anyway
+                overall_imp[param] = np.array([imp_over_mea, imp_over_med, imp_over_max])
+                overall_var[param] = np.var(overall_var[param])
+                sum_var += overall_var[param]
             else:
-                self.logger.info('Parameter is inactive')
+                pbar.set_description('{: >.70s}'.format('Parameter %s is inactive' % param))
+        self.logger.info('{:<30s}  {:^24s}, {:^25s}'.format(
+            ' ', 'perf impro', 'variance'
+        ))
+        self.logger.info('{:<30s}: [{:>6s}, {:>6s}, {:>6s}], {:>6s}, {:>6s}, {:>6s}'.format(
+            'Parameter', 'Mean', 'Median', 'Max', 'p_var', 't_var', 'frac'
+        ))
+        self.logger.info('-'*80)
+        tmp = []
+        for param in sorted(list(overall_var.keys())):
+            # overall_var[param].extend([inc_perf for _ in range(len(all_preds) - len(overall_var[param]))])
+            # overall_var[param] = np.var(overall_var[param])
+            self.logger.info('{:<30s}: [{: >6.2f}, {: >6.2f}, {: >6.2f}], {: >6.2f}, {: >6.2f}, {: >6.2f}'.format(
+                param, *overall_imp[param]*100, overall_var[param], np.var(all_preds),
+                overall_var[param] / sum_var * 100
+            ))
+            if self.quantify_importance_via_variance:
+                tmp.append([param, overall_var[param] / sum_var * 100])
+            else:
+                tmp.append([param, overall_imp[param][0]])
+        tmp = sorted(tmp, key=lambda x: x[1], reverse=True)
         self.neighborhood_dict = neighborhood_dict
         self.performance_dict = performance_dict
         self.variance_dict = variance_dict
+        self.evaluated_parameter_importance = OrderedDict(tmp)
+        all_res = {'imp': self.evaluated_parameter_importance,
+                   'order': list(self.evaluated_parameter_importance.keys())}
+        return all_res
 
     def _predict_over_instance_set(self, config):
         """
@@ -182,7 +284,9 @@ class IncNeighbor(AbstractEvaluator):
     def plot_result(self, name='incneighbor', show=True):
         if not os.path.exists(name):
             os.mkdir(name)
-        for param in self.incumbent.keys():
+        pbar = tqdm(self.incumbent.keys(), ascii=True, total=len(self.incumbent.keys()))
+        for param in pbar:
+            pbar.set_description('Plotting results for %s' % param)
             if param in self.performance_dict:
                 fig = plt.figure(dpi=250)
                 ax1 = fig.add_subplot(111)
@@ -200,10 +304,12 @@ class IncNeighbor(AbstractEvaluator):
                     ax1.plot(self.neighborhood_dict[param][1], p, label='Predicted Performance', ls='-', zorder=80,
                              **self.LINE_FONT)
                     label = True
+                    c_inc = True
                     for n_idx, neighbor in enumerate(self.neighborhood_dict[param][1]):
-                        if neighbor == self.incumbent[param]:
+                        if neighbor == self.incumbent[param] and c_inc:
                             ax1.scatter(neighbor, p[n_idx], label='incumbent', c='r', marker='.', zorder=999)
-                        else:
+                            c_inc = False
+                        elif self.show_query_points:
                             if label:
                                 ax1.scatter(neighbor, p[n_idx], label='query points', c='w', marker='.',
                                             zorder=100, edgecolors='k')

@@ -10,11 +10,11 @@ __maintainer__ = "Andre Biedenkapp"
 __email__ = "biedenka@cs.uni-freiburg.de"
 
 
-class UnloggedRandomForestWithInstances(SMACrfi):
+class EPARrfi(SMACrfi):
 
-    def __init__(self, types, bounds, instance_features=None, num_trees=30, do_bootstrapping=True, n_points_per_tree=0,
-                 ratio_features=5. / 6., min_samples_split=3, min_samples_leaf=3, max_depth=20, eps_purity=1e-8,
-                 max_num_nodes=1000, seed=42, cutoff=0, threshold=0):
+    def __init__(self, types, bounds,
+                 cutoff=0,
+                 threshold=0, **kwargs):
         """
         Interface to the random forest that takes instance features
         into account.
@@ -57,50 +57,12 @@ class UnloggedRandomForestWithInstances(SMACrfi):
         threshold:
             Maximal possible value
         """
-        super().__init__(types=types, bounds=bounds, instance_features=instance_features, num_trees=num_trees,
-                         do_bootstrapping=do_bootstrapping, n_points_per_tree=n_points_per_tree,
-                         ratio_features=ratio_features, min_samples_split=min_samples_split,
-                         min_samples_leaf=min_samples_leaf, max_depth=max_depth,
-                         eps_purity=eps_purity, max_num_nodes=max_num_nodes, seed=seed)
+        super().__init__(types=types, bounds=bounds, **kwargs)
+        np.seterr(divide='ignore', invalid='ignore')
         self.cutoff = cutoff
         self.threshold = threshold
 
-    def _unlogged_predict(self, X):
-        """Predict means and variances for given X by first unlogging the leaf-values and then computing the mean for
-        the trees NOT the training batch afterwards. The mean for the whole batch is handled by the parent class!
-
-        Parameters
-        ----------
-        X : np.ndarray of shape = [n_samples, n_features (config + instance
-        features)]
-
-        Returns
-        -------
-        means : np.ndarray of shape = [n_samples, 1]
-            Predictive mean
-        vars : np.ndarray  of shape = [n_samples, 1]
-            Predictive variance
-        """
-        if len(X.shape) != 2:
-            raise ValueError(
-                'Expected 2d array, got %dd array!' % len(X.shape))
-        if X.shape[1] != self.types.shape[0]:
-            raise ValueError('Rows in X should have %d entries but have %d!' %
-                             (self.types.shape[0], X.shape[1]))
-
-        tree_mean_predictions = []
-        tree_mean_variances = []
-        for x in X:
-            tmpx = np.array(list(map(lambda x_: np.power(10, x_), self.rf.all_leaf_values(x))))  # unlog values
-            tree_mean_predictions.append(list(map(lambda x_: np.mean(x_), tmpx)))  # calculate mean and var
-            tree_mean_variances.append(list(map(lambda x_: np.var(x_), tmpx)))  # over individual trees
-
-        mean = np.mean(tree_mean_predictions, axis=0)
-        var = np.mean(tree_mean_variances, axis=0)
-
-        return mean.reshape((-1, 1)), var.reshape((-1, 1))
-
-    def _predict_EPAR(self, X, prediction_threshold=0):
+    def _predict_EPAR(self, mean_var, prediction_threshold=0):
         """
         Predicting the Expected Penalized Average Runtime according to the cuttoff and par-factor specified in the
         scenario.
@@ -110,8 +72,6 @@ class UnloggedRandomForestWithInstances(SMACrfi):
         X : np.ndarray of shape = [n_samples, n_features (config + instance
         features)]
         """
-
-        mean_var = self._unlogged_predict(X=X)
 
         pred = np.zeros(shape=mean_var[0].shape)
         var = np.zeros(shape=mean_var[1].shape)
@@ -172,4 +132,4 @@ class UnloggedRandomForestWithInstances(SMACrfi):
         Method to override the predict method of RandomForestWithInstances.
         Thus it can be used in the marginalized over instances method of the RFWI class
         """
-        return self._predict_EPAR(X)
+        return self._predict_EPAR(self._predict(X))
