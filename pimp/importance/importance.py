@@ -167,7 +167,9 @@ class Importance(object):
         For parameter specifications, see __init__
         """
         self.incumbent = (None, None)
-        if traj_file is not None:
+        if incumbent is not None:
+            self.incumbent = incumbent
+        elif traj_file is not None:
             self.logger.info('Reading traj_file: %s' % traj_file)
             self.incumbent = self._read_traj_file(traj_file)[0]
             self.logger.debug('Incumbent %s' % str(self.incumbent))
@@ -186,8 +188,6 @@ class Importance(object):
             self.best_dir = os.path.dirname(traj_files[incumbents[0][0]])
             self.incumbent = incumbents[0][1][0]
             self.logger.info('Incumbent %s' % str(self.incumbent))
-        elif incumbent is not None:
-            self.incumbent = incumbent
         else:
             raise Exception('No method specified to load an incumbent. Either give the incumbent directly or specify '
                             'a file to load it from!')
