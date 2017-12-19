@@ -48,9 +48,9 @@ class Importance(object):
         :param runhistory_file: File to load the runhistory from if runhistory is None.
         :param runhistory: Runhistory Object to use if runhistory_file is None.
         :param traj_file: File to load the trajectory from. If this is None but runhistory_file was specified,
-               the trajectory will be read from the same directory as the runhistory.
-               If both are None and incumbent is set, the incumbent configuration object will be used instead.
-        :param incumbent: Configuration Object to use if no other means of loading the trajectory are given.
+               the trajectory will be read from the same directory as the runhistory. (Will be ignored if incumbent is
+               set)
+        :param incumbent: Configuration Object to use.
         :param seed: Seed used for the numpy random generator.
         :param parameters_to_evaluate: int that specifies how many parameters have to be evaluated.
                If set to -1 all parameters will be evaluated.
@@ -167,7 +167,9 @@ class Importance(object):
         For parameter specifications, see __init__
         """
         self.incumbent = (None, None)
-        if traj_file is not None:
+        if incumbent is not None:
+            self.incumbent = incumbent
+        elif traj_file is not None:
             self.logger.info('Reading traj_file: %s' % traj_file)
             self.incumbent = self._read_traj_file(traj_file)[0]
             self.logger.debug('Incumbent %s' % str(self.incumbent))
@@ -186,8 +188,6 @@ class Importance(object):
             self.best_dir = os.path.dirname(traj_files[incumbents[0][0]])
             self.incumbent = incumbents[0][1][0]
             self.logger.info('Incumbent %s' % str(self.incumbent))
-        elif incumbent is not None:
-            self.incumbent = incumbent
         else:
             raise Exception('No method specified to load an incumbent. Either give the incumbent directly or specify '
                             'a file to load it from!')
