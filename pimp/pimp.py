@@ -1,4 +1,6 @@
 import os
+if not 'MATPLOTLIBRC' in os.environ:
+    os.environ['MATPLOTLIBRC'] = os.path.join(os.path.dirname(__file__))
 import json
 import datetime
 import logging

@@ -288,7 +288,7 @@ class IncNeighbor(AbstractEvaluator):
         for param in pbar:
             pbar.set_description('Plotting results for %s' % param)
             if param in self.performance_dict:
-                fig = plt.figure(dpi=250)
+                fig = plt.figure()
                 ax1 = fig.add_subplot(111)
                 plt.subplots_adjust(bottom=0.25, top=0.9, left=0.05, right=.95)
                 p, v = self.performance_dict[param], self.variance_dict[param]
@@ -349,7 +349,7 @@ class IncNeighbor(AbstractEvaluator):
                             color_ = (1, 0, 0)
                         t.set_color(color_)
 
-                plt.title(param)
+                plt.xlabel(param)
                 ax1.legend()
                 if self.scenario.run_obj == 'runtime':
                     ax1.set_ylabel('runtime [sec]', zorder=81, **self.LABEL_FONT)

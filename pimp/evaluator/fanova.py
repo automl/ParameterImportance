@@ -85,7 +85,12 @@ class fANOVA(AbstractEvaluator):
     def plot_result(self, name='fANOVA', show=True):
         if not os.path.exists(name):
             os.mkdir(name)
-        vis = Visualizer(self.evaluator, self.cs, directory=name)
+
+        if self.scenario.run_obj == 'runtime':
+            label = 'runtime [sec]'
+        else:
+            label = '%s' % self.scenario.run_obj
+        vis = Visualizer(self.evaluator, self.cs, directory=name, y_label=label)
         self.logger.info('Getting Marginals!')
         pbar = tqdm(range(self.to_evaluate), ascii=True)
         for i in pbar:
