@@ -48,9 +48,9 @@ class Importance(object):
         :param runhistory_file: File to load the runhistory from if runhistory is None.
         :param runhistory: Runhistory Object to use if runhistory_file is None.
         :param traj_file: File to load the trajectory from. If this is None but runhistory_file was specified,
-               the trajectory will be read from the same directory as the runhistory.
-               If both are None and incumbent is set, the incumbent configuration object will be used instead.
-        :param incumbent: Configuration Object to use if no other means of loading the trajectory are given.
+               the trajectory will be read from the same directory as the runhistory. (Will be ignored if incumbent is
+               set)
+        :param incumbent: Configuration Object to use.
         :param seed: Seed used for the numpy random generator.
         :param parameters_to_evaluate: int that specifies how many parameters have to be evaluated.
                If set to -1 all parameters will be evaluated.

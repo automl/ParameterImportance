@@ -426,8 +426,8 @@ class Ablation(AbstractEvaluator):
         path = list(self.evaluated_parameter_importance.keys())[1:-1]
         true_path = np.array(copy.deepcopy(path))
         for idx, p in enumerate(path):
-            if len(p) >= 20:
-                p = p[:18] + '...'
+            if len(p) >= 18:
+                p = p[:8] + '...' + p[-8:]
                 path[idx] = p
         performances = list(self.evaluated_parameter_importance.values())
         performances = 100 * np.array(performances).reshape((1, -1)).squeeze()
@@ -479,8 +479,8 @@ class Ablation(AbstractEvaluator):
 
         path = list(self.predicted_parameter_performances.keys())
         for idx, p in enumerate(path):
-            if len(p) >= 20:
-                p = p[:18] + '...'
+            if len(p) >= 18:
+                p = p[:8] + '...' + p[-8:]
                 path[idx] = p
         path = np.array(path)
         max_to_plot = min(len(path), self.MAX_PARAMS_TO_PLOT)
