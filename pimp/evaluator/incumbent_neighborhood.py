@@ -360,4 +360,6 @@ class IncNeighbor(AbstractEvaluator):
                 except ValueError:
                     pass
                 plt.savefig(os.path.join(name, param + '.png'))
+                ax1.set_yscale('log')
+                plt.savefig(os.path.join(name, param + '_log.png'))
                 plt.close('all')
