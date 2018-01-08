@@ -293,13 +293,16 @@ class IncNeighbor(AbstractEvaluator):
                 plt.subplots_adjust(bottom=0.25, top=0.9, left=0.05, right=.95)
                 p, v = self.performance_dict[param], self.variance_dict[param]
 
+                std = np.array(list(map(lambda s: np.sqrt(s), v))).flatten()
+                upper = np.array(list(map(lambda x, y: x + y, p, std))).flatten()
+                if self.scenario.run_obj == "runtime":
+                    lower = np.array(list(map(lambda x, y: max(x - y, 0), p, std))).squeeze()
+                else:
+                    lower = np.array(list(map(lambda x, y: x - y, p, std))).squeeze()
+                min_y = min(lower)
+                max_y = max(upper)
                 if not isinstance(self.incumbent.configuration_space.get_hyperparameter(param),
                                   CategoricalHyperparameter):
-                    upper = np.array(list(map(lambda x, y: x + np.sqrt(y), p, v))).flatten()
-                    if self.scenario.run_obj == "runtime":
-                        lower = np.array(list(map(lambda x, y: max(x - np.sqrt(y), 0), p, v))).squeeze()
-                    else:
-                        lower = np.array(list(map(lambda x, y: x - np.sqrt(y), p, v))).squeeze()
                     ax1.fill_between(self.neighborhood_dict[param][1], lower, upper, label='std', color=self.area_color)
                     ax1.plot(self.neighborhood_dict[param][1], p, label='Predicted Performance', ls='-', zorder=80,
                              **self.LINE_FONT)
@@ -318,13 +321,11 @@ class IncNeighbor(AbstractEvaluator):
                                 ax1.scatter(neighbor, p[n_idx], c='w', marker='.', zorder=100, edgecolors='k')
                     ax1.xaxis.grid(True)
                     ax1.yaxis.grid(True)
+                    ax1.legend()
                 else:
                     b = ax1.boxplot([[x] for x in p], showfliers=False)
                     plt.xticks(np.arange(1, len(self.neighborhood_dict[param][1])+1, 1),
                                self.neighborhood_dict[param][1])
-                    min_y = min(p)
-                    max_y = max(p)
-                    std = np.array(list(map(lambda s: np.sqrt(s), v))).flatten()
                     # blow up boxes
                     for box, std_ in zip(b["boxes"], std):
                         y = box.get_ydata()
@@ -342,7 +343,6 @@ class IncNeighbor(AbstractEvaluator):
                         else:
                             min_y = min(min_y, y[0] - std_)
                         max_y = max(max_y, y[2] + std_)
-                    plt.ylim([min_y, max_y])
                     for idx, t in enumerate(ax1.xaxis.get_ticklabels()):
                         color_ = (0., 0., 0.)
                         if self.neighborhood_dict[param][1][idx] == self.incumbent[param]:
@@ -350,7 +350,6 @@ class IncNeighbor(AbstractEvaluator):
                         t.set_color(color_)
 
                 plt.xlabel(param)
-                ax1.legend()
                 if self.scenario.run_obj == 'runtime':
                     ax1.set_ylabel('runtime [sec]', zorder=81, **self.LABEL_FONT)
                 else:
@@ -359,7 +358,15 @@ class IncNeighbor(AbstractEvaluator):
                     plt.tight_layout()
                 except ValueError:
                     pass
+                ax1.set_ylim([min_y * 0.95, max_y * 1.05])
                 plt.savefig(os.path.join(name, param + '.png'))
                 ax1.set_yscale('log')
+                if min_y <= 0:
+                    min_y = list(filter(lambda x: x > 0, lower))
+                    if min_y:
+                        min_y = min(min_y)
+                    else:
+                        min_y = 10**-3
+                ax1.set_ylim([min_y * 0.95, max_y * 1.05])
                 plt.savefig(os.path.join(name, param + '_log.png'))
                 plt.close('all')
