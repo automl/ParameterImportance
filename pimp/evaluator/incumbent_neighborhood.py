@@ -256,6 +256,7 @@ class IncNeighbor(AbstractEvaluator):
             else:
                 tmp.append([param, overall_imp[param][0]])
         tmp = sorted(tmp, key=lambda x: x[1], reverse=True)
+        tmp = tmp[:min(self.to_evaluate, len(tmp))]
         self.neighborhood_dict = neighborhood_dict
         self.performance_dict = performance_dict
         self.variance_dict = variance_dict

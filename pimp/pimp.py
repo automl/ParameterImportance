@@ -43,7 +43,7 @@ class PIMP:
                  fANOVA_pairwise: bool = True,
                  forwardsel_feat_imp: bool = False,
                  incn_quant_var: bool = True,
-                 marginalize_away_instances: bool = True):
+                 marginalize_away_instances: bool = False):
         """
         Interface to be used with SMAC or with X and y matrices.
         :param scenario: The scenario object, that knows the configuration space.

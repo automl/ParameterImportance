@@ -39,7 +39,7 @@ class Importance(object):
                  seed: int = 12345, parameters_to_evaluate: int = -1, margin: Union[None, float] = None,
                  save_folder: str = 'PIMP', impute_censored: bool = False, max_sample_size: int = -1,
                  fANOVA_cut_at_default=False, fANOVA_pairwise=True, forwardsel_feat_imp=False,
-                 incn_quant_var=True, preprocess=True):
+                 incn_quant_var=True, preprocess=False):
         """
         Importance Object. Handles the construction of the data and training of the model. Easy interface to the
         different evaluators.
