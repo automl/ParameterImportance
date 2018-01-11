@@ -39,7 +39,7 @@ class Importance(object):
                  seed: int = 12345, parameters_to_evaluate: int = -1, margin: Union[None, float] = None,
                  save_folder: str = 'PIMP', impute_censored: bool = False, max_sample_size: int = -1,
                  fANOVA_cut_at_default=False, fANOVA_pairwise=True, forwardsel_feat_imp=False,
-                 incn_quant_var=True, preprocess=True):
+                 incn_quant_var=True, preprocess=False):
         """
         Importance Object. Handles the construction of the data and training of the model. Easy interface to the
         different evaluators.
@@ -48,9 +48,9 @@ class Importance(object):
         :param runhistory_file: File to load the runhistory from if runhistory is None.
         :param runhistory: Runhistory Object to use if runhistory_file is None.
         :param traj_file: File to load the trajectory from. If this is None but runhistory_file was specified,
-               the trajectory will be read from the same directory as the runhistory.
-               If both are None and incumbent is set, the incumbent configuration object will be used instead.
-        :param incumbent: Configuration Object to use if no other means of loading the trajectory are given.
+               the trajectory will be read from the same directory as the runhistory. (Will be ignored if incumbent is
+               set)
+        :param incumbent: Configuration Object to use.
         :param seed: Seed used for the numpy random generator.
         :param parameters_to_evaluate: int that specifies how many parameters have to be evaluated.
                If set to -1 all parameters will be evaluated.

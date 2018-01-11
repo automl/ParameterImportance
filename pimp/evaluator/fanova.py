@@ -85,7 +85,12 @@ class fANOVA(AbstractEvaluator):
     def plot_result(self, name='fANOVA', show=True):
         if not os.path.exists(name):
             os.mkdir(name)
-        vis = Visualizer(self.evaluator, self.cs, directory=name)
+
+        if self.scenario.run_obj == 'runtime':
+            label = 'runtime [sec]'
+        else:
+            label = '%s' % self.scenario.run_obj
+        vis = Visualizer(self.evaluator, self.cs, directory=name, y_label=label)
         self.logger.info('Getting Marginals!')
         pbar = tqdm(range(self.to_evaluate), ascii=True)
         for i in pbar:
@@ -93,9 +98,17 @@ class fANOVA(AbstractEvaluator):
             plt.clf()
             param = list(self.evaluated_parameter_importance.keys())[i]
             outfile_name = os.path.join(name, param.replace(os.sep, "_") + ".png")
-            vis.plot_marginal(self.cs.get_idx_by_hyperparameter_name(param), show=False)
+            vis.plot_marginal(self.cs.get_idx_by_hyperparameter_name(param), log_scale=False, show=False)
             fig = plt.gcf()
             fig.savefig(outfile_name)
+            plt.close('all')
+            plt.clf()
+            outfile_name = os.path.join(name, param.replace(os.sep, "_") + "_log.png")
+            vis.plot_marginal(self.cs.get_idx_by_hyperparameter_name(param), log_scale=True, show=False)
+            fig = plt.gcf()
+            fig.savefig(outfile_name)
+            plt.close('all')
+            plt.clf()
             if show:
                 plt.show()
             pbar.set_description('Creating fANOVA plot: {: <.30s}'.format(outfile_name.split(os.path.sep)[-1]))
@@ -107,7 +120,7 @@ class fANOVA(AbstractEvaluator):
                 vis.create_most_important_pairwise_marginal_plots(most_important_ones)
             except TypeError:
                 self.logger.warning('Could not create pairwise plots!')
-        plt.close('all')
+            plt.close('all')
 
     def run(self) -> OrderedDict:
         try:
