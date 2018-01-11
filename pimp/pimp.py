@@ -43,7 +43,8 @@ class PIMP:
                  fANOVA_pairwise: bool = True,
                  forwardsel_feat_imp: bool = False,
                  incn_quant_var: bool = True,
-                 marginalize_away_instances: bool = False):
+                 marginalize_away_instances: bool = False,
+                 save_folder: str = 'PIMP'):
         """
         Interface to be used with SMAC or with X and y matrices.
         :param scenario: The scenario object, that knows the configuration space.
@@ -59,7 +60,8 @@ class PIMP:
         self.scenario = scenario
         self.imp = None
         self.mode = mode
-        self.save_folder = scenario.output_dir
+        self.save_folder = save_folder
+        if not os.path.exists(self.save_folder): os.mkdir(self.save_folder)
         if smac is not None:
             self.imp = Importance(scenario=scenario,
                                   runhistory=smac.runhistory,
@@ -133,7 +135,7 @@ class PIMP:
                             'values from!')
 
         if run:
-            return self.compute_importances()
+            self.compute_importances()
 
     def compute_importances(self):
         if self.mode == 'all':
@@ -143,7 +145,7 @@ class PIMP:
                          'incneighbor']
         elif not isinstance(self.mode, list):
             self.mode == [self.mode]
-        result = self.imp.evaluate_scenario(self.mode)
+        result = self.imp.evaluate_scenario(self.mode, save_folder=self.save_folder)
         return result
 
     def plot_results(self, result: Union[List[Dict[str, float]], Dict[str, float]], save_table: bool = True,
@@ -161,9 +163,11 @@ class PIMP:
                 self.imp.table_for_comparison(evaluators=result[1], style='cmd')
         else:
             with open(os.path.join(save_folder, 'pimp_values_%s.json' % self.mode), 'w') as out_file:
-                json.dump(result, out_file, sort_keys=True, indent=4, separators=(',', ': '))
-
-            self.imp.plot_results(name=os.path.join(save_folder, self.mode), show=show)
+                json.dump(result[0], out_file, sort_keys=True, indent=4, separators=(',', ': '))
+            if isinstance(self.mode, list):
+                self.imp.plot_results(name=os.path.join(save_folder, 'all'), show=show)
+            else:
+                self.imp.plot_results(name=os.path.join(save_folder, self.mode), show=show)
 
 
 def cmd_line_call():

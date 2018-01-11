@@ -359,7 +359,7 @@ class IncNeighbor(AbstractEvaluator):
                     plt.tight_layout()
                 except ValueError:
                     pass
-                ax1.set_ylim([min_y * 0.95, max_y * 1.05])
+                ax1.set_ylim([min_y * 0.95, max_y])
                 plt.savefig(os.path.join(name, param + '.png'))
                 ax1.set_yscale('log')
                 if min_y <= 0:
@@ -368,6 +368,6 @@ class IncNeighbor(AbstractEvaluator):
                         min_y = min(min_y)
                     else:
                         min_y = 10**-3
-                ax1.set_ylim([min_y * 0.95, max_y * 1.05])
+                ax1.set_ylim([min_y * 0.95, max_y])
                 plt.savefig(os.path.join(name, param + '_log.png'))
                 plt.close('all')
