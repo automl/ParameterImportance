@@ -38,6 +38,8 @@ class fANOVA(AbstractEvaluator):
             if preprocessed_X is not None and preprocessed_y is not None:
                 self.X = preprocessed_X
                 self.y = preprocessed_y
+            else:
+                self._preprocess(runhist)
         else:
             self._preprocess(runhist)
         cutoffs = (-np.inf, np.inf)

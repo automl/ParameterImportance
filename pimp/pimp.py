@@ -121,7 +121,7 @@ class PIMP:
                                   runhistory=runHist,
                                   seed=seed,
                                   parameters_to_evaluate=numParams,
-                                  save_folder='PIMP',
+                                  save_folder=self.save_folder,
                                   impute_censored=impute,
                                   incumbent=incumbent,
                                   fANOVA_cut_at_default=fanova_cut_at_default,
