@@ -106,6 +106,7 @@
         <div id="sidebar" class="bs-sidenav" role="complementary"><ul>
 <li><a class="reference internal" href="#">Installation</a><ul>
 <li><a class="reference internal" href="#installing-the-requirements">Installing the Requirements</a></li>
+<li><a class="reference internal" href="#using-argcomplete">Using argcomplete</a></li>
 </ul>
 </li>
 </ul>
@@ -122,6 +123,16 @@
 <div class="line">To install PIMPs requirements from command line, please type the following commands on the command line in PIMPs root directory.</div>
 </div>
 <div class="highlight-bash"><div class="highlight"><pre><span></span>cat requirements.txt <span class="p">|</span> xargs -n <span class="m">1</span> -L <span class="m">1</span> pip install
+</pre></div>
+</div>
+</div>
+<div class="section" id="using-argcomplete">
+<h2>Using argcomplete<a class="headerlink" href="#using-argcomplete" title="Permalink to this headline">¶</a></h2>
+<div class="line-block">
+<div class="line">PIMP can be used with argcomplete. To enable autocompletion of PIMP</div>
+<div class="line">arguments, add the following line to your .bashrc or .profile:</div>
+</div>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">eval</span> <span class="s2">&quot;</span><span class="k">$(</span>register-python-argcomplete pimp<span class="k">)</span><span class="s2">&quot;</span>
 </pre></div>
 </div>
 </div>
