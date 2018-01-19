@@ -7,3 +7,4 @@ pyrfr>=0.7.1
 git+http://github.com/automl/fanova.git@master
 smac>=0.8.0
 tqdm
+argcomplete
