@@ -58,3 +58,20 @@ Bayesian optimization. fANOVA is able to quantify the importance of both single 
 between hyperparameters.
 
 For more details we refer to the original `paper <http://www-devel.cs.ubc.ca/~hoos/Publ/HutEtAl14b.pdf>`_.
+
+
+.. _lp:
+
+LPI
+---
+
+*L*ocal *P*arameter *I*mportance ist the most local parameter importance analysis method.
+It is inspired by the human strategy to look
+for further improved parameter configurations or to understand the importance
+of parameter changes in the neighborhood of a parameter configuration. For ex-
+ample, most users are interested in understanding which parameters in optimized
+parameter configurations are crucial for the achieved performance.
+Using an EPM, we study performance changes of a configuration along each
+parameter. To quantify the importance of a parameter value, we compute
+the variance of all cost values by changing the parameter and then compute the fraction
+of all variances.
