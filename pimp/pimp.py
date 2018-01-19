@@ -6,6 +6,7 @@ import json
 import datetime
 import logging
 import time
+import warnings
 from typing import List
 from typing import Dict
 from typing import Union
@@ -190,6 +191,14 @@ def cmd_line_call():
     logging.basicConfig(level=args.verbose_level)
     ts = time.time()
     ts = datetime.datetime.fromtimestamp(ts).strftime('%Y_%m_%d_%H:%M:%S')
+    if 'influence-model' in args.modus:
+        logging.warning('influence-model not fully supported yet!')
+    if 'incneighbor' in args.modus:
+        warnings.simplefilter('always', DeprecationWarning)
+        warnings.warn('incneighbor will be deprecated in version 1.0.0 as it was the development name of'
+                      ' lpi. Use lpi instead.', DeprecationWarning, stacklevel=2)
+    if 'lpi' in args.modus:  # LPI will replace incneighbor in the future
+        args.modus[args.modus.index('lpi')] = 'incneighbor'
     if 'all' in args.modus:
         choices = ['ablation',
                    'forward-selection',
