@@ -1,1 +1,11 @@
+notebooks/.ipynb_checkpoints*
+smac3-output*
+tests
+*__pycache__*
 .idea
+*tmp*
+examples/examples
+examples/instances/
+examples/scenario.txt
+examples/smac-output/
+examples/target_algorithms/
