@@ -3,13 +3,13 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Installation &#8212; PIMP 0.1.0 documentation</title>
+    <title>Installation &#8212; PIMP 0.9.0 documentation</title>
     <link rel="stylesheet" href="_static/bootstrap-sphinx.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '0.1.0',
+        VERSION:     '0.9.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true,
@@ -47,7 +47,7 @@
         </button>
         <a class="navbar-brand" href="index.html">
           PIMP</a>
-        <span class="navbar-text navbar-version pull-left"><b>0.1.0</b></span>
+        <span class="navbar-text navbar-version pull-left"><b>0.9.0</b></span>
       </div>
 
         <div class="collapse navbar-collapse nav-collapse">
@@ -123,8 +123,10 @@
 <div class="line">To install PIMPs requirements from command line, please type the following commands on the command line in PIMPs root directory.</div>
 </div>
 <div class="highlight-bash"><div class="highlight"><pre><span></span>cat requirements.txt <span class="p">|</span> xargs -n <span class="m">1</span> -L <span class="m">1</span> pip install
+python setup.py install
 </pre></div>
 </div>
+<p>After the installation you can call pimp from anywhere with the keyword pimp.</p>
 </div>
 <div class="section" id="using-argcomplete">
 <h2>Using argcomplete<a class="headerlink" href="#using-argcomplete" title="Permalink to this headline">¶</a></h2>

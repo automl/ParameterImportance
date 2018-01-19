@@ -3,13 +3,13 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Manual &#8212; PIMP 0.1.0 documentation</title>
+    <title>Manual &#8212; PIMP 0.9.0 documentation</title>
     <link rel="stylesheet" href="_static/bootstrap-sphinx.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '0.1.0',
+        VERSION:     '0.9.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true,
@@ -47,7 +47,7 @@
         </button>
         <a class="navbar-brand" href="index.html">
           PIMP</a>
-        <span class="navbar-text navbar-version pull-left"><b>0.1.0</b></span>
+        <span class="navbar-text navbar-version pull-left"><b>0.9.0</b></span>
       </div>
 
         <div class="collapse navbar-collapse nav-collapse">
@@ -146,29 +146,63 @@ checked. You can easily load this file using pythons json module.</p>
 <p>This is all you need to have in order to determine the parameter importance of your algorithm.</p>
 <div class="section" id="usage">
 <span id="opts"></span><h3>Usage<a class="headerlink" href="#usage" title="Permalink to this headline">¶</a></h3>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>usage: evaluate.py <span class="o">[</span>-h<span class="o">]</span> --scenario_file SCENARIO_FILE --modus
-               <span class="o">{</span>ablation,forward-selection,influence-model<span class="o">}</span> --history
-               HISTORY <span class="o">[</span>--seed SEED<span class="o">]</span> <span class="o">[</span>--verbose_level <span class="o">{</span>INFO,DEBUG<span class="o">}]</span>
-               <span class="o">[</span>--trajectory TRAJECTORY<span class="o">]</span> <span class="o">[</span>--num_params NUM_PARAMS<span class="o">]</span>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>usage: pimp [-h] -S SCENARIO_FILE -M
+        {ablation,forward-selection,influence-model,all,fanova,lpi,incneighbor}
+        [{ablation,forward-selection,influence-model,all,fanova,lpi,incneighbor} ...]
+        -H HISTORY [--seed SEED] [-V {INFO,DEBUG}] [-T TRAJECTORY]
+        [-N NUM_PARAMS] [-P MAX_SAMPLE_SIZE] [-I] [-C] [-F OUT_FOLDER]
+        [-D WDIR] [--fanova_cut_at_default] [--fanova_no_pairs]
+        [--incneigh_quantify_perf_improvement] [--forward_sel_feat_imp]
+        [--marginalize_over_instances]
+
 optional arguments:
-  -h, --help            show this <span class="nb">help</span> message and <span class="nb">exit</span>
+  -h, --help            show this help message and exit
+
 Required Options:
-  --scenario_file SCENARIO_FILE
-                        scenario file in AClib format <span class="o">(</span>default: None<span class="o">)</span>
-  --modus <span class="o">{</span>ablation,forward-selection,influence-model<span class="o">}</span>
-                        Analysis method to use <span class="o">(</span>default: None<span class="o">)</span>
-  --history HISTORY     runhistory file <span class="o">(</span>default: None<span class="o">)</span>
+  -S SCENARIO_FILE, --scenario_file SCENARIO_FILE
+                        scenario file in AClib format (default: None)
+  -M {ablation,forward-selection,influence-model,all,fanova,lpi,incneighbor} [{ablation,forward-selection,influence-model,all,fanova,lpi,incneighbor} ...], --modus {ablation,forward-selection,influence-model,all,fanova,lpi,incneighbor} [{ablation,forward-selection,influence-model,all,fanova,lpi,incneighbor} ...]
+                        Analysis method(s) to use (default: None)
+  -H HISTORY, --history HISTORY
+                        runhistory file (default: None)
+
 Optional Options:
-  --seed SEED           random seed <span class="o">(</span>default: <span class="m">12345</span><span class="o">)</span>
-  --verbose_level <span class="o">{</span>INFO,DEBUG<span class="o">}</span>
-                        verbosity <span class="o">(</span>default: <span class="m">20</span><span class="o">)</span>
-  --trajectory TRAJECTORY
-                        Path to trajectory file <span class="o">(</span>default: None<span class="o">)</span>
-  --num_params NUM_PARAMS
-                        Number of parameters to evaluate <span class="o">(</span>default: <span class="m">0</span><span class="o">)</span>
+  --seed SEED           random seed (default: 12345)
+  -V {INFO,DEBUG}, --verbose_level {INFO,DEBUG}
+                        verbosity (default: 20)
+  -T TRAJECTORY, --trajectory TRAJECTORY
+                        Path to trajectory file (default: None)
+  -N NUM_PARAMS, --num_params NUM_PARAMS
+                        Number of parameters to evaluate (default: 0)
+  -P MAX_SAMPLE_SIZE, --max_sample_size MAX_SAMPLE_SIZE
+                        Number of samples from runhistorie(s) used. -1 -&gt; use
+                        all (default: -1)
+  -I, --impute          Impute censored data (default: False)
+  -C, --table           Save result table (default: False)
+  -F OUT_FOLDER, --out-folder OUT_FOLDER
+                        Folder to store results in (default: None)
+  -D WDIR, --working_dir WDIR
+                        Directory to load all folders from. (default: .)
+  --fanova_cut_at_default
+                        Cut fANOVA results at the default. This quantifies
+                        importance only in terms of improvement over the
+                        default. (default: False)
+  --fanova_no_pairs     fANOVA won&#39;t compute pairwise marginals (default:
+                        True)
+  --incneigh_quantify_perf_improvement
+                        incumbent neighborhood computes importance via
+                        performance improvement (default: True)
+  --forward_sel_feat_imp
+                        forward selection for feature importance (default:
+                        False)
+  --marginalize_over_instances
+                        Deactivate preprocessing step in which instances are
+                        marginalized away to speedup ablation, forward-
+                        selection and incumbent neighborhood predictions
+                        (default: False)
 </pre></div>
 </div>
-<p>The trajectory file is only needed for <strong>local analysis methods</strong> such as <em>ablation</em>.</p>
+<p>The trajectory file is only needed for <strong>local analysis methods</strong> such as <em>ablation</em> and <em>LPI</em>.</p>
 <p>num_params determines how many parameters have to be evaluated. It is useful if you are only interested in the <em>n</em> most
 important parameters. If it is not set or below 1 or above the maximum number of parameters to evaluate, it will evaluate
 all possible parameters.</p>
