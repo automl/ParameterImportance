@@ -1,4 +1,5 @@
 import logging
+import argcomplete
 from argparse import SUPPRESS, ArgumentDefaultsHelpFormatter, ArgumentParser
 
 from smac.utils.io.cmd_reader import CMDReader
@@ -78,6 +79,10 @@ class CMDs(CMDReader):
                               default=None,
                               help='Folder to store results in',
                               dest='out_folder')
+        req_opts.add_argument('-D', '--working_dir',
+                              default='.',
+                              help='Directory to load all folders from.',
+                              dest='wdir')
         req_opts.add_argument('--fanova_cut_at_default',
                               action='store_true',
                               help='Cut fANOVA results at the default. This quantifies importance only in'
@@ -100,6 +105,7 @@ class CMDs(CMDReader):
                               help='Deactivate preprocessing step in which instances are marginalized away to speedup'
                               ' ablation, forward-selection and incumbent neighborhood predictions',
                               dest='marg_inst')
+        argcomplete.autocomplete(parser)
         args_, misc = parser.parse_known_args()
         self._check_args(args_)
 

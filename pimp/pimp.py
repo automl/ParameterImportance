@@ -1,3 +1,4 @@
+# PYTHON_ARGCOMPLETE_OK
 import os
 if not 'MATPLOTLIBRC' in os.environ:
     os.environ['MATPLOTLIBRC'] = os.path.join(os.path.dirname(__file__))
@@ -121,7 +122,7 @@ class PIMP:
                                   runhistory=runHist,
                                   seed=seed,
                                   parameters_to_evaluate=numParams,
-                                  save_folder='PIMP',
+                                  save_folder=self.save_folder,
                                   impute_censored=impute,
                                   incumbent=incumbent,
                                   fANOVA_cut_at_default=fanova_cut_at_default,
@@ -176,6 +177,16 @@ def cmd_line_call():
     """
     cmd_reader = CMDs()
     args, misc_ = cmd_reader.read_cmd()  # read cmd args
+    cwd = os.path.abspath(os.getcwd())
+    if args.out_folder and not os.path.isabs(args.out_folder):
+        args.out_folder = os.path.abspath(args.out_folder)
+    if args.trajectory and not os.path.isabs(args.trajectory):
+        args.trajectory = os.path.abspath(args.trajectory)
+    if not os.path.isabs(args.scenario_file):
+        args.scenario_file = os.path.abspath(args.scenario_file)
+    if not os.path.isabs(args.history):
+        args.history = os.path.abspath(args.history)
+    os.chdir(args.wdir)
     logging.basicConfig(level=args.verbose_level)
     ts = time.time()
     ts = datetime.datetime.fromtimestamp(ts).strftime('%Y_%m_%d_%H:%M:%S')
@@ -231,6 +242,7 @@ def cmd_line_call():
             save_folder, 'pimp_table_%s.tex' % args.modus), style='latex')
     else:
         importance.table_for_comparison(evaluators=result[1], style='cmd')
+    os.chdir(cwd)
 
 
 if __name__ == '__main__':
