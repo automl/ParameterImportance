@@ -230,7 +230,7 @@ dummy:
 gh-pages:
 	git checkout gh-pages
 	rm -rf *
-	git checkout master docs Makefile
+	git checkout master docs Makefile .gitignore pimp/__version__.py
 	make html
 	git reset HEAD
 	mv -fv _build/html/* ./
