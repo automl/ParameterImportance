@@ -44,6 +44,7 @@ class CMDs(CMDReader):
                                        'influence-model',
                                        'all',
                                        'fanova',
+                                       'lpi',
                                        'incneighbor'])
         req_opts.add_argument("-H", "--history",
                               required=True,
