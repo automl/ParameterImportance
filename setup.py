@@ -3,14 +3,6 @@ from setuptools import setup
 with open("pimp/__version__.py") as fh:
     version = fh.readlines()[-1].split()[-1].strip("\"'")
 
-with open('requirements.txt') as fh:
-    requirements = fh.read()
-    requirements = requirements.split('\n')
-    requirements = [requirement.strip() for requirement in requirements]
-if 'git+http://github.com/automl/fanova.git@master' in requirements:
-    idx = requirements.index('git+http://github.com/automl/fanova.git@master')
-    requirements[idx] = 'fanova'
-
 setup(
     name='PIMP',
     version=version,
