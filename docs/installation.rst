@@ -10,6 +10,9 @@ Installing the Requirements
 .. code-block:: bash
 
     cat requirements.txt | xargs -n 1 -L 1 pip install
+    python setup.py install
+
+After the installation you can call pimp from anywhere with the keyword pimp.
 
 Using argcomplete
 -----------------
