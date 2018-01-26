@@ -316,7 +316,7 @@ class Importance(object):
             self._setup_model()
         self.logger.info('Setting up Evaluation Method')
         if evaluation_method not in ['ablation', 'fanova', 'forward-selection', 'influence-model',
-                                     'incneighbor']:
+                                     'incneighbor', 'lpi']:
             raise ValueError('Specified evaluation method %s does not exist!' % evaluation_method)
         if evaluation_method == 'ablation':
             if self.incumbent is None:
@@ -358,10 +358,10 @@ class Importance(object):
                                pairwise=self.pairiwse_fANOVA,
                                preprocessed_X=self.X_fanova,
                                preprocessed_y=self.y_fanova)
-        elif evaluation_method == 'incneighbor':
+        elif evaluation_method in ['incneighbor', 'lpi']:
             if self.incumbent is None:
                 raise ValueError('Incumbent is %s!\n \
-                                 Incumbent has to be read from a trajectory file before ablation can be used!'
+                                 Incumbent has to be read from a trajectory file before LPI can be used!'
                                  % self.incumbent)
             self.logger.info('Using model %s' % str(self.model))
             self.logger.info('X shape %s' % str(self.model.X.shape))
