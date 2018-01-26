@@ -222,7 +222,7 @@ class CMDs(CMDReader):
         req_opts = parser.add_argument_group("required arguments:" + '~'*100)
         req_opts.add_argument("-S", "--scenario_file",
                               required=True,
-                              help="scenario file in AClib format",
+                              help="(path to) scenario file in AClib format.",
                               default=SUPPRESS)
         req_opts.add_argument("-M", "--modus",
                               required=True,
@@ -234,43 +234,48 @@ class CMDs(CMDReader):
                               default=SUPPRESS)
         req_opts.add_argument("-H", "--history",
                               required=True,
-                              help="runhistory file",
+                              help="(path to) runhistory file that contains all "
+                                   "collected data from an optimization run",
                               default=SUPPRESS)
 
         opt_opts = parser.add_argument_group("optional arguments:" + '~'*100)
         opt_opts.add_argument("--seed",
                               default=12345,
                               type=int,
-                              help="raw|random seed\n")
+                              help="raw|random seed. Used internally when fitting the random forest.\n")
         opt_opts.add_argument("-V", "--verbose_level",
                               default=logging.INFO,
                               choices=["INFO", "DEBUG"],
                               help="raw|verbosity\n")
         opt_opts.add_argument("-T", "--trajectory",
                               default=None,
-                              help="raw|path to trajectory file\n")
+                              help="raw|(path to) trajectory file. Needs to contain at least one line detailing the\n"
+                                   "best seen configuration and it's cost.\n")
         opt_opts.add_argument("-N", "--num_params",
                               default=-1,
                               type=int,
-                              help="raw|number of parameters to evaluate\n")
+                              help="raw|number of parameters to evaluate. -1 -> use all\n")
         opt_opts.add_argument("-P", "--max_sample_size",
                               default=-1,
                               type=int,
                               help="raw|number of samples from runhistorie(s) used. -1 -> use all\n")
         opt_opts.add_argument('-F', '--out-folder',
                               default=None,
-                              help='raw|folder to store results in\n',
+                              help='raw|folder to store all results in\n',
                               dest='out_folder')
         opt_opts.add_argument('-D', '--working_dir',
                               default='.',
-                              help='raw|directory to load all folders from.\n',
+                              help='raw|working directory. Contains all necessary files such as scenario, (path to)\n'
+                                   'runhistory, [(path to) trajectory].\n',
                               dest='wdir')
         opt_opts.add_argument("-I", "--impute",
                               action='store_true',
-                              help="impute censored data")
+                              help="If set, censored data will be imputed.")
         opt_opts.add_argument("-C", "--table",
                               action='store_true',
-                              help="save result table")
+                              help="=> a .tex file will be created containing all results in an easy to compare"
+                                   "fashion. Parameters will be sorted by importance according to the first method"
+                                   "in the table.")
         opt_opts.add_argument('--fanova_cut_at_default',
                               action='store_true',
                               help='cut fANOVA results at the default. This quantifies importance only in'
@@ -278,20 +283,21 @@ class CMDs(CMDReader):
                                    ' default.')
         opt_opts.add_argument('--fanova_no_pairs',
                               action='store_false',
-                              help="fANOVA won't compute pairwise marginals",
+                              help="=> fANOVA won't compute pairwise marginals",
                               dest='fanova_pairwise')
-        opt_opts.add_argument('--incneigh_quantify_perf_improvement',
+        opt_opts.add_argument('--lpi_quantify_perf_improvement',
                               action='store_false',
-                              help="incumbent neighborhood computes importance via performance improvement",
+                              help="=> LPI computes importance as performance improvement",
                               dest='incn_quant_var')
         opt_opts.add_argument('--forward_sel_feat_imp',
                               action='store_true',
-                              help="forward selection for feature importance",
+                              help="=> forward selection computes feature importance, not parameter importance",
                               dest='forwardsel_feat_imp')
         opt_opts.add_argument('--marginalize_over_instances',
                               action='store_true',
-                              help='deactivate preprocessing step in which instances are marginalized away to speedup'
-                                   ' ablation, forward-selection and incumbent neighborhood predictions',
+                              help='=> deactivate preprocessing step in which instances are marginalized '
+                                   'away to speedup'
+                                   ' ablation, forward-selection and LPI predictions',
                               dest='marg_inst')
         spe_opts = parser.add_argument_group("special arguments:" + '~'*100)
         spe_opts.add_argument('-v', '--version', action='version',
