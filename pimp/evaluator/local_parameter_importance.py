@@ -19,7 +19,7 @@ __maintainer__ = "Andre Biedenkapp"
 __email__ = "biedenka@cs.uni-freiburg.de"
 
 
-class IncNeighbor(AbstractEvaluator):
+class LPI(AbstractEvaluator):
 
     """
     Implementation of Ablation via surrogates
@@ -28,7 +28,7 @@ class IncNeighbor(AbstractEvaluator):
     def __init__(self, scenario, cs, model, to_evaluate: int, incumbent=None, continous_neighbors=500,
                  old_sampling=False, show_query_points=False, quant_var=True, **kwargs):
         super().__init__(scenario, cs, model, to_evaluate, **kwargs)
-        self.name = 'IncNeighbor'
+        self.name = 'LPI'
         self.logger = self.name
         self.incumbent = incumbent
         self.incumbent_dict = self.incumbent.get_dictionary()
@@ -71,7 +71,7 @@ class IncNeighbor(AbstractEvaluator):
                 if iteration > 0:
                     break
                 neighbors = hp.get_neighbors(array[index], self.rng)
-            self.logger.debug('\t\t' + str(neighbors))
+            # self.logger.debug('\t\t' + str(neighbors))
             # Check all newly obtained neighbors
             for neighbor in neighbors:
                 if neighbor in checked_neighbors:

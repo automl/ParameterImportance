@@ -20,7 +20,7 @@ from pimp.epm.unlogged_epar_x_rfwi import UnloggedEPARXrfi
 from pimp.epm.unlogged_rfwi import Unloggedrfwi
 from pimp.evaluator.ablation import Ablation
 from pimp.evaluator.fanova import fANOVA
-from pimp.evaluator.incumbent_neighborhood import IncNeighbor
+from pimp.evaluator.local_parameter_importance import LPI
 from pimp.evaluator.forward_selection import ForwardSelector, AbstractEvaluator
 from pimp.evaluator.influence_models import InfluenceModel
 from pimp.utils import RunHistory, RunHistory2EPM4Cost, RunHistory2EPM4LogCost, Scenario, average_cost
@@ -365,14 +365,14 @@ class Importance(object):
                                  % self.incumbent)
             self.logger.info('Using model %s' % str(self.model))
             self.logger.info('X shape %s' % str(self.model.X.shape))
-            evaluator = IncNeighbor(scenario=self.scenario,
-                                    cs=self.scenario.cs,
-                                    model=self._model,
-                                    to_evaluate=self._parameters_to_evaluate,
-                                    incumbent=self.incumbent,
-                                    logy=self.logged_y,
-                                    rng=self.rng,
-                                    quant_var=self.incn_quant_var)
+            evaluator = LPI(scenario=self.scenario,
+                            cs=self.scenario.cs,
+                            model=self._model,
+                            to_evaluate=self._parameters_to_evaluate,
+                            incumbent=self.incumbent,
+                            logy=self.logged_y,
+                            rng=self.rng,
+                            quant_var=self.incn_quant_var)
         else:
             self.logger.info('Using model %s' % str(self.model))
             evaluator = ForwardSelector(scenario=self.scenario,
