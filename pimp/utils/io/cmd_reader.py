@@ -45,7 +45,8 @@ class CMDs(CMDReader):
                                        'all',
                                        'fanova',
                                        'lpi',
-                                       'incneighbor'])
+                                       'incneighbor'],
+                              type=str.lower)
         req_opts.add_argument("-H", "--history",
                               required=True,
                               help="runhistory file")

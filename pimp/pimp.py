@@ -211,22 +211,26 @@ def cmd_line_call():
             args.modus = choices
     if not args.out_folder:
         if len(args.modus) > 1:
-            tmp = list(map(lambda x: x[:2], args.modus))
+            tmp = ['all']
         else:
             tmp = args.modus
-        save_folder = 'PIMP_%s' % '_'.join(tmp)
+            if 'incneighbor' in args.modus:
+                tmp = ['lpi']
+        save_folder = os.path.join(cwd, 'PIMP_%s' % '_'.join(tmp))
         if os.path.exists(os.path.abspath(save_folder)):
-            save_folder ='PIMP_%s_%s' % ('_'.join(tmp), ts)
+            save_folder = os.path.join(cwd, 'PIMP_%s_%s' % ('_'.join(tmp), ts))
     else:
         if len(args.modus) > 1:
-            tmp = list(map(lambda x: x[:2], args.modus))
+            tmp = ['all']
         else:
             tmp = args.modus
+            if 'incneighbor' in args.modus:
+                tmp = ['lpi']
         if os.path.exists(os.path.abspath(args.out_folder)) or os.path.exists(os.path.abspath(
                         args.out_folder + '_%s' % '_'.join(tmp))):
-            save_folder = args.out_folder + '_%s_%s' % ('_'.join(tmp), ts)
+            save_folder = os.path.join(cwd, args.out_folder + '_%s_%s' % ('_'.join(tmp), ts))
         else:
-            save_folder = args.out_folder + '_%s' % '_'.join(tmp)
+            save_folder = os.path.join(cwd, args.out_folder + '_%s' % '_'.join(tmp))
 
     importance = Importance(scenario_file=args.scenario_file,
                             runhistory_file=args.history,
