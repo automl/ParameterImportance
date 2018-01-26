@@ -4,6 +4,7 @@ from copy import deepcopy
 
 import numpy as np
 from tqdm import tqdm
+tqdm.monitor_interval = 0
 import matplotlib as mpl
 mpl.use('Agg')
 from matplotlib import pyplot as plt
@@ -236,21 +237,21 @@ class LPI(AbstractEvaluator):
                 sum_var += overall_var[param]
             else:
                 pbar.set_description('{: >.70s}'.format('Parameter %s is inactive' % param))
-        self.logger.info('{:<30s}  {:^24s}, {:^25s}'.format(
-            ' ', 'perf impro', 'variance'
-        ))
-        self.logger.info('{:<30s}: [{:>6s}, {:>6s}, {:>6s}], {:>6s}, {:>6s}, {:>6s}'.format(
-            'Parameter', 'Mean', 'Median', 'Max', 'p_var', 't_var', 'frac'
-        ))
-        self.logger.info('-'*80)
+        # self.logger.info('{:<30s}  {:^24s}, {:^25s}'.format(
+        #     ' ', 'perf impro', 'variance'
+        # ))
+        # self.logger.info('{:<30s}: [{:>6s}, {:>6s}, {:>6s}], {:>6s}, {:>6s}, {:>6s}'.format(
+        #     'Parameter', 'Mean', 'Median', 'Max', 'p_var', 't_var', 'frac'
+        # ))
+        # self.logger.info('-'*80)
         tmp = []
         for param in sorted(list(overall_var.keys())):
             # overall_var[param].extend([inc_perf for _ in range(len(all_preds) - len(overall_var[param]))])
             # overall_var[param] = np.var(overall_var[param])
-            self.logger.info('{:<30s}: [{: >6.2f}, {: >6.2f}, {: >6.2f}], {: >6.2f}, {: >6.2f}, {: >6.2f}'.format(
-                param, *overall_imp[param]*100, overall_var[param], np.var(all_preds),
-                overall_var[param] / sum_var * 100
-            ))
+            # self.logger.info('{:<30s}: [{: >6.2f}, {: >6.2f}, {: >6.2f}], {: >6.2f}, {: >6.2f}, {: >6.2f}'.format(
+            #     param, *overall_imp[param]*100, overall_var[param], np.var(all_preds),
+            #     overall_var[param] / sum_var * 100
+            # ))
             if self.quantify_importance_via_variance:
                 tmp.append([param, overall_var[param] / sum_var * 100])
             else:
@@ -285,7 +286,8 @@ class LPI(AbstractEvaluator):
     def plot_result(self, name='incneighbor', show=True):
         if not os.path.exists(name):
             os.mkdir(name)
-        pbar = tqdm(self.incumbent.keys(), ascii=True, total=len(self.incumbent.keys()))
+        keys = deepcopy(list(self.incumbent.keys()))
+        pbar = tqdm(list(keys), ascii=True)
         for param in pbar:
             pbar.set_description('Plotting results for %s' % param)
             if param in self.performance_dict:
