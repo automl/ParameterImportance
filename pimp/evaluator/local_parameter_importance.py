@@ -200,7 +200,7 @@ class LPI(AbstractEvaluator):
                             added_inc = True
                         else:
                             inc_at += 1
-                    self.logger.debug('%s -> %s' % (self.incumbent[param], neighbor))
+                    # self.logger.debug('%s -> %s' % (self.incumbent[param], neighbor))
                     new_array = incumbent_array.copy()
                     new_array = change_hp_value(self.incumbent.configuration_space, new_array, param, unit_neighbor,
                                                 index)
