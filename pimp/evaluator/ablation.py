@@ -214,8 +214,12 @@ class Ablation(AbstractEvaluator):
                             self.logger.critical('Removing deactivated parameter %s' % child)
                             self.delta.pop(self.delta.index([child]))
                     else:
-                        if self.source_active[child] and not self.target_active[child]:
-                            modded_dict[child] = self.source[child]
+
+                        if not self.target_active[child]:
+                            if child in self.source_active:
+                                modded_dict[child] = self.source[child]
+                            else:
+                                modded_dict[child] = None
                         elif self.target_active[child]:
                             modded_dict[child] = self.target[child]
                         else:
