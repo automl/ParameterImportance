@@ -216,15 +216,16 @@ class Ablation(AbstractEvaluator):
                     else:
                         if child not in self.target_active and child not in self.source_active:
                             modded_dict[child] = None
-                        elif not self.target_active[child]:
-                            if child in self.source_active:
-                                modded_dict[child] = self.source[child]
+                        elif child in self.target_active:
+                            if not self.target_active[child]:
+                                if child in self.source_active:
+                                    modded_dict[child] = self.source[child]
+                                else:
+                                    modded_dict[child] = None
+                            elif self.target_active[child]:
+                                modded_dict[child] = self.target[child]
                             else:
-                                modded_dict[child] = None
-                        elif self.target_active[child]:
-                            modded_dict[child] = self.target[child]
-                        else:
-                            modded_dict[child] = self.cs.get_hyperparameter(child).default_value
+                                modded_dict[child] = self.cs.get_hyperparameter(child).default_value
                         modded_dict = self._check_children(modded_dict, [child])
         return modded_dict
 
