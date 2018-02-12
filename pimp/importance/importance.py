@@ -479,6 +479,7 @@ class Importance(object):
         # influence-model currently not supported
         assert(len(methods) >= 1)
         fn = os.path.join(save_folder, 'pimp_results.json')
+        load = os.path.exists(fn)
         dict_ = {}
         for rnd, method in enumerate(methods):
             self.logger.info('Running %s' % method)
@@ -487,8 +488,9 @@ class Importance(object):
             self.evaluators.append(self.evaluator)
             if save_folder:
                 self.evaluator.plot_result(os.path.join(save_folder, self.evaluator.name.lower()), show=False)
-            with open(fn, 'r+' if rnd else 'w') as out_file:
+            with open(fn, 'r+' if load else 'w') as out_file:
                 json.dump(dict_, out_file, sort_keys=True, indent=4, separators=(',', ': '))
+                load = True
         return dict_, self.evaluators
 
     def plot_results(self, name: Union[List[str], str, None] = None, evaluators: Union[List[AbstractEvaluator],
