@@ -77,6 +77,8 @@ class Importance(object):
         self.X_fanova = None
         self.y_fanova = None
 
+        self.evaluators = []
+
         self._setup_scenario(scenario, scenario_file, save_folder)
         self._load_runhist(runhistory, runhistory_file)
         self._setup_model()
@@ -476,16 +478,20 @@ class Importance(object):
         """
         # influence-model currently not supported
         assert(len(methods) >= 1)
-        evaluators = []
+        fn = os.path.join(save_folder, 'pimp_results.json')
+        load = os.path.exists(fn)
         dict_ = {}
-        for method in methods:
+        for rnd, method in enumerate(methods):
             self.logger.info('Running %s' % method)
             self.evaluator = method
-            dict_[method] = self.evaluator.run()
-            evaluators.append(self.evaluator)
+            dict_[self.evaluator.name.lower()] = self.evaluator.run()
+            self.evaluators.append(self.evaluator)
             if save_folder:
                 self.evaluator.plot_result(os.path.join(save_folder, self.evaluator.name.lower()), show=False)
-        return dict_, evaluators
+            with open(fn, 'r+' if load else 'w') as out_file:
+                json.dump(dict_, out_file, sort_keys=True, indent=4, separators=(',', ': '))
+                load = True
+        return dict_, self.evaluators
 
     def plot_results(self, name: Union[List[str], str, None] = None, evaluators: Union[List[AbstractEvaluator],
                                                                                        None] = None,
@@ -531,7 +537,7 @@ class Importance(object):
                         _max_len_p = max(_max_len_p, len(p))
                     else:
                         body[p][idx] = e.evaluated_parameter_importance[p]
-                    if e.name in ['Ablation', 'fANOVA']:
+                    if e.name in ['Ablation', 'fANOVA', 'LPI']:
                         if body[p][idx] != '-':
                             body[p][idx] *= 100
                         _max_len_p = max(_max_len_p, len(p))

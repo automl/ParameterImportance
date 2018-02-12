@@ -253,7 +253,7 @@ class LPI(AbstractEvaluator):
             #     overall_var[param] / sum_var * 100
             # ))
             if self.quantify_importance_via_variance:
-                tmp.append([param, overall_var[param] / sum_var * 100])
+                tmp.append([param, overall_var[param] / sum_var])
             else:
                 tmp.append([param, overall_imp[param][0]])
         tmp = sorted(tmp, key=lambda x: x[1], reverse=True)

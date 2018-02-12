@@ -247,9 +247,6 @@ def cmd_line_call():
     with open(os.path.join(save_folder, 'pimp_args.json'), 'w') as out_file:
         json.dump(args.__dict__, out_file, sort_keys=True, indent=4, separators=(',', ': '))
     result = importance.evaluate_scenario(args.modus, save_folder=save_folder)
-    args.modus = '_'.join(list(map(lambda x: x[:2], args.modus)))
-    with open(os.path.join(save_folder, 'pimp_values_%s.json' % args.modus), 'w') as out_file:
-        json.dump(result[0], out_file, sort_keys=True, indent=4, separators=(',', ': '))
     if args.table:
         importance.table_for_comparison(evaluators=result[1], name=os.path.join(
             save_folder, 'pimp_table_%s.tex' % args.modus), style='latex')
