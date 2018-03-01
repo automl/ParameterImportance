@@ -307,7 +307,8 @@ class LPI(AbstractEvaluator):
                 if not isinstance(self.incumbent.configuration_space.get_hyperparameter(param),
                                   CategoricalHyperparameter):
                     ax1.fill_between(self.neighborhood_dict[param][1], lower, upper, label='std', color=self.area_color)
-                    ax1.plot(self.neighborhood_dict[param][1], p, label='Predicted Performance', ls='-', zorder=80,
+                    ax1.plot(self.neighborhood_dict[param][1], p, label='predicted %s' % self.scenario.run_obj,
+                             ls='-', zorder=80,
                              **self.LINE_FONT)
                     label = True
                     c_inc = True
