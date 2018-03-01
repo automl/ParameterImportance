@@ -500,7 +500,8 @@ class Ablation(AbstractEvaluator):
             variances[self.MAX_PARAMS_TO_PLOT - 1] = variances[-1]
             path[self.MAX_PARAMS_TO_PLOT - 1] = path[-1]
 
-        ax1.plot(list(range(len(performances))), performances, label='Predicted Performance', ls='-', zorder=80,
+        ax1.plot(list(range(len(performances))), performances, label='predicted %s' % self.scenario.run_obj,
+                 ls='-', zorder=80,
                  **self.LINE_FONT)
 
         upper = np.array(list(map(lambda x, y: x + np.sqrt(y), performances, variances))).flatten()
