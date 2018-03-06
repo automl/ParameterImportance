@@ -56,7 +56,8 @@ class ForwardSelector(AbstractEvaluator):
         if self.feature_importance:
             used.extend(range(0, len(self.bounds)))
             used_bounds.extend(range(0, len(self.bounds)))
-            names = list(map(lambda x: 'Feat #' + str(len(feature_ids) + x - len(self.types)), feature_ids))
+            # names = list(map(lambda x: 'Feat #' + str(len(feature_ids) + x - len(self.types)), feature_ids))
+            names = self.scenario.feature_names
             ids = feature_ids
             if self.to_evaluate > len(feature_ids):
                 self.to_evaluate = len(feature_ids)
