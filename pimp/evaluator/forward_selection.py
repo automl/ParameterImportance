@@ -34,7 +34,7 @@ class ForwardSelector(AbstractEvaluator):
             int. Indicates for how many parameters the Importance values have to be computed
         """
         super().__init__(scenario, cs, model, to_evaluate, rng, **kwargs)
-        self.name = 'Forward Selection'
+        self.name = 'Forward-Selection'
         self.logger = self.name
         self.feature_importance = feature_imp
         self.cv = cv
