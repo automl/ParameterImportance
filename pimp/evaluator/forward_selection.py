@@ -6,6 +6,8 @@ import matplotlib as mpl
 mpl.use('Agg')
 from matplotlib import pyplot as plt
 from tqdm import tqdm
+from sklearn.model_selection import KFold
+from sklearn.metrics.regression import mean_squared_error
 from pimp.evaluator.base_evaluator import AbstractEvaluator
 
 __author__ = "Andre Biedenkapp"
@@ -17,7 +19,8 @@ __email__ = "biedenka@cs.uni-freiburg.de"
 
 class ForwardSelector(AbstractEvaluator):
 
-    def __init__(self, scenario, cs, model, to_evaluate: int, rng, feature_imp: bool=False, **kwargs):
+    def __init__(self, scenario, cs, model, to_evaluate: int, rng, feature_imp: bool=False,
+                 cv: bool=False, **kwargs):
         """
         Constructor
         :parameter:
@@ -34,7 +37,8 @@ class ForwardSelector(AbstractEvaluator):
         self.name = 'Forward Selection'
         self.logger = self.name
         self.feature_importance = feature_imp
-        self.logger.info('%slyzing feature importance' % ('A' if feature_imp else 'Not a'))
+        self.cv = cv
+        self.logger.info('%snalyzing feature importance' % ('A' if feature_imp else 'Not a'))
 
     def run(self) -> OrderedDict:
         """
@@ -61,6 +65,8 @@ class ForwardSelector(AbstractEvaluator):
             names = params
             ids = param_ids
 
+        kf = KFold(n_splits=5)
+
         pbar = tqdm(range(self.to_evaluate), ascii=True)
         for _ in pbar:  # Main Loop
             errors = []
@@ -73,14 +79,28 @@ class ForwardSelector(AbstractEvaluator):
                 self.logger.debug('Used bounds of parameters: %s' % str(used_bounds))
 
                 start = time.time()
-                self._refit_model(self.types[sorted(used)], self.bounds[sorted(used_bounds)],
-                                  self.X[:, sorted(used)],
+                cv_errors = []
+                used = sorted(used)
+                used_bounds = sorted(used_bounds)
+                if self.cv:
+                    for train_idx, test_idx, in kf.split(self.X):
+                        self._refit_model(self.types[used], self.bounds[used_bounds],
+                                          self.X[train_idx.reshape(-1, 1), used],
+                                          self.y[train_idx])  # refit the model every round
+                        pred = self.model.predict(self.X[test_idx.reshape(-1, 1), used])[0]
+                        cv_errors.append(np.sqrt(mean_squared_error(self.y[test_idx], pred)))
+                    cve = np.mean(cv_errors)
+                else:
+                    cve = None
+                self._refit_model(self.types[used], self.bounds[used_bounds],
+                                  self.X[:, used],
                                   self.y)  # refit the model every round
-                errors.append(self.model.rf.out_of_bag_error())
+                oob = self.model.rf.out_of_bag_error()
+                errors.append(cve if self.cv else oob)
                 used.pop()
                 if not self.feature_importance:
                     used_bounds.pop()
-                self.logger.debug('Refitted RF (sec %.2f; error: %.4f)' % (time.time() - start, errors[-1]))
+                self.logger.info('Refitted RF (sec %.2f; CV-RMSE: %.4f, OOB: %.4f)' % (time.time() - start, cve, oob))
 
             best_idx = np.argmin(errors)
             lowest_error = errors[best_idx]

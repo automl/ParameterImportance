@@ -243,7 +243,8 @@ def cmd_line_call():
                             fANOVA_pairwise=args.fanova_pairwise,
                             forwardsel_feat_imp=args.forwardsel_feat_imp,
                             incn_quant_var=args.incn_quant_var,
-                            preprocess=args.marg_inst)  # create importance object
+                            preprocess=args.marg_inst,
+                            forwardsel_cv=args.forwardsel_cv)  # create importance object
     with open(os.path.join(save_folder, 'pimp_args.json'), 'w') as out_file:
         json.dump(args.__dict__, out_file, sort_keys=True, indent=4, separators=(',', ': '))
     result = importance.evaluate_scenario(args.modus, save_folder=save_folder)

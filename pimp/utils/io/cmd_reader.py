@@ -293,6 +293,10 @@ class CMDs(CMDReader):
                               action='store_true',
                               help="=> forward selection computes feature importance, not parameter importance",
                               dest='forwardsel_feat_imp')
+        opt_opts.add_argument('--forwardsel_cv',
+                              action='store_true',
+                              help='=> forward selection errors computed via cross-validation instead of OOBs',
+                              dest='forwardsel_cv')
         opt_opts.add_argument('--marginalize_over_instances',
                               action='store_true',
                               help='=> deactivate preprocessing step in which instances are marginalized '
