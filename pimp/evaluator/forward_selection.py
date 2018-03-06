@@ -91,7 +91,7 @@ class ForwardSelector(AbstractEvaluator):
                         cv_errors.append(np.sqrt(mean_squared_error(self.y[test_idx], pred)))
                     cve = np.mean(cv_errors)
                 else:
-                    cve = None
+                    cve = np.float('inf')
                 self._refit_model(self.types[used], self.bounds[used_bounds],
                                   self.X[:, used],
                                   self.y)  # refit the model every round
@@ -100,7 +100,7 @@ class ForwardSelector(AbstractEvaluator):
                 used.pop()
                 if not self.feature_importance:
                     used_bounds.pop()
-                self.logger.info('Refitted RF (sec %.2f; CV-RMSE: %.4f, OOB: %.4f)' % (time.time() - start, cve, oob))
+                self.logger.debug('Refitted RF (sec %.2f; CV-RMSE: %.4f, OOB: %.4f)' % (time.time() - start, cve, oob))
 
             best_idx = np.argmin(errors)
             lowest_error = errors[best_idx]
