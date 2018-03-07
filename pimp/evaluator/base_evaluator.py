@@ -40,7 +40,7 @@ class AbstractEvaluator(object):
             self.y = self.model.y
             self.types = self.model.types
             self.bounds = self.model.bounds
-
+        self._to_eval = to_evaluate
         if to_evaluate <= 0:
             self.to_evaluate = len(self.cs.get_hyperparameters())
         elif to_evaluate >= len(self.cs.get_hyperparameters()):
