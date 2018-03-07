@@ -96,7 +96,7 @@ class ForwardSelector(AbstractEvaluator):
             errors = []
             innerpbar = trange(len(names) + 1, ascii=True, desc='{:<40s}'.format(' '), leave=False, position=-1)
             for idx, name in zip(ids, names):
-                innerpbar.set_description('{:<40s}'.format(name))
+                innerpbar.set_description('{:<40s}'.format(name if self.feature_importance else name.name))
                 self.logger.debug('Evaluating %s' % name)
                 used.append(idx)
                 if not self.feature_importance:
