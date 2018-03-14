@@ -119,34 +119,34 @@
       
   <div class="section" id="manual">
 <h1>Manual<a class="headerlink" href="#manual" title="Permalink to this headline">¶</a></h1>
-<p>In the following we will show how to use <strong>PIMP</strong>.</p>
+<p>In the following we will show how to use <strong>PyImp</strong>.</p>
 <p>Before proceeding with this Quick-Start guide, you sould make sure you have all requirenment installed (see <a class="reference internal" href="installation.html"><span class="doc">Installation</span></a>).
-PIMP is developed for <strong>python3.5</strong> and above!</p>
+PyImp is developed for <strong>python3.5</strong> and above!</p>
 <div class="section" id="quick-start">
 <span id="quick"></span><h2>Quick Start<a class="headerlink" href="#quick-start" title="Permalink to this headline">¶</a></h2>
-<p>To show you how easy it is to use <em>PIMP</em> we will do it by example.
+<p>To show you how easy it is to use <em>PyImp</em> we will do it by example.
 In the examples folder you’ll find the folder spear_qcp.</p>
 <p>First navigate to this folder.</p>
 <div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">cd</span> examples/spear_qcp
 </pre></div>
 </div>
 <p>It contains all the necessary files, to optimize <em>Spear</em> using <em>SMAC3</em>.
-To see a detailed description of what each file is used for, we refer to <em>SMACs</em> <a class="reference external" href="https://automl.github.io/SMAC3/stable/manual.html#spear-qcp">manual</a>. All the files are provided so you can run SMAC for yourself to create new output to use with <em>PIMP</em></p>
+To see a detailed description of what each file is used for, we refer to <em>SMACs</em> <a class="reference external" href="https://automl.github.io/SMAC3/stable/manual.html#spear-qcp">manual</a>. All the files are provided so you can run SMAC for yourself to create new output to use with <em>PyImp</em></p>
 <p>The folder <em>smac-output</em> contains the <em>runhistory</em> and <em>trajectory</em> files of a 10 minute
 SMAC run for the specified scenario.</p>
-<p>To use <strong>PIMP</strong> simply execute the following call in the spear_qcp folder:</p>
+<p>To use <strong>PyImp</strong> simply execute the following call in the spear_qcp folder:</p>
 <div class="highlight-bash"><div class="highlight"><pre><span></span>python ../../scripts/evaluate.py --scenario_file scenario.txt --history <span class="s1">&#39;./*/runhistory.json&#39;</span> --modus forward-selection
 </pre></div>
 </div>
-<p>With this call, PIMP will read in the scenarios info and all runhistories in this folder and evaluate the parameter importances,
+<p>With this call, PyImp will read in the scenarios info and all runhistories in this folder and evaluate the parameter importances,
 using forward selection (see <a class="reference internal" href="algorithms.html"><span class="doc">Algorithms</span></a>).</p>
-<p>PIMP will create a json file that contains the names and importance values of all parameters that the analysis algorithm
+<p>PyImp will create a json file that contains the names and importance values of all parameters that the analysis algorithm
 checked. You can easily load this file using pythons json module.</p>
 <p>Further, every algorithm will create one ore more plots in the same directory in which the evaluate script was called.</p>
 <p>This is all you need to have in order to determine the parameter importance of your algorithm.</p>
 <div class="section" id="usage">
 <span id="opts"></span><h3>Usage<a class="headerlink" href="#usage" title="Permalink to this headline">¶</a></h3>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>usage: pimp [-h] -S SCENARIO_FILE -M
+<div class="highlight-bash"><div class="highlight"><pre><span></span>usage: pyimp [-h] -S SCENARIO_FILE -M
         {ablation,forward-selection,influence-model,all,fanova,lpi,incneighbor}
         [{ablation,forward-selection,influence-model,all,fanova,lpi,incneighbor} ...]
         -H HISTORY [--seed SEED] [-V {INFO,DEBUG}] [-T TRAJECTORY]

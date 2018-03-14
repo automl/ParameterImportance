@@ -4,17 +4,17 @@ Manual
     :language: bash
 
 
-In the following we will show how to use **PIMP**.
+In the following we will show how to use **PyImp**.
 
 Before proceeding with this Quick-Start guide, you sould make sure you have all requirenment installed (see :doc:`installation`).
-PIMP is developed for **python3.5** and above!
+PyImp is developed for **python3.5** and above!
 
 .. _quick:
 
 Quick Start
 -----------
 
-To show you how easy it is to use *PIMP* we will do it by example.
+To show you how easy it is to use *PyImp* we will do it by example.
 In the examples folder you'll find the folder spear_qcp.
 
 First navigate to this folder.
@@ -24,21 +24,21 @@ First navigate to this folder.
     cd examples/spear_qcp
 
 It contains all the necessary files, to optimize *Spear* using *SMAC3*.
-To see a detailed description of what each file is used for, we refer to *SMACs* `manual <https://automl.github.io/SMAC3/stable/manual.html#spear-qcp>`_. All the files are provided so you can run SMAC for yourself to create new output to use with *PIMP*
+To see a detailed description of what each file is used for, we refer to *SMACs* `manual <https://automl.github.io/SMAC3/stable/manual.html#spear-qcp>`_. All the files are provided so you can run SMAC for yourself to create new output to use with *PyImp*
 
 The folder *smac-output* contains the *runhistory* and *trajectory* files of a 10 minute
 SMAC run for the specified scenario.
 
-To use **PIMP** simply execute the following call in the spear_qcp folder:
+To use **PyImp** simply execute the following call in the spear_qcp folder:
 
 .. code-block:: bash
 
     python ../../scripts/evaluate.py --scenario_file scenario.txt --history './*/runhistory.json' --modus forward-selection
 
-With this call, PIMP will read in the scenarios info and all runhistories in this folder and evaluate the parameter importances,
+With this call, PyImp will read in the scenarios info and all runhistories in this folder and evaluate the parameter importances,
 using forward selection (see :doc:`algorithms`).
 
-PIMP will create a json file that contains the names and importance values of all parameters that the analysis algorithm
+PyImp will create a json file that contains the names and importance values of all parameters that the analysis algorithm
 checked. You can easily load this file using pythons json module.
 
 Further, every algorithm will create one ore more plots in the same directory in which the evaluate script was called.
@@ -53,7 +53,7 @@ _____
 
 .. code-block:: bash
 
-    usage: pimp [-h] -S SCENARIO_FILE -M
+    usage: pyimp [-h] -S SCENARIO_FILE -M
             {ablation,forward-selection,influence-model,all,fanova,lpi,incneighbor}
             [{ablation,forward-selection,influence-model,all,fanova,lpi,incneighbor} ...]
             -H HISTORY [--seed SEED] [-V {INFO,DEBUG}] [-T TRAJECTORY]

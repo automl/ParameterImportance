@@ -121,7 +121,7 @@
   <div class="section" id="algorithms">
 <span id="algos"></span><h1>Algorithms<a class="headerlink" href="#algorithms" title="Permalink to this headline">¶</a></h1>
 <p>In the following we will shortly describe all of the different algorithms that can be used for parameter importance
-analysis and are implemented as part of <strong>PIMP</strong>.</p>
+analysis and are implemented as part of <strong>PyImp</strong>.</p>
 <div class="section" id="ablation">
 <span id="id1"></span><h2>Ablation<a class="headerlink" href="#ablation" title="Permalink to this headline">¶</a></h2>
 <p><a class="reference external" href="https://link.springer.com/article/10.1007/s10732-014-9275-9">Ablation</a> is a local method that determines parameter importances between two given configurations. It thereby looks
@@ -130,7 +130,7 @@ It is an iterative method that changes, in each round, one parameter from the st
 target configuration. The parameter that resulted in the highest improvement is kept as this rounds most important
 parameter. The order determines which parameters are deemed most important and the percentage of improvement tells us
 how much influence a parameter has.</p>
-<p>In PIMP we implemented an efficient <a class="reference external" href="http://aad.informatik.uni-freiburg.de/papers/17-AAAI-Surrogate-Ablation.pdf">variant of ablation</a>, which replaces costly algorithm runs with cheap to evaluate
+<p>In PyImp we implemented an efficient <a class="reference external" href="http://aad.informatik.uni-freiburg.de/papers/17-AAAI-Surrogate-Ablation.pdf">variant of ablation</a>, which replaces costly algorithm runs with cheap to evaluate
 surrogates.</p>
 </div>
 <div class="section" id="forward-selection">
