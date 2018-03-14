@@ -4,7 +4,7 @@ with open("pimp/__version__.py") as fh:
     version = fh.readlines()[-1].split()[-1].strip("\"'")
 
 setup(
-    name='PIMP',
+    name='PyImp',
     version=version,
     packages=['pimp', 'pimp.epm', 'pimp.utils', 'pimp.utils.io', 'pimp.evaluator', 'pimp.importance',
               'pimp.configspace'],

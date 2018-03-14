@@ -1,12 +1,12 @@
-# PIMP
+# PyImp
 
-**PIMP** is an easy to use tool that helps developers to identify the most important parameters of their algorithms.
-Given the data of a configuration run with [*SMAC3*](https://github.com/automl/SMAC3), PIMP allows one to use *Forward Selection*, *Efficient Ablation* and *Influence Models* to determine which Parameters have the most influence over the algorithms behaviour.
+**PyImp** is an easy to use tool that helps developers to identify the most important parameters of their algorithms.
+Given the data of a configuration run with [*SMAC3*](https://github.com/automl/SMAC3), PyImp allows one to use *Forward Selection*, *Efficient Ablation* and *Influence Models* to determine which Parameters have the most influence over the algorithms behaviour.
 
-PIMP can be used with argcomplete. To enable autocompletion of PIMP
+PyImp can be used with argcomplete. To enable autocompletion of PyImp
 arguments, add the following line to your .bashrc or .profile:
 `
-eval "$(register-python-argcomplete pimp)"
+eval "$(register-python-argcomplete pyimp)"
 `
 
 The documentation can be found [here](https://automl.github.io/ParameterImportance).
