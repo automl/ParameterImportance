@@ -7,7 +7,7 @@ Algorithms
 
 
 In the following we will shortly describe all of the different algorithms that can be used for parameter importance
-analysis and are implemented as part of **PIMP**.
+analysis and are implemented as part of **PyImp**.
 
 
 .. _ablation:
@@ -22,7 +22,7 @@ target configuration. The parameter that resulted in the highest improvement is 
 parameter. The order determines which parameters are deemed most important and the percentage of improvement tells us
 how much influence a parameter has.
 
-In PIMP we implemented an efficient `variant of ablation <http://aad.informatik.uni-freiburg.de/papers/17-AAAI-Surrogate-Ablation.pdf>`_, which replaces costly algorithm runs with cheap to evaluate
+In PyImp we implemented an efficient `variant of ablation <http://aad.informatik.uni-freiburg.de/papers/17-AAAI-Surrogate-Ablation.pdf>`_, which replaces costly algorithm runs with cheap to evaluate
 surrogates.
 
 .. _forwards:
