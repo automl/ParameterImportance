@@ -3,13 +3,13 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Manual &#8212; PIMP 0.9.4 documentation</title>
+    <title>Manual &#8212; PIMP 1.0.0 documentation</title>
     <link rel="stylesheet" href="_static/bootstrap-sphinx.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '0.9.4',
+        VERSION:     '1.0.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true,
@@ -47,7 +47,7 @@
         </button>
         <a class="navbar-brand" href="index.html">
           PIMP</a>
-        <span class="navbar-text navbar-version pull-left"><b>0.9.4</b></span>
+        <span class="navbar-text navbar-version pull-left"><b>1.0.0</b></span>
       </div>
 
         <div class="collapse navbar-collapse nav-collapse">
@@ -105,7 +105,8 @@
       <div class="col-md-3">
         <div id="sidebar" class="bs-sidenav" role="complementary"><ul>
 <li><a class="reference internal" href="#">Manual</a><ul>
-<li><a class="reference internal" href="#quick-start">Quick Start</a><ul>
+<li><a class="reference internal" href="#quick-start">Quick Start</a></li>
+<li><a class="reference internal" href="#using-pyimp-in-python">Using PyImp in python</a><ul>
 <li><a class="reference internal" href="#usage">Usage</a></li>
 </ul>
 </li>
@@ -135,7 +136,7 @@ To see a detailed description of what each file is used for, we refer to <em>SMA
 <p>The folder <em>smac-output</em> contains the <em>runhistory</em> and <em>trajectory</em> files of a 10 minute
 SMAC run for the specified scenario.</p>
 <p>To use <strong>PyImp</strong> simply execute the following call in the spear_qcp folder:</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>python ../../scripts/evaluate.py --scenario_file scenario.txt --history <span class="s1">&#39;./*/runhistory.json&#39;</span> --modus forward-selection
+<div class="highlight-bash"><div class="highlight"><pre><span></span>pimp --scenario_file scenario.txt --history <span class="s1">&#39;./*/runhistory.json&#39;</span> --modus forward-selection
 </pre></div>
 </div>
 <p>With this call, PyImp will read in the scenarios info and all runhistories in this folder and evaluate the parameter importances,
@@ -144,9 +145,13 @@ using forward selection (see <a class="reference internal" href="algorithms.html
 checked. You can easily load this file using pythons json module.</p>
 <p>Further, every algorithm will create one ore more plots in the same directory in which the evaluate script was called.</p>
 <p>This is all you need to have in order to determine the parameter importance of your algorithm.</p>
+</div>
+<div class="section" id="using-pyimp-in-python">
+<h2>Using PyImp in python<a class="headerlink" href="#using-pyimp-in-python" title="Permalink to this headline">¶</a></h2>
+<p>TODO</p>
 <div class="section" id="usage">
 <span id="opts"></span><h3>Usage<a class="headerlink" href="#usage" title="Permalink to this headline">¶</a></h3>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>usage: pyimp [-h] -S SCENARIO_FILE -M
+<div class="highlight-bash"><div class="highlight"><pre><span></span>usage: pimp [-h] -S SCENARIO_FILE -M
         {ablation,forward-selection,influence-model,all,fanova,lpi,incneighbor}
         [{ablation,forward-selection,influence-model,all,fanova,lpi,incneighbor} ...]
         -H HISTORY [--seed SEED] [-V {INFO,DEBUG}] [-T TRAJECTORY]

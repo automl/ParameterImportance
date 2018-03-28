@@ -33,7 +33,7 @@ To use **PyImp** simply execute the following call in the spear_qcp folder:
 
 .. code-block:: bash
 
-    python ../../scripts/evaluate.py --scenario_file scenario.txt --history './*/runhistory.json' --modus forward-selection
+    pimp --scenario_file scenario.txt --history './*/runhistory.json' --modus forward-selection
 
 With this call, PyImp will read in the scenarios info and all runhistories in this folder and evaluate the parameter importances,
 using forward selection (see :doc:`algorithms`).
@@ -46,6 +46,10 @@ Further, every algorithm will create one ore more plots in the same directory in
 
 This is all you need to have in order to determine the parameter importance of your algorithm.
 
+Using PyImp in python
+---------------------
+TODO
+
 .. _opts:
 
 Usage
@@ -53,7 +57,7 @@ _____
 
 .. code-block:: bash
 
-    usage: pyimp [-h] -S SCENARIO_FILE -M
+    usage: pimp [-h] -S SCENARIO_FILE -M
             {ablation,forward-selection,influence-model,all,fanova,lpi,incneighbor}
             [{ablation,forward-selection,influence-model,all,fanova,lpi,incneighbor} ...]
             -H HISTORY [--seed SEED] [-V {INFO,DEBUG}] [-T TRAJECTORY]
