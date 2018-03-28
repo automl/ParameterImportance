@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import sys
+import warnings
 from typing import Union, List, Dict, Tuple
 from collections import OrderedDict
 
@@ -19,11 +20,11 @@ from pimp.epm.base_epm import RandomForestWithInstances
 from pimp.epm.unlogged_epar_x_rfwi import UnloggedEPARXrfi
 from pimp.epm.unlogged_rfwi import Unloggedrfwi
 from pimp.evaluator.ablation import Ablation
-from pimp.evaluator.fanova import fANOVA
 from pimp.evaluator.local_parameter_importance import LPI
 from pimp.evaluator.forward_selection import ForwardSelector, AbstractEvaluator
 from pimp.evaluator.influence_models import InfluenceModel
 from pimp.utils import RunHistory, RunHistory2EPM4Cost, RunHistory2EPM4LogCost, Scenario, average_cost
+from pimp.evaluator.fanova import fANOVA
 
 __author__ = "Andre Biedenkapp"
 __copyright__ = "Copyright 2016, ML4AAD"
