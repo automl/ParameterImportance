@@ -1,7 +1,7 @@
 import numpy as np
 from scipy import stats
 
-from smac.epm.rf_with_instances import RandomForestWithInstances as SMACrfi
+from pimp.epm.base_epm import RandomForestWithInstances as rfi
 
 __author__ = "Andre Biedenkapp"
 __copyright__ = "Copyright 2016, ML4AAD"
@@ -10,7 +10,7 @@ __maintainer__ = "Andre Biedenkapp"
 __email__ = "biedenka@cs.uni-freiburg.de"
 
 
-class EPARrfi(SMACrfi):
+class EPARrfi(rfi):
 
     def __init__(self, types, bounds,
                  cutoff=0,

@@ -1,5 +1,6 @@
 from collections import OrderedDict
 import pickle
+import warnings
 
 import os
 import numpy as np
@@ -12,8 +13,14 @@ from smac.runhistory.runhistory import RunHistory
 from ConfigSpace.util import impute_inactive_values
 from ConfigSpace.hyperparameters import CategoricalHyperparameter
 
-from fanova.fanova import fANOVA as fanova_pyrfr
-from fanova.visualizer import Visualizer
+try:
+    from fanova import fANOVA as fanova_pyrfr
+    from fanova.visualizer import Visualizer
+except ImportError:
+    warnings.simplefilter('always', ImportWarning)
+    warnings.warn('\n{0}\n{0}{1}{0}\n{0}'.format('!'*120,
+                                     '\nfANOVA is not installed in your environment. To install it please run '
+                                     '"git+http://github.com/automl/fanova.git@master"\n'))
 
 from pimp.evaluator.base_evaluator import AbstractEvaluator
 

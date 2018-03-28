@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import sys
+import warnings
 from typing import Union, List, Dict, Tuple
 from collections import OrderedDict
 
@@ -12,18 +13,18 @@ from tqdm import tqdm
 from smac.utils.util_funcs import get_types
 from smac.tae.execute_ta_run import StatusType
 from smac.epm.rfr_imputator import RFRImputator
-from smac.epm.rf_with_instances import RandomForestWithInstances
 
 from pimp.configspace import CategoricalHyperparameter, Configuration, \
     FloatHyperparameter, IntegerHyperparameter, impute_inactive_values
+from pimp.epm.base_epm import RandomForestWithInstances
 from pimp.epm.unlogged_epar_x_rfwi import UnloggedEPARXrfi
 from pimp.epm.unlogged_rfwi import Unloggedrfwi
 from pimp.evaluator.ablation import Ablation
-from pimp.evaluator.fanova import fANOVA
 from pimp.evaluator.local_parameter_importance import LPI
 from pimp.evaluator.forward_selection import ForwardSelector, AbstractEvaluator
 from pimp.evaluator.influence_models import InfluenceModel
 from pimp.utils import RunHistory, RunHistory2EPM4Cost, RunHistory2EPM4LogCost, Scenario, average_cost
+from pimp.evaluator.fanova import fANOVA
 
 __author__ = "Andre Biedenkapp"
 __copyright__ = "Copyright 2016, ML4AAD"
@@ -284,19 +285,21 @@ class Importance(object):
             self.types, self.bounds = get_types(self.scenario.cs, self.scenario.feature_array)
             self._model = RandomForestWithInstances(self.types, self.bounds,
                                                     instance_features=self.scenario.feature_array,
-                                                    seed=12345)
+                                                    seed=12345, logged_y=self.logged_y)
         elif model_short_name == 'urfi':
             if not self._preprocessed:
                 self.types, self.bounds = get_types(self.scenario.cs, self.scenario.feature_array)
                 self._model = UnloggedEPARXrfi(self.types, self.bounds,
                                                instance_features=self.scenario.feature_array,
                                                seed=12345,
-                                               cutoff=self.cutoff, threshold=self.threshold)
+                                               cutoff=self.cutoff, threshold=self.threshold,
+                                               logged_y=self.logged_y)
             else:
                 self.types, self.bounds = get_types(self.scenario.cs, None)
                 self._model = Unloggedrfwi(self.types, self.bounds,
                                            instance_features=None,
-                                           seed=12345)
+                                           seed=12345,
+                                               logged_y=self.logged_y)
         self._model.rf_opts.compute_oob_error = True
 
     @property
