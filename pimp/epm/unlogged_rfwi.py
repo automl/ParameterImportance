@@ -1,7 +1,7 @@
 import numpy as np
 from scipy import stats
 
-from smac.epm.rf_with_instances import RandomForestWithInstances as SMACrfi
+from pimp.epm.base_epm import RandomForestWithInstances as rfi
 
 __author__ = "Andre Biedenkapp"
 __copyright__ = "Copyright 2016, ML4AAD"
@@ -10,7 +10,7 @@ __maintainer__ = "Andre Biedenkapp"
 __email__ = "biedenka@cs.uni-freiburg.de"
 
 
-class Unloggedrfwi(SMACrfi):
+class Unloggedrfwi(rfi):
 
     def __init__(self, types, bounds, **kwargs):
         """
@@ -57,40 +57,41 @@ class Unloggedrfwi(SMACrfi):
         """
         super().__init__(types=types, bounds=bounds, **kwargs)
 
-    def _predict(self, X):
-        """Predict means and variances for given X by first unlogging the leaf-values and then computing the mean for
-        the trees NOT the training batch afterwards. The mean for the whole batch is handled by the parent class!
-
-        Parameters
-        ----------
-        X : np.ndarray of shape = [n_samples, n_features (config + instance
-        features)]
-
-        Returns
-        -------
-        means : np.ndarray of shape = [n_samples, 1]
-            Predictive mean
-        vars : np.ndarray  of shape = [n_samples, 1]
-            Predictive variance
-        """
-        if len(X.shape) != 2:
-            raise ValueError(
-                'Expected 2d array, got %dd array!' % len(X.shape))
-        if X.shape[1] != self.types.shape[0]:
-            raise ValueError('Rows in X should have %d entries but have %d!' %
-                             (self.types.shape[0], X.shape[1]))
-
-        tree_mean_predictions = []
-        tree_mean_variances = []
-        for x in X:
-            tmpx = np.array(list(map(lambda x_: np.power(10, x_), self.rf.all_leaf_values(x))))  # unlog values
-            tree_mean_predictions.append(list(map(lambda x_: np.mean(x_), tmpx)))  # calculate mean and var
-            tree_mean_variances.append(list(map(lambda x_: np.var(x_), tmpx)))  # over individual trees
-
-        mean = np.mean(tree_mean_predictions, axis=1)
-        var = np.mean(tree_mean_variances, axis=1)
-
-        return mean.reshape((-1, 1)), var.reshape((-1, 1))
+    # With the usage of pyrfr 0.8.0 this method is obsolete.
+    # def _predict(self, X):
+    #     """Predict means and variances for given X by first unlogging the leaf-values and then computing the mean for
+    #     the trees NOT the training batch afterwards. The mean for the whole batch is handled by the parent class!
+    #
+    #     Parameters
+    #     ----------
+    #     X : np.ndarray of shape = [n_samples, n_features (config + instance
+    #     features)]
+    #
+    #     Returns
+    #     -------
+    #     means : np.ndarray of shape = [n_samples, 1]
+    #         Predictive mean
+    #     vars : np.ndarray  of shape = [n_samples, 1]
+    #         Predictive variance
+    #     """
+    #     if len(X.shape) != 2:
+    #         raise ValueError(
+    #             'Expected 2d array, got %dd array!' % len(X.shape))
+    #     if X.shape[1] != self.types.shape[0]:
+    #         raise ValueError('Rows in X should have %d entries but have %d!' %
+    #                          (self.types.shape[0], X.shape[1]))
+    #
+    #     tree_mean_predictions = []
+    #     tree_mean_variances = []
+    #     for x in X:
+    #         tmpx = np.array(list(map(lambda x_: np.power(10, x_), self.rf.all_leaf_values(x))))  # unlog values
+    #         tree_mean_predictions.append(list(map(lambda x_: np.mean(x_), tmpx)))  # calculate mean and var
+    #         tree_mean_variances.append(list(map(lambda x_: np.var(x_), tmpx)))  # over individual trees
+    #
+    #     mean = np.mean(tree_mean_predictions, axis=1)
+    #     var = np.mean(tree_mean_variances, axis=1)
+    #
+    #     return mean.reshape((-1, 1)), var.reshape((-1, 1))
 
     def predict(self, X):
         """
