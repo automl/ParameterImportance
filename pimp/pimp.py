@@ -146,7 +146,7 @@ class PIMP:
                          'fanova',
                          'incneighbor']
         elif not isinstance(self.mode, list):
-            self.mode == [self.mode]
+            self.mode = [self.mode]
         result = self.imp.evaluate_scenario(self.mode, save_folder=self.save_folder)
         return result
 
