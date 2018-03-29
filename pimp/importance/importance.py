@@ -287,6 +287,7 @@ class Importance(object):
                                                     instance_features=self.scenario.feature_array,
                                                     seed=12345, logged_y=self.logged_y)
         elif model_short_name == 'urfi':
+            self.logged_y = True
             if not self._preprocessed:
                 self.types, self.bounds = get_types(self.scenario.cs, self.scenario.feature_array)
                 self._model = UnloggedEPARXrfi(self.types, self.bounds,

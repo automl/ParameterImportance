@@ -5,7 +5,7 @@ matplotlib
 ConfigSpace>=0.4
 scipy
 pyrfr>=0.8.0
-git+http://github.com/automl/fanova.git@master
+fanova
 smac>=0.8.0
 tqdm
 argcomplete
