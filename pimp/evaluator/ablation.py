@@ -399,7 +399,8 @@ class Ablation(AbstractEvaluator):
         """
         delta = []
         active = {}
-        for parameter in self.source:
+        for parameter in self.cs.get_hyperparameters():
+            parameter = parameter.name
             tmp = ' not'
             if self.source[parameter] != self.target[parameter] and self.target[parameter] is not None:
                 tmp = ''
