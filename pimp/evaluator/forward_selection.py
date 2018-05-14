@@ -101,13 +101,11 @@ class ForwardSelector(AbstractEvaluator):
                 used.append(idx)
                 if not self.feature_importance:
                     used_bounds.append(idx)
-                self.logger.debug('Used parameters: %s' % str(used))
-                self.logger.debug('Used bounds of parameters: %s' % str(used_bounds))
+                # self.logger.debug('Used parameters: %s' % str(used))
+                # self.logger.debug('Used bounds of parameters: %s' % str(used_bounds))
 
                 start = time.time()
-                used = sorted(used)
-                used_bounds = sorted(used_bounds)
-                oob, cve = self._get_error(used, used_bounds)
+                oob, cve = self._get_error(sorted(used), sorted(used_bounds))
                 errors.append(cve if self.cv else oob)
                 used.pop()
                 if not self.feature_importance:
@@ -118,7 +116,7 @@ class ForwardSelector(AbstractEvaluator):
                 innerpbar.set_description('{:<40s}'.format('None'))
                 self.logger.debug('Evaluating None')
                 start = time.time()
-                oob, cve = self._get_error(used, used_bounds)
+                oob, cve = self._get_error(sorted(used), sorted(used_bounds))
                 errors.append(cve if self.cv else oob)
                 self.logger.debug('Refitted RF (sec %.2f; CV-RMSE: %.4f, OOB: %.4f)' % (time.time() - start, cve, oob))
                 if round_ == 0:  # Always keep track of the first None!
