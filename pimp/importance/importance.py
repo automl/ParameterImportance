@@ -40,7 +40,8 @@ class Importance(object):
                  seed: int = 12345, parameters_to_evaluate: int = -1, margin: Union[None, float] = None,
                  save_folder: str = 'PIMP', impute_censored: bool = False, max_sample_size: int = -1,
                  fANOVA_cut_at_default=False, fANOVA_pairwise=True, forwardsel_feat_imp=False,
-                 incn_quant_var=True, preprocess=False, forwardsel_cv=False):
+                 incn_quant_var=True, preprocess=False, forwardsel_cv=False,
+                 rf_model=None):
         """
         Importance Object. Handles the construction of the data and training of the model. Easy interface to the
         different evaluators.
@@ -60,6 +61,7 @@ class Importance(object):
         :param save_folder: Folder name to save the output to
         :param impute_censored: boolean that specifies if censored data should be imputed. If not, censored data are
                ignored.
+        :param rf_model: trained random forest to be used (useful for continuing)
         """
         self.logger = logging.getLogger("Importance")
         self.rng = np.random.RandomState(seed)
@@ -78,12 +80,13 @@ class Importance(object):
         self.X_fanova = None
         self.y_fanova = None
         self.forwardsel_cv = forwardsel_cv
+        self._model = rf_model
 
         self.evaluators = []
 
         self._setup_scenario(scenario, scenario_file, save_folder)
         self._load_runhist(runhistory, runhistory_file)
-        self._setup_model()
+        self._setup_model(rf_model)
         self.best_dir = None
         self._load_incumbent(traj_file, runhistory_file, incumbent)
         self.logger.info('Best incumbent found in %s' % self.best_dir)
@@ -111,7 +114,8 @@ class Importance(object):
                 self.X = self.X[idx]
                 self.y = self.y[idx]
             self.logger.info('Remaining %d datapoints' % len(self.X))
-            self.model.train(self.X, self.y)
+            if not rf_model:
+                self.model.train(self.X, self.y)
 
     def _preprocess(self, runhistory):
         """
@@ -196,26 +200,29 @@ class Importance(object):
             raise Exception('No method specified to load an incumbent. Either give the incumbent directly or specify '
                             'a file to load it from!')
 
-    def _setup_model(self) -> None:
+    def _setup_model(self, rf_model) -> None:
         """
         Sets up all the necessary parameters used for the model.
         Helper method to have the init method less cluttered.
         For parameter specifications, see __init__
+
+        :param rf_model: trained random forest to be used (useful for continuing)
         """
         self.logger.info('Converting Data and constructing Model')
         self.X = None
         self.y = None
         self.types = None
         self.bounds = None
-        self._model = None
+        self._model = rf_model
         self.logged_y = False
-        self._convert_data(fit=True)
+        self._convert_data(fit=True if not rf_model else False)
         if self.preprocess:
             self._preprocess(self.runhistory)
             if self.scenario.run_obj == "runtime":
                 self.y = np.log10(self.y)
-            self.model = 'urfi'
-            self.model.train(self.X, self.y)
+            if not rf_model:
+                self.model = 'urfi'
+                self.model.train(self.X, self.y)
 
     def _load_runhist(self, runhistory, runhistory_file) -> None:
         """
@@ -279,6 +286,9 @@ class Importance(object):
 
     @model.setter
     def model(self, model_short_name='urfi'):
+        if self._model:
+            self.logger.info("Using passed rf-instance")
+            return
         if model_short_name not in ['urfi', 'rfi']:
             raise ValueError('Specified model %s does not exist or not supported!' % model_short_name)
         elif model_short_name == 'rfi':
