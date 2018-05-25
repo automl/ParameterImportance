@@ -1,10 +1,10 @@
 import logging
 import argcomplete
 import re as _re
+import os
 from argparse import SUPPRESS, ArgumentDefaultsHelpFormatter, ArgumentParser, HelpFormatter
 from argparse import OPTIONAL, ZERO_OR_MORE, ONE_OR_MORE, REMAINDER, PARSER
 
-from smac.utils.io.cmd_reader import CMDReader
 
 from pimp.__version__ import __version__ as v
 
@@ -187,7 +187,7 @@ class SmartArgsDefHelpFormatter(ArgumentDefaultsHelpFormatter):
 
 
 ##################################### ACTUAL PARSER SETUP ##############################
-class CMDs(CMDReader):
+class CMDs:
     """
         use argparse to parse command line options
 
@@ -316,3 +316,18 @@ class CMDs(CMDReader):
                     for k, v in zip(misc[::2], misc[1::2]))
 
         return args_, misc
+
+    def _check_args(self, args_):
+        """Checks command line arguments (e.g., whether all given files exist)
+        Parameters
+        ----------
+        args_: parsed arguments
+            Parsed command line arguments
+        Raises
+        ------
+        ValueError
+            in case of missing files or wrong configurations
+        """
+
+        if not os.path.isfile(args_.scenario_file):
+            raise ValueError("Not found: %s" % (args_.scenario_file))
