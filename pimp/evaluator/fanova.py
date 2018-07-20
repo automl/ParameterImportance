@@ -59,7 +59,8 @@ class fANOVA(AbstractEvaluator):
             cutoffs = (self.model.predict_marginalized_over_instances(
                 np.array([impute_inactive_values( self.cs.get_default_configuration()).get_array()]))[0].flatten()[0],
                        np.inf)
-        self.evaluator = fanova_pyrfr(X=self.X, Y=self.y.flatten(), config_space=cs, cutoffs=cutoffs)
+        self.evaluator = fanova_pyrfr(X=self.X, Y=self.y.flatten(), config_space=cs,
+                                      seed=self.rng.randint(2**31-1), cutoffs=cutoffs)
         self.n_most_imp_pairs = n_pairs
         self.num_single = None
         self.pairwise = pairwise
