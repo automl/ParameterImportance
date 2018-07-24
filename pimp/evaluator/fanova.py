@@ -5,6 +5,7 @@ import warnings
 import os
 import numpy as np
 import matplotlib as mpl
+import itertools as it
 from tqdm import tqdm
 mpl.use('Agg')
 from matplotlib import pyplot as plt
@@ -58,10 +59,12 @@ class fANOVA(AbstractEvaluator):
             cutoffs = (self.model.predict_marginalized_over_instances(
                 np.array([impute_inactive_values( self.cs.get_default_configuration()).get_array()]))[0].flatten()[0],
                        np.inf)
-        self.evaluator = fanova_pyrfr(X=self.X, Y=self.y.flatten(), config_space=cs, cutoffs=cutoffs)
+        self.evaluator = fanova_pyrfr(X=self.X, Y=self.y.flatten(), config_space=cs,
+                                      seed=self.rng.randint(2**31-1), cutoffs=cutoffs)
         self.n_most_imp_pairs = n_pairs
         self.num_single = None
         self.pairwise = pairwise
+        self.evaluated_parameter_importance_uncertainty = OrderedDict()
 
     def _preprocess(self, runhistory):
         """
@@ -137,34 +140,45 @@ class fANOVA(AbstractEvaluator):
 
             tmp_res = []
             for idx, param in enumerate(params):
+                imp = self.evaluator.quantify_importance([idx])[(idx, )]
                 self.logger.debug('{:>02d} {:<30s}: {:>02.4f}' .format(
-                    idx, param.name, self.evaluator.quantify_importance([idx])[(idx, )]['total importance']))
-                tmp_res.append(self.evaluator.quantify_importance([idx])[(idx, )]['total importance'])
+                    idx, param.name, imp['total importance']))
+                tmp_res.append(imp)
 
-            tmp_res_sort_keys = [i[0] for i in sorted(enumerate(tmp_res), key=lambda x:x[1], reverse=True)]
+            tmp_res_sort_keys = [i[0] for i in sorted(enumerate(tmp_res), key=lambda x:x[1]['total importance'], reverse=True)]
             self.logger.debug(tmp_res_sort_keys)
             count = 0
             for idx in tmp_res_sort_keys:
                 if count >= self.to_evaluate:
                     break
-                self.logger.info('{:>02d} {:<30s}: {:>02.4f}'.format(idx, params[idx].name, tmp_res[idx]))
-                self.evaluated_parameter_importance[params[idx].name] = tmp_res[idx]
+                self.logger.info('{:>02d} {:<30s}: {:>02.4f}'.format(idx, params[idx].name, tmp_res[idx]['total importance']))
+                self.evaluated_parameter_importance[params[idx].name] = tmp_res[idx]['total importance']
+                try:
+                    self.evaluated_parameter_importance_uncertainty[params[idx].name] = tmp_res[idx]['total std']
+                except KeyError as e:
+                    self.logger.debug("std not available yet for this fanova version")
                 count += 1
             self.num_single = len(list(self.evaluated_parameter_importance.keys()))
             if self.pairwise:
                 self.logger.info(
                     'Computing most important pairwise marginals using at most'
                     ' the %d most important ones.' % min(self.n_most_imp_pairs, self.num_single))
-                pairs = self.evaluator.get_most_important_pairwise_marginals(params=list(
-                    self.evaluated_parameter_importance.keys())[:self.n_most_imp_pairs])
+                pairs = [x for x in it.combinations(list(self.evaluated_parameter_importance.keys())[:self.n_most_imp_pairs], 2)]
                 for pair in pairs:
+                    imp = self.evaluator.quantify_importance(pair)[pair]
+                    try:
+                        mean, std = imp['individual importance'], imp['individual std']
+                        self.evaluated_parameter_importance_uncertainty[str(list(pair))] = std
+                    except KeyError as e:
+                        self.logger.debug("std not available yet for this fanova version")
+                        mean= imp['individual importance']
+                    self.evaluated_parameter_importance[str(list(pair))] = mean
                     a, b = pair
-                    self.evaluated_parameter_importance[str([a, b])] = pairs[pair]
                     if len(a) > 13:
                         a = str(a)[:5] + '...' + str(a)[-5:]
                     if len(b) > 13:
                         b = str(b)[:5] + '...' + str(b)[-5:]
-                    self.logger.info('{:>02d} {:<30s}: {:>02.4f}'.format(-1, a + ' <> ' + b, pairs[pair]))
+                    self.logger.info('{:>02d} {:<30s}: {:>02.4f}'.format(-1, a + ' <> ' + b, mean))
             all_res = {'imp': self.evaluated_parameter_importance,
                        'order': list(self.evaluated_parameter_importance.keys())}
             return all_res
