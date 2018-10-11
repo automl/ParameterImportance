@@ -288,6 +288,7 @@ class LPI(AbstractEvaluator):
             os.mkdir(name)
         keys = deepcopy(list(self.incumbent.keys()))
         pbar = tqdm(list(keys), ascii=True)
+        y_label = self.scenario.run_obj if self.scenario.run_obj != 'quality' else 'cost'
         for param in pbar:
             pbar.set_description('Plotting results for %s' % param)
             if param in self.performance_dict:
@@ -307,7 +308,7 @@ class LPI(AbstractEvaluator):
                 if not isinstance(self.incumbent.configuration_space.get_hyperparameter(param),
                                   CategoricalHyperparameter):
                     ax1.fill_between(self.neighborhood_dict[param][1], lower, upper, label='std', color=self.area_color)
-                    ax1.plot(self.neighborhood_dict[param][1], p, label='predicted %s' % self.scenario.run_obj,
+                    ax1.plot(self.neighborhood_dict[param][1], p, label='predicted %s' % y_label,
                              ls='-', zorder=80,
                              **self.LINE_FONT)
                     label = True
@@ -357,7 +358,7 @@ class LPI(AbstractEvaluator):
                 if self.scenario.run_obj == 'runtime':
                     ax1.set_ylabel('runtime [sec]', zorder=81, **self.LABEL_FONT)
                 else:
-                    ax1.set_ylabel('%s' % self.scenario.run_obj, zorder=81, **self.LABEL_FONT)
+                    ax1.set_ylabel('%s' % y_label, zorder=81, **self.LABEL_FONT)
                 try:
                     plt.tight_layout()
                 except ValueError:

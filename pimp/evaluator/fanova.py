@@ -100,6 +100,8 @@ class fANOVA(AbstractEvaluator):
 
         if self.scenario.run_obj == 'runtime':
             label = 'runtime [sec]'
+        elif self.scenario.run_obj == 'quality':
+            label = 'cost'
         else:
             label = '%s' % self.scenario.run_obj
         vis = Visualizer(self.evaluator, self.cs, directory=name, y_label=label)
