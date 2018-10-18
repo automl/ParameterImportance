@@ -5,13 +5,13 @@ Installation
 
 Installing through pypi
 -----------------------
-| Pyimp is now on pypi. To install you can simply run
+Pyimp is now on pypi. To install you can simply run
 
 .. code-block:: bash
 
     pip install pyimp
 
-| If you want to use fANOVA you will have to install it manually via
+If you want to use fANOVA you will have to install it manually via
 
 .. code-block:: bash
 
