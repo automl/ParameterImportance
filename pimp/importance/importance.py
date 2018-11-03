@@ -40,7 +40,7 @@ class Importance(object):
                  seed: int = 12345, parameters_to_evaluate: int = -1, margin: Union[None, float] = None,
                  save_folder: str = 'PIMP', impute_censored: bool = False, max_sample_size: int = -1,
                  fANOVA_cut_at_default=False, fANOVA_pairwise=True, forwardsel_feat_imp=False,
-                 incn_quant_var=True, preprocess=False, forwardsel_cv=False):
+                 incn_quant_var=True, preprocess=False, forwardsel_cv=False, verbose: bool=True):
         """
         Importance Object. Handles the construction of the data and training of the model. Easy interface to the
         different evaluators.
@@ -60,6 +60,7 @@ class Importance(object):
         :param save_folder: Folder name to save the output to
         :param impute_censored: boolean that specifies if censored data should be imputed. If not, censored data are
                ignored.
+        :param verbose: Toggle output to stdout (not logging, but tqdm-progress bars)
         """
         self.logger = logging.getLogger("Importance")
         self.rng = np.random.RandomState(seed)
@@ -78,6 +79,7 @@ class Importance(object):
         self.X_fanova = None
         self.y_fanova = None
         self.forwardsel_cv = forwardsel_cv
+        self.verbose = verbose
 
         self.evaluators = []
 
@@ -338,7 +340,8 @@ class Importance(object):
                                  to_evaluate=self._parameters_to_evaluate,
                                  incumbent=self.incumbent,
                                  logy=self.logged_y,
-                                 rng=self.rng)
+                                 rng=self.rng,
+                                 verbose=self.verbose)
         elif evaluation_method == 'influence-model':
             self.logger.info('Using model %s' % str(self.model))
             self.logger.info('X shape %s' % str(self.model.X.shape))
@@ -348,7 +351,8 @@ class Importance(object):
                                        to_evaluate=self._parameters_to_evaluate,
                                        margin=self.margin,
                                        threshold=self.threshold,
-                                       rng=self.rng)
+                                       rng=self.rng,
+                                       verbose=self.verbose)
         elif evaluation_method == 'fanova':
             self.logger.info('Using model %s' % str(self.model))
             self.logger.info('X shape %s' % str(self.model.X.shape))
@@ -364,7 +368,8 @@ class Importance(object):
                                minimize=mini,
                                pairwise=self.pairiwse_fANOVA,
                                preprocessed_X=self.X_fanova,
-                               preprocessed_y=self.y_fanova)
+                               preprocessed_y=self.y_fanova,
+                               verbose=self.verbose)
         elif evaluation_method in ['incneighbor', 'lpi']:
             if self.incumbent is None:
                 raise ValueError('Incumbent is %s!\n \
@@ -379,7 +384,8 @@ class Importance(object):
                             incumbent=self.incumbent,
                             logy=self.logged_y,
                             rng=self.rng,
-                            quant_var=self.incn_quant_var)
+                            quant_var=self.incn_quant_var,
+                            verbose=self.verbose)
         else:
             self.logger.info('Using model %s' % str(self.model))
             evaluator = ForwardSelector(scenario=self.scenario,
@@ -388,7 +394,8 @@ class Importance(object):
                                         to_evaluate=self._parameters_to_evaluate,
                                         rng=self.rng,
                                         feature_imp=self.forwardsel_feat_imp,
-                                        cv=self.forwardsel_cv)
+                                        cv=self.forwardsel_cv,
+                                        verbose=self.verbose)
         self._evaluator = evaluator
 
     def _convert_data(self, fit=True) -> None:  # From Marius

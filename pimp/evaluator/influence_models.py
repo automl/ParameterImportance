@@ -28,7 +28,7 @@ class InfluenceModel(AbstractEvaluator):
     def __init__(self, scenario, cs, model, to_evaluate: int, rng, margin: float=None, threshold: float=None, **kwargs):
         super().__init__(scenario, cs, model, to_evaluate, rng, **kwargs)
         self.name = 'InfluenceModel'
-        self.logger = self.name
+        self.logger = 'pimp.' + self.name
         self.model = LinearRegression()
         self.smac_model = model  # TODO Only use the SMAC model as container for X and y.
         self.all_X = copy.deepcopy(self.X)

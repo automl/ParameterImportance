@@ -39,7 +39,7 @@ class fANOVA(AbstractEvaluator):
                  n_pairs=5, minimize=True, pairwise=True, preprocessed_X=None, preprocessed_y=None, **kwargs):
         super().__init__(scenario, cs, model, to_evaluate, rng, **kwargs)
         self.name = 'fANOVA'
-        self.logger = self.name
+        self.logger = 'pimp.' + self.name
         # This way the instance features in X are ignored and a new forest is constructed
         if self.model.instance_features is None:
             self.logger.info('No preprocessing necessary')
@@ -106,7 +106,7 @@ class fANOVA(AbstractEvaluator):
             label = '%s' % self.scenario.run_obj
         vis = Visualizer(self.evaluator, self.cs, directory=name, y_label=label)
         self.logger.info('Getting Marginals!')
-        pbar = tqdm(range(self.to_evaluate), ascii=True)
+        pbar = tqdm(range(self.to_evaluate), ascii=True, disable=self.silence_progressbar)
         for i in pbar:
             plt.close('all')
             plt.clf()
