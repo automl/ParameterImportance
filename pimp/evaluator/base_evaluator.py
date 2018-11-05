@@ -21,12 +21,18 @@ class AbstractEvaluator(object):
     def __init__(self, scenario: Scenario,
                  cs: ConfigurationSpace,
                  model: RandomForestWithInstances,
-                 to_evaluate: int, rng, **kwargs):
+                 to_evaluate: int, rng,
+                 verbose: bool=True,
+                 **kwargs):
         self._logger = None
         self.scenario = scenario
         self.cs = cs
         self.model = model  # SMAC model
         self.rng = rng
+        self.verbose = verbose
+
+        # Disable progress bars if logging is above INFO
+        self.silence_progressbar = not self.verbose
 
         if self.model is not None:
             if 'X' in kwargs and 'y' in kwargs:

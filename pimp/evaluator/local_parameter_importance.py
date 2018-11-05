@@ -30,7 +30,7 @@ class LPI(AbstractEvaluator):
                  old_sampling=False, show_query_points=False, quant_var=True, **kwargs):
         super().__init__(scenario, cs, model, to_evaluate, **kwargs)
         self.name = 'LPI'
-        self.logger = self.name
+        self.logger = 'pimp.' + self.name
         self.incumbent = incumbent
         self.incumbent_dict = self.incumbent.get_dictionary()
         self._continous_param_neighbor_samples = continous_neighbors
@@ -179,7 +179,7 @@ class LPI(AbstractEvaluator):
         def_perf, def_var = self._predict_over_instance_set(impute_inactive_values(self.cs.get_default_configuration()))
         inc_perf, inc_var = self._predict_over_instance_set(impute_inactive_values(self.incumbent))
         delta = def_perf - inc_perf
-        pbar = tqdm(range(self._sampled_neighbors), ascii=True)
+        pbar = tqdm(range(self._sampled_neighbors), ascii=True, disable=self.silence_progressbar)
         sum_var = 0
         for index, param in enumerate(self.incumbent.keys()):
             if param in neighborhood_dict:
@@ -287,7 +287,7 @@ class LPI(AbstractEvaluator):
         if not os.path.exists(name):
             os.mkdir(name)
         keys = deepcopy(list(self.incumbent.keys()))
-        pbar = tqdm(list(keys), ascii=True)
+        pbar = tqdm(list(keys), ascii=True, disable=self.silence_progressbar)
         y_label = self.scenario.run_obj if self.scenario.run_obj != 'quality' else 'cost'
         for param in pbar:
             pbar.set_description('Plotting results for %s' % param)
