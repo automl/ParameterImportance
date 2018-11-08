@@ -25,7 +25,7 @@ class Ablation(AbstractEvaluator):
     def __init__(self, scenario, cs, model, to_evaluate: int, rng, incumbent=None, **kwargs):
         super().__init__(scenario, cs, model, to_evaluate, rng, **kwargs)
         self.name = 'Ablation'
-        self.logger = self.name
+        self.logger = 'pimp.' + self.name
 
         self.target = incumbent
         self.source = self.cs.get_default_configuration()
@@ -483,6 +483,7 @@ class Ablation(AbstractEvaluator):
         fig = plt.figure()
         ax1 = fig.add_subplot(111)
         plt.subplots_adjust(bottom=0.25, top=0.9, left=0.05, right=.95)
+        y_label = self.scenario.run_obj if self.scenario.run_obj != 'quality' else 'cost'
 
         path = list(self.predicted_parameter_performances.keys())
         for idx, p in enumerate(path):
@@ -501,7 +502,8 @@ class Ablation(AbstractEvaluator):
             variances[self.MAX_PARAMS_TO_PLOT - 1] = variances[-1]
             path[self.MAX_PARAMS_TO_PLOT - 1] = path[-1]
 
-        ax1.plot(list(range(len(performances))), performances, label='predicted %s' % self.scenario.run_obj,
+        ax1.plot(list(range(len(performances))), performances,
+                 label='predicted %s' % y_label,
                  ls='-', zorder=80,
                  **self.LINE_FONT)
 
@@ -533,7 +535,7 @@ class Ablation(AbstractEvaluator):
         if self.scenario.run_obj == 'runtime':
             ax1.set_ylabel('runtime [sec]', zorder=81, **self.LABEL_FONT)
         else:
-            ax1.set_ylabel('%s' % self.scenario.run_obj, zorder=81, **self.LABEL_FONT)
+            ax1.set_ylabel('%s' % y_label, zorder=81, **self.LABEL_FONT)
         ax1.xaxis.grid(True)
         ax1.yaxis.grid(True)
         try:
