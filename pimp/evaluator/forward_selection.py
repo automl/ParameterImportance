@@ -92,11 +92,11 @@ class ForwardSelector(AbstractEvaluator):
 
         pbar = tqdm(range(self.to_evaluate), ascii=True,
                     desc='{: >.30s}: {: >7.4f} ({:s})'.format('None', np.inf, 'CV-RMSE' if self.cv else 'OOB'),
-                    disable=self.silence_progressbar)
+                    disable=not self.verbose)
         for round_ in pbar:  # Main Loop
             errors = []
             innerpbar = trange(len(names) + 1, ascii=True, desc='{:<40s}'.format(' '), leave=False, position=-1,
-                               disable=self.silence_progressbar)
+                               disable=not self.verbose)
             for idx, name in zip(ids, names):
                 innerpbar.set_description('{:<40s}'.format(name if self.feature_importance else name.name))
                 self.logger.debug('Evaluating %s' % name)

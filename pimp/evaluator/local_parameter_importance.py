@@ -179,7 +179,7 @@ class LPI(AbstractEvaluator):
         def_perf, def_var = self._predict_over_instance_set(impute_inactive_values(self.cs.get_default_configuration()))
         inc_perf, inc_var = self._predict_over_instance_set(impute_inactive_values(self.incumbent))
         delta = def_perf - inc_perf
-        pbar = tqdm(range(self._sampled_neighbors), ascii=True, disable=self.silence_progressbar)
+        pbar = tqdm(range(self._sampled_neighbors), ascii=True, disable=not self.verbose)
         sum_var = 0
         for index, param in enumerate(self.incumbent.keys()):
             if param in neighborhood_dict:
@@ -287,7 +287,7 @@ class LPI(AbstractEvaluator):
         if not os.path.exists(name):
             os.mkdir(name)
         keys = deepcopy(list(self.incumbent.keys()))
-        pbar = tqdm(list(keys), ascii=True, disable=self.silence_progressbar)
+        pbar = tqdm(list(keys), ascii=True, disable=not self.verbose)
         y_label = self.scenario.run_obj if self.scenario.run_obj != 'quality' else 'cost'
         for param in pbar:
             pbar.set_description('Plotting results for %s' % param)

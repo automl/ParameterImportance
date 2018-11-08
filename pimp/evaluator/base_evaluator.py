@@ -31,9 +31,6 @@ class AbstractEvaluator(object):
         self.rng = rng
         self.verbose = verbose
 
-        # Disable progress bars if logging is above INFO
-        self.silence_progressbar = not self.verbose
-
         if self.model is not None:
             if 'X' in kwargs and 'y' in kwargs:
                 self._train_model(kwargs['X'], kwargs['y'], **kwargs)

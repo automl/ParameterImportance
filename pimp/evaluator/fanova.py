@@ -106,7 +106,7 @@ class fANOVA(AbstractEvaluator):
             label = '%s' % self.scenario.run_obj
         vis = Visualizer(self.evaluator, self.cs, directory=name, y_label=label)
         self.logger.info('Getting Marginals!')
-        pbar = tqdm(range(self.to_evaluate), ascii=True, disable=self.silence_progressbar)
+        pbar = tqdm(range(self.to_evaluate), ascii=True, disable=not self.verbose)
         for i in pbar:
             plt.close('all')
             plt.clf()
