@@ -41,6 +41,7 @@ class LPI(AbstractEvaluator):
         self._sampled_neighbors = 0
         self.variance_dict = {}
         self.quantify_importance_via_variance = quant_var
+        self.evaluated_parameter_importance_uncertainty = OrderedDict()
 
     def _old_sampling_of_one_exchange_neighborhood(self, param, array, index):
         neighbourhood = []
@@ -163,6 +164,7 @@ class LPI(AbstractEvaluator):
     def run(self) -> OrderedDict:
         """
         Main function.
+
         Returns
         -------
         evaluated_parameter_importance:OrderedDict
@@ -182,14 +184,15 @@ class LPI(AbstractEvaluator):
         pbar = tqdm(range(self._sampled_neighbors), ascii=True, disable=not self.verbose)
         sum_var = 0
         for index, param in enumerate(self.incumbent.keys()):
+            # Iterate over parameters
             if param in neighborhood_dict:
                 pbar.set_description('Predicting performances for neighbors of {: >.30s}'.format(param))
                 performance_dict[param] = []
                 variance_dict[param] = []
-                variance_dict[param] = []
                 overall_var[param] = []
                 added_inc = False
                 inc_at = 0
+                # Iterate over neighbors
                 for unit_neighbor, neighbor in zip(neighborhood_dict[param][0], neighborhood_dict[param][1]):
                     if not added_inc:
                         if unit_neighbor > incumbent_array[index]:
@@ -262,6 +265,14 @@ class LPI(AbstractEvaluator):
         self.performance_dict = performance_dict
         self.variance_dict = variance_dict
         self.evaluated_parameter_importance = OrderedDict(tmp)
+        # Estimate uncertainty using the law of total variance
+        for param in self.evaluated_parameter_importance.keys():
+            mean_over_vars = np.mean(variance_dict[param])
+            var_over_means = np.var(performance_dict[param])
+            # self.logger.debug("vars=%s, means=%s", str(variance_dict[param]), str(performance_dict[param]))
+            self.logger.debug("Using law of total variance yields for %s: mean_over_vars=%f, var_over_means=%f (sum=%f)", param,
+                              mean_over_vars, var_over_means, mean_over_vars + var_over_means)
+            self.evaluated_parameter_importance_uncertainty[param] = mean_over_vars + var_over_means
         all_res = {'imp': self.evaluated_parameter_importance,
                    'order': list(self.evaluated_parameter_importance.keys())}
         return all_res
