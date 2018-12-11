@@ -11,8 +11,9 @@ mpl.use('Agg')
 from matplotlib import pyplot as plt
 
 from smac.runhistory.runhistory import RunHistory
+from ConfigSpace.configuration_space import ConfigurationSpace, Configuration
 from ConfigSpace.util import impute_inactive_values
-from ConfigSpace.hyperparameters import CategoricalHyperparameter
+from ConfigSpace.hyperparameters import CategoricalHyperparameter, Constant
 
 try:
     from fanova import fANOVA as fanova_pyrfr
@@ -40,6 +41,17 @@ class fANOVA(AbstractEvaluator):
         super().__init__(scenario, cs, model, to_evaluate, rng, **kwargs)
         self.name = 'fANOVA'
         self.logger = 'pimp.' + self.name
+
+        # Turn all Constants into Categoricals (fANOVA cannot handle Constants)
+        self.cs_contained_constant = False
+        if any([isinstance(hp, Constant) for hp in self.cs.get_hyperparameters()]):
+            self.logger.debug("Replacing configspace's hyperparameter Constants by one-value Categoricals.")
+            new_hyperparameters = [CategoricalHyperparameter(hp.name, [hp.value]) if isinstance(hp, Constant)
+                                   else hp for hp in self.cs.get_hyperparameters()]
+            self.cs = ConfigurationSpace()
+            self.cs.add_hyperparameters(new_hyperparameters)
+            self.cs_contained_constant = True
+
         # This way the instance features in X are ignored and a new forest is constructed
         if self.model.instance_features is None:
             self.logger.info('No preprocessing necessary')
@@ -59,7 +71,7 @@ class fANOVA(AbstractEvaluator):
             cutoffs = (self.model.predict_marginalized_over_instances(
                 np.array([impute_inactive_values( self.cs.get_default_configuration()).get_array()]))[0].flatten()[0],
                        np.inf)
-        self.evaluator = fanova_pyrfr(X=self.X, Y=self.y.flatten(), config_space=cs,
+        self.evaluator = fanova_pyrfr(X=self.X, Y=self.y.flatten(), config_space=self.cs,
                                       seed=self.rng.randint(2**31-1), cutoffs=cutoffs)
         self.n_most_imp_pairs = n_pairs
         self.num_single = None
@@ -77,13 +89,16 @@ class fANOVA(AbstractEvaluator):
         self.logger.info('PREPROCESSING PREPROCESSING PREPROCESSING PREPROCESSING PREPROCESSING PREPROCESSING')
         self.logger.info('Marginalizing away all instances!')
         configs = runhistory.get_all_configs()
+        if self.cs_contained_constant:
+            configs = [Configuration(self.cs, vector=c.get_array()) for c in configs]
         X_non_hyper, X_prime = [], []
         for config in configs:
             config = impute_inactive_values(config).get_array()
             X_prime.append(config)
             X_non_hyper.append(config)
             for idx, param in enumerate(self.cs.get_hyperparameters()):
-                if not isinstance(param, CategoricalHyperparameter):
+                if not (isinstance(param, CategoricalHyperparameter) or
+                        isinstance(param, Constant)):
                     X_non_hyper[-1][idx] = param._transform(X_non_hyper[-1][idx])
         X_non_hyper = np.array(X_non_hyper)
         X_prime = np.array(X_prime)
