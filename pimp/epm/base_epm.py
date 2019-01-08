@@ -79,7 +79,11 @@ class RandomForestWithInstances(AbstractEPM):
         logged_y: bool
             Indicates if the y data is transformed (i.e. put on logscale) or not
         """
-        super().__init__(**kwargs)
+        try:
+            super().__init__(types, bounds, **kwargs)
+        except TypeError:
+            # To ensure backwards-compatibility with smac<0.9.0
+            super().__init__(**kwargs)
 
         self.types = types
         self.bounds = bounds
