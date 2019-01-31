@@ -62,7 +62,7 @@ class Importance(object):
                ignored.
         :param verbose: Toggle output to stdout (not logging, but tqdm-progress bars)
         """
-        self.logger = logging.getLogger("Importance")
+        self.logger = logging.getLogger("pimp.Importance")
         self.rng = np.random.RandomState(seed)
         self._parameters_to_evaluate = parameters_to_evaluate
         self._evaluator = None
