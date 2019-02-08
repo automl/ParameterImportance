@@ -501,6 +501,11 @@ class Importance(object):
             self.evaluators.append(self.evaluator)
             if save_folder:
                 self.evaluator.plot_result(os.path.join(save_folder, self.evaluator.name.lower()), show=False)
+            if load:
+                with open(fn, 'r') as in_file:
+                    doct = json.load(in_file)
+                    for key in doct:
+                        dict_[key] = doct[key]
             with open(fn, 'w') as out_file:
                 json.dump(dict_,
                           out_file, sort_keys=True, indent=4, separators=(',', ': '))
