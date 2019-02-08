@@ -365,7 +365,8 @@ class LPI(AbstractEvaluator):
                             color_ = (1, 0, 0)
                         t.set_color(color_)
 
-                ax1.set_xscale('log' if self.cs.get_hyperparameter(param).log else 'linear')
+                if not isinstance(self.cs.get_hyperparameter(param), CategoricalHyperparameter):
+                    ax1.set_xscale('log' if self.cs.get_hyperparameter(param).log else 'linear')
                 plt.xlabel(param)
                 if self.scenario.run_obj == 'runtime':
                     ax1.set_ylabel('runtime [sec]', zorder=81, **self.LABEL_FONT)
