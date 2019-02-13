@@ -1,4 +1,5 @@
 from collections import OrderedDict
+from copy import deepcopy
 import pickle
 import warnings
 
@@ -52,6 +53,11 @@ class fANOVA(AbstractEvaluator):
             self.cs.add_hyperparameters(new_hyperparameters)
             self.cs_contained_constant = True
 
+        # Ignore forbidden clauses to allow imputing inactive values for epm
+        self.cs_no_forbidden = deepcopy(self.cs)
+        self.cs_no_forbidden.forbidden_clauses = []
+        default_no_forbidden = impute_inactive_values(self.cs_no_forbidden.get_default_configuration())
+
         # This way the instance features in X are ignored and a new forest is constructed
         if self.model.instance_features is None:
             self.logger.info('No preprocessing necessary')
@@ -65,11 +71,11 @@ class fANOVA(AbstractEvaluator):
         cutoffs = (-np.inf, np.inf)
         if minimize:
             cutoffs = (-np.inf, self.model.predict_marginalized_over_instances(
-                np.array([impute_inactive_values(self.cs.get_default_configuration()).get_array()]))[0].flatten()[0]
+                np.array([default_no_forbidden.get_array()]))[0].flatten()[0]
                        )
         elif minimize is False:
             cutoffs = (self.model.predict_marginalized_over_instances(
-                np.array([impute_inactive_values( self.cs.get_default_configuration()).get_array()]))[0].flatten()[0],
+                np.array([default_no_forbidden.get_array()]))[0].flatten()[0],
                        np.inf)
         self.evaluator = fanova_pyrfr(X=self.X, Y=self.y.flatten(), config_space=self.cs,
                                       seed=self.rng.randint(2**31-1), cutoffs=cutoffs)
@@ -91,6 +97,8 @@ class fANOVA(AbstractEvaluator):
         configs = runhistory.get_all_configs()
         if self.cs_contained_constant:
             configs = [Configuration(self.cs, vector=c.get_array()) for c in configs]
+        # Remove forbidden-constraints
+        configs = [Configuration(self.cs_no_forbidden, vector=c.get_array()) for c in configs]
         X_non_hyper, X_prime = [], []
         for config in configs:
             config = impute_inactive_values(config).get_array()
