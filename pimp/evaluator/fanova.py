@@ -1,5 +1,4 @@
 from collections import OrderedDict
-from copy import deepcopy
 import pickle
 import warnings
 
@@ -15,6 +14,7 @@ from smac.runhistory.runhistory import RunHistory
 from ConfigSpace.configuration_space import ConfigurationSpace, Configuration
 from ConfigSpace.util import impute_inactive_values
 from ConfigSpace.hyperparameters import CategoricalHyperparameter, Constant
+from ConfigSpace.exceptions import ForbiddenValueError
 
 try:
     from fanova import fANOVA as fanova_pyrfr
@@ -53,11 +53,6 @@ class fANOVA(AbstractEvaluator):
             self.cs.add_hyperparameters(new_hyperparameters)
             self.cs_contained_constant = True
 
-        # Ignore forbidden clauses to allow imputing inactive values for epm
-        self.cs_no_forbidden = deepcopy(self.cs)
-        self.cs_no_forbidden.forbidden_clauses = []
-        default_no_forbidden = impute_inactive_values(self.cs_no_forbidden.get_default_configuration())
-
         # This way the instance features in X are ignored and a new forest is constructed
         if self.model.instance_features is None:
             self.logger.info('No preprocessing necessary')
@@ -71,11 +66,11 @@ class fANOVA(AbstractEvaluator):
         cutoffs = (-np.inf, np.inf)
         if minimize:
             cutoffs = (-np.inf, self.model.predict_marginalized_over_instances(
-                np.array([default_no_forbidden.get_array()]))[0].flatten()[0]
+                np.array([impute_inactive_values(self.cs.get_default_configuration()).get_array()]))[0].flatten()[0]
                        )
         elif minimize is False:
             cutoffs = (self.model.predict_marginalized_over_instances(
-                np.array([default_no_forbidden.get_array()]))[0].flatten()[0],
+                np.array([impute_inactive_values( self.cs.get_default_configuration()).get_array()]))[0].flatten()[0],
                        np.inf)
         self.evaluator = fanova_pyrfr(X=self.X, Y=self.y.flatten(), config_space=self.cs,
                                       seed=self.rng.randint(2**31-1), cutoffs=cutoffs)
@@ -97,17 +92,21 @@ class fANOVA(AbstractEvaluator):
         configs = runhistory.get_all_configs()
         if self.cs_contained_constant:
             configs = [Configuration(self.cs, vector=c.get_array()) for c in configs]
-        # Remove forbidden-constraints
-        configs = [Configuration(self.cs_no_forbidden, vector=c.get_array()) for c in configs]
         X_non_hyper, X_prime = [], []
+        skipped_forbidden = 0
         for config in configs:
-            config = impute_inactive_values(config).get_array()
+            try:
+                config = impute_inactive_values(config).get_array()
+            except ForbiddenValueError:
+                skipped_forbidden += 1
+                continue
             X_prime.append(config)
             X_non_hyper.append(config)
             for idx, param in enumerate(self.cs.get_hyperparameters()):
                 if not (isinstance(param, CategoricalHyperparameter) or
                         isinstance(param, Constant)):
                     X_non_hyper[-1][idx] = param._transform(X_non_hyper[-1][idx])
+        self.logger.debug("Skipped %d forbidden configurations", skipped_forbidden)
         X_non_hyper = np.array(X_non_hyper)
         X_prime = np.array(X_prime)
         y_prime = np.array(self.model.predict_marginalized_over_instances(X_prime)[0])

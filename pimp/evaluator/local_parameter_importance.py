@@ -178,17 +178,8 @@ class LPI(AbstractEvaluator):
         overall_var = {}
         overall_imp = {}
         all_preds = []
-
-        # Create ConfigSpace object without forbidden clauses to use impute_active_values-method
-        # This can be done because we don't actually use the Configuration-object anywhere
-        configspace_no_forbidden = deepcopy(self.incumbent.configuration_space)
-        configspace_no_forbidden.forbidden_clauses = []
-        default_no_forbidden, incumbent_no_forbidden = self.cs.get_default_configuration(), deepcopy(self.incumbent)
-        default_no_forbidden.configuration_space = configspace_no_forbidden
-        incumbent_no_forbidden.configuration_space = configspace_no_forbidden
-
-        def_perf, def_var = self._predict_over_instance_set(impute_inactive_values(default_no_forbidden))
-        inc_perf, inc_var = self._predict_over_instance_set(impute_inactive_values(incumbent_no_forbidden))
+        def_perf, def_var = self._predict_over_instance_set(impute_inactive_values(self.cs.get_default_configuration()))
+        inc_perf, inc_var = self._predict_over_instance_set(impute_inactive_values(self.incumbent))
         delta = def_perf - inc_perf
         pbar = tqdm(range(self._sampled_neighbors), ascii=True, disable=not self.verbose)
         sum_var = 0
@@ -202,6 +193,7 @@ class LPI(AbstractEvaluator):
                 added_inc = False
                 inc_at = 0
                 # Iterate over neighbors
+                skipped_forbidden_neighbors = 0
                 for unit_neighbor, neighbor in zip(neighborhood_dict[param][0], neighborhood_dict[param][1]):
                     if not added_inc:
                         if unit_neighbor > incumbent_array[index]:
@@ -216,13 +208,18 @@ class LPI(AbstractEvaluator):
                     new_array = incumbent_array.copy()
                     new_array = change_hp_value(self.incumbent.configuration_space, new_array, param, unit_neighbor,
                                                 index)
-                    new_configuration = impute_inactive_values(Configuration(configspace_no_forbidden,
-                                                                             vector=new_array))
+                    try:
+                        new_configuration = impute_inactive_values(Configuration(self.incumbent.configuration_space,
+                                                                                 vector=new_array))
+                    except ForbiddenValueError:
+                        skipped_forbidden_neighbors += 1
+                        continue
                     mean, var = self._predict_over_instance_set(new_configuration)
                     performance_dict[param].append(mean)
                     overall_var[param].append(mean)
                     variance_dict[param].append(var)
                     pbar.update(1)
+                self.logger.debug("Skipped %d forbidden neighbors", skipped_forbidden_neighbors)
                 if len(neighborhood_dict[param][0]) > 0:
                     neighborhood_dict[param][0] = np.insert(neighborhood_dict[param][0], inc_at, incumbent_array[index])
                     neighborhood_dict[param][1] = np.insert(neighborhood_dict[param][1], inc_at, self.incumbent[param])
@@ -230,7 +227,7 @@ class LPI(AbstractEvaluator):
                     neighborhood_dict[param][0] = np.array(incumbent_array[index])
                     neighborhood_dict[param][1] = [self.incumbent[param]]
                 if not added_inc:
-                    mean, var = self._predict_over_instance_set(impute_inactive_values(incumbent_no_forbidden))
+                    mean, var = self._predict_over_instance_set(impute_inactive_values(incumbent))
                     performance_dict[param].append(mean)
                     overall_var[param].append(mean)
                     variance_dict[param].append(var)
