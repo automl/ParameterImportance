@@ -13,6 +13,7 @@ from tqdm import tqdm
 from smac.utils.util_funcs import get_types
 from smac.tae.execute_ta_run import StatusType
 from smac.epm.rfr_imputator import RFRImputator
+from smac.utils.io.cmd_reader import truthy
 
 from pimp.configspace import CategoricalHyperparameter, Configuration, \
     FloatHyperparameter, IntegerHyperparameter, impute_inactive_values
@@ -265,6 +266,8 @@ class Importance(object):
         inc_dict = {}
         for key_val in incumbent_dict['incumbent']:  # convert string to Configuration
             key, val = key_val.replace("'", '').split('=')
+            if val.lower() in ('y', 'yes', 't', 'true', 'on', '1', 'n', 'no', 'f', 'false', 'off', '0'):
+                val = truthy(val)
             if isinstance(self.scenario.cs.get_hyperparameter(key), (CategoricalHyperparameter)):
                 inc_dict[key] = val
             elif isinstance(self.scenario.cs.get_hyperparameter(key), (FloatHyperparameter)):

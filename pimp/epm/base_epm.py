@@ -80,7 +80,7 @@ class RandomForestWithInstances(AbstractEPM):
             Indicates if the y data is transformed (i.e. put on logscale) or not
         """
         try:
-            super().__init__(types, bounds, **kwargs)
+            super().__init__(types, bounds, seed, **kwargs)
         except TypeError:
             # To ensure backwards-compatibility with smac<0.9.0
             super().__init__(**kwargs)
