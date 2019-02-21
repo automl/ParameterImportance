@@ -266,7 +266,7 @@ class Importance(object):
         inc_dict = {}
         for key_val in incumbent_dict['incumbent']:  # convert string to Configuration
             key, val = key_val.replace("'", '').split('=')
-            if val.lower() in ('y', 'yes', 't', 'true', 'on', '1', 'n', 'no', 'f', 'false', 'off', '0'):
+            if val.lower() in ('yes', 'true', 'on', '1', 'no', 'false', 'off', '0'):
                 val = truthy(val)
             if isinstance(self.scenario.cs.get_hyperparameter(key), (CategoricalHyperparameter)):
                 inc_dict[key] = val
