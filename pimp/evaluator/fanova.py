@@ -54,12 +54,19 @@ class fANOVA(AbstractEvaluator):
 
         # This way the instance features in X are ignored and a new forest is constructed
         if self.model.instance_features is None:
-            self.logger.info('No preprocessing necessary')
+            self.logger.info('No marginalization necessary')
             if preprocessed_X is not None and preprocessed_y is not None:
                 self.X = preprocessed_X
                 self.y = preprocessed_y
             else:
-                self._preprocess(runhist)
+                self.logger.info('Preprocessing X')
+                for c_idx, config in enumerate(self.X):
+                    # print("{}/{}".format(c_idx, len(self.X)))
+                    for p_idx, param in enumerate(self.cs.get_hyperparameters()):
+                        if not (isinstance(param, CategoricalHyperparameter) or
+                                isinstance(param, Constant)):
+                            # getting the parameters out of the hypercube setting as used in smac runhistory
+                            self.X[c_idx][p_idx] = param._transform(self.X[c_idx][p_idx])
         else:
             self._preprocess(runhist)
         cutoffs = (-np.inf, np.inf)
