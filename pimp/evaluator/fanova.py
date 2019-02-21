@@ -1,6 +1,7 @@
 from collections import OrderedDict
 import pickle
 import warnings
+import copy
 
 import os
 import numpy as np
@@ -56,17 +57,19 @@ class fANOVA(AbstractEvaluator):
         if self.model.instance_features is None:
             self.logger.info('No marginalization necessary')
             if preprocessed_X is not None and preprocessed_y is not None:
-                self.X = preprocessed_X
-                self.y = preprocessed_y
+                self._X = preprocessed_X
+                self._y = preprocessed_y
             else:
                 self.logger.info('Preprocessing X')
+                self._X = copy.deepcopy(self.X)
+                self._y = copy.deepcopy(self.y)
                 for c_idx, config in enumerate(self.X):
                     # print("{}/{}".format(c_idx, len(self.X)))
                     for p_idx, param in enumerate(self.cs.get_hyperparameters()):
                         if not (isinstance(param, CategoricalHyperparameter) or
                                 isinstance(param, Constant)):
                             # getting the parameters out of the hypercube setting as used in smac runhistory
-                            self.X[c_idx][p_idx] = param._transform(self.X[c_idx][p_idx])
+                            self._X[c_idx][p_idx] = param._transform(self.X[c_idx][p_idx])
         else:
             self._preprocess(runhist)
         cutoffs = (-np.inf, np.inf)
@@ -78,7 +81,7 @@ class fANOVA(AbstractEvaluator):
             cutoffs = (self.model.predict_marginalized_over_instances(
                 np.array([impute_inactive_values( self.cs.get_default_configuration()).get_array()]))[0].flatten()[0],
                        np.inf)
-        self.evaluator = fanova_pyrfr(X=self.X, Y=self.y.flatten(), config_space=self.cs,
+        self.evaluator = fanova_pyrfr(X=self._X, Y=self._y.flatten(), config_space=self.cs,
                                       seed=self.rng.randint(2**31-1), cutoffs=cutoffs)
         self.n_most_imp_pairs = n_pairs
         self.num_single = None
@@ -110,8 +113,8 @@ class fANOVA(AbstractEvaluator):
         X_non_hyper = np.array(X_non_hyper)
         X_prime = np.array(X_prime)
         y_prime = np.array(self.model.predict_marginalized_over_instances(X_prime)[0])
-        self.X = X_non_hyper
-        self.y = y_prime
+        self._X = X_non_hyper
+        self._y = y_prime
         self.logger.info('Size of training X after preprocessing: %s' % str(self.X.shape))
         self.logger.info('Size of training y after preprocessing: %s' % str(self.y.shape))
         self.logger.info('Finished Preprocessing')
