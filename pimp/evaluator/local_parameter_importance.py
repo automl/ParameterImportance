@@ -219,7 +219,11 @@ class LPI(AbstractEvaluator):
                     overall_var[param].append(mean)
                     variance_dict[param].append(var)
                     pbar.update(1)
-                self.logger.debug("Skipped %d forbidden neighbors", skipped_forbidden_neighbors)
+                self.logger.debug("Skipped %d (of %d) forbidden neighbors", skipped_forbidden_neighbors,
+                        len(neighborhood_dict[param][0]))
+                if skipped_forbidden_neighbors == len(neighborhood_dict[param][0]):
+                    self.logger.debug("No valid neighbors found for %s, skipping.", param)
+                    continue
                 if len(neighborhood_dict[param][0]) > 0:
                     neighborhood_dict[param][0] = np.insert(neighborhood_dict[param][0], inc_at, incumbent_array[index])
                     neighborhood_dict[param][1] = np.insert(neighborhood_dict[param][1], inc_at, self.incumbent[param])
@@ -227,7 +231,7 @@ class LPI(AbstractEvaluator):
                     neighborhood_dict[param][0] = np.array(incumbent_array[index])
                     neighborhood_dict[param][1] = [self.incumbent[param]]
                 if not added_inc:
-                    mean, var = self._predict_over_instance_set(impute_inactive_values(incumbent))
+                    mean, var = self._predict_over_instance_set(impute_inactive_values(self.incumbent))
                     performance_dict[param].append(mean)
                     overall_var[param].append(mean)
                     variance_dict[param].append(var)
