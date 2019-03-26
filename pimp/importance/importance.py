@@ -369,6 +369,7 @@ class Importance(object):
                                pairwise=self.pairiwse_fANOVA,
                                preprocessed_X=self.X_fanova,
                                preprocessed_y=self.y_fanova,
+                               incumbents=self.incumbent,
                                verbose=self.verbose)
         elif evaluation_method in ['incneighbor', 'lpi']:
             if self.incumbent is None:
