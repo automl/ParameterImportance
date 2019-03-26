@@ -38,7 +38,38 @@ __email__ = "biedenka@cs.uni-freiburg.de"
 class fANOVA(AbstractEvaluator):
 
     def __init__(self, scenario, cs, model, to_evaluate: int, runhist: RunHistory, rng,
-                 n_pairs=5, minimize=True, pairwise=True, preprocessed_X=None, preprocessed_y=None, **kwargs):
+                 n_pairs=5, minimize=True, pairwise=True, preprocessed_X=None, preprocessed_y=None,
+                 incumbents=None, **kwargs):
+        """
+        Handler to fANOVA module.
+
+        Parameters
+        ----------
+        scenario: Scenario
+            scenario with information about run_objective
+        cs: ConfigSpace
+            configuration space of scenario to be analyzed
+        model: empirical performance model
+            TODO
+        to_evaluate: int
+            number of parameters to be plotted
+        runhist: RunHistory
+            TODO
+        rng: RandomNumberGenerator
+            rng
+        n_pairs: int
+            how many (most important) parameters should be plotted for pairwise
+            marginals
+        minimize: boolean
+            whether optimum is min or max
+        pairwise: boolean
+            plot pairwise marginals
+        preprocessed_X/Y: data
+            preprocessed data to be reused if model is already trained on data
+            without instance_features
+        incumbents: List[Configuration] or Configuration
+            one or multiple incumbents to be marked in plots
+        """
         super().__init__(scenario, cs, model, to_evaluate, rng, **kwargs)
         self.name = 'fANOVA'
         self.logger = 'pimp.' + self.name
@@ -87,6 +118,7 @@ class fANOVA(AbstractEvaluator):
         self.num_single = None
         self.pairwise = pairwise
         self.evaluated_parameter_importance_uncertainty = OrderedDict()
+        self.incumbents = incumbents
 
     def _preprocess(self, runhistory):
         """
@@ -136,18 +168,19 @@ class fANOVA(AbstractEvaluator):
             plt.close('all')
             plt.clf()
             param = list(self.evaluated_parameter_importance.keys())[i]
-            outfile_name = os.path.join(name, param.replace(os.sep, "_") + ".png")
-            vis.plot_marginal(self.cs.get_idx_by_hyperparameter_name(param), log_scale=False, show=False)
-            fig = plt.gcf()
-            fig.savefig(outfile_name)
-            plt.close('all')
-            plt.clf()
-            outfile_name = os.path.join(name, param.replace(os.sep, "_") + "_log.png")
-            vis.plot_marginal(self.cs.get_idx_by_hyperparameter_name(param), log_scale=True, show=False)
-            fig = plt.gcf()
-            fig.savefig(outfile_name)
-            plt.close('all')
-            plt.clf()
+            # Plot once in log, once linear
+            for mode in [(True, '_log'), (False, '')]:
+                outfile_name = os.path.join(name, param.replace(os.sep, "_") + mode[1] + ".png")
+                # The try/except clause is only for back-compatibility with fanova <= 2.0.11
+                try:
+                    vis.plot_marginal(self.cs.get_idx_by_hyperparameter_name(param), log_scale=mode[0], show=False, incumbents=self.incumbents)
+                except TypeError:
+                    self.logger.debug("Plotting incumbents not supported by fanova < 2.0.12")
+                    vis.plot_marginal(self.cs.get_idx_by_hyperparameter_name(param), log_scale=mode[0], show=False)
+                fig = plt.gcf()
+                fig.savefig(outfile_name)
+                plt.close('all')
+                plt.clf()
             if show:
                 plt.show()
             pbar.set_description('Creating fANOVA plot: {: <.30s}'.format(outfile_name.split(os.path.sep)[-1]))
