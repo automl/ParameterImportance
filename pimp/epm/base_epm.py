@@ -82,8 +82,12 @@ class RandomForestWithInstances(AbstractEPM):
         try:
             super().__init__(types, bounds, seed, **kwargs)
         except TypeError:
-            # To ensure backwards-compatibility with smac<0.9.0
-            super().__init__(**kwargs)
+            try:
+                # To ensure backwards-compatibility with smac==0.10.0
+                super().__init__(types, bounds, **kwargs)
+            except TypeError:
+                # To ensure backwards-compatibility with smac<0.9.0
+                super().__init__(**kwargs)
 
         self.types = types
         self.bounds = bounds
