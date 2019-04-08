@@ -43,6 +43,8 @@ class LPI(AbstractEvaluator):
         self.quantify_importance_via_variance = quant_var
         self.evaluated_parameter_importance_uncertainty = OrderedDict()
 
+        self.num_repeats = 10
+
     def _old_sampling_of_one_exchange_neighborhood(self, param, array, index):
         neighbourhood = []
         number_of_sampled_neighbors = 0
@@ -172,46 +174,52 @@ class LPI(AbstractEvaluator):
         """
         neighborhood_dict = self._get_one_exchange_neighborhood_by_parameter()  # sampled on a unit-hypercube!
         self.neighborhood_dict = neighborhood_dict
-        performance_dict = {}
-        variance_dict = {}
         incumbent_array = self.incumbent.get_array()
-        overall_var = {}
-        overall_imp = {}
-        all_preds = []
         def_perf, def_var = self._predict_over_instance_set(impute_inactive_values(self.cs.get_default_configuration()))
         inc_perf, inc_var = self._predict_over_instance_set(impute_inactive_values(self.incumbent))
         delta = def_perf - inc_perf
-        pbar = tqdm(range(self._sampled_neighbors), ascii=True, disable=not self.verbose)
-        sum_var = 0
-        for index, param in enumerate(self.incumbent.keys()):
+        evaluated_parameter_importance = {p : [] for p in self.incumbent.keys() if p in neighborhood_dict}
+
+        pbar = tqdm(range(self.num_repeats * self._sampled_neighbors), ascii=True, disable=not self.verbose)
+        # Repeat to determine uncertainty
+        for _ in range(self.num_repeats):
+            performance_dict = {}
+            variance_dict = {}
+            overall_var = {}
+            overall_imp = {}
             # Iterate over parameters
-            if param in neighborhood_dict:
-                pbar.set_description('Predicting performances for neighbors of {: >.30s}'.format(param))
-                performance_dict[param] = []
-                variance_dict[param] = []
-                overall_var[param] = []
+            for index, param in enumerate(self.incumbent.keys()):
+                if param not in neighborhood_dict:
+                    pbar.set_description('{: >.70s}'.format('Parameter %s is inactive' % param))
+                    continue
+
+                pbar.set_description('Predicting performances for neighbors of {: >.30s} {}/{}'.format(
+                                                param, _, self.num_repeats))
+                performance_dict[param] = []  # Save mean from rf (estimated performance) here
+                variance_dict[param] = []     # Save variance from rf here
                 added_inc = False
                 inc_at = 0
                 # Iterate over neighbors
                 for unit_neighbor, neighbor in zip(neighborhood_dict[param][0], neighborhood_dict[param][1]):
                     if not added_inc:
+                        # Detect incumbent
                         if unit_neighbor > incumbent_array[index]:
                             performance_dict[param].append(inc_perf)
-                            overall_var[param].append(inc_perf)
                             variance_dict[param].append(inc_var)
                             pbar.update(1)
                             added_inc = True
                         else:
                             inc_at += 1
                     # self.logger.debug('%s -> %s' % (self.incumbent[param], neighbor))
+                    # Create the neighbor-Configuration object
                     new_array = incumbent_array.copy()
-                    new_array = change_hp_value(self.incumbent.configuration_space, new_array, param, unit_neighbor,
-                                                index)
+                    new_array = change_hp_value(self.incumbent.configuration_space, new_array,
+                                                param, unit_neighbor, index)
                     new_configuration = impute_inactive_values(Configuration(self.incumbent.configuration_space,
                                                                              vector=new_array))
+                    # Predict performance
                     mean, var = self._predict_over_instance_set(new_configuration)
                     performance_dict[param].append(mean)
-                    overall_var[param].append(mean)
                     variance_dict[param].append(var)
                     pbar.update(1)
                 if len(neighborhood_dict[param][0]) > 0:
@@ -223,12 +231,10 @@ class LPI(AbstractEvaluator):
                 if not added_inc:
                     mean, var = self._predict_over_instance_set(impute_inactive_values(self.incumbent))
                     performance_dict[param].append(mean)
-                    overall_var[param].append(mean)
                     variance_dict[param].append(var)
                     pbar.update(1)
-                all_preds.extend(performance_dict[param])
-                tmp_perf = performance_dict[param][:inc_at]
-                tmp_perf.extend(performance_dict[param][inc_at + 1:])
+                # After all neighbors are estimated, look at all performances except the incumbent
+                tmp_perf = performance_dict[param][:inc_at] + performance_dict[param][inc_at + 1:]
                 imp_over_mea = (np.mean(tmp_perf) - performance_dict[param][inc_at]) / delta
                 imp_over_med = (np.median(tmp_perf) - performance_dict[param][inc_at]) / delta
                 try:
@@ -236,43 +242,25 @@ class LPI(AbstractEvaluator):
                 except ValueError:
                     imp_over_max = np.nan  # Hacky fix as this is never used anyway
                 overall_imp[param] = np.array([imp_over_mea, imp_over_med, imp_over_max])
-                overall_var[param] = np.var(overall_var[param])
-                sum_var += overall_var[param]
-            else:
-                pbar.set_description('{: >.70s}'.format('Parameter %s is inactive' % param))
-        # self.logger.info('{:<30s}  {:^24s}, {:^25s}'.format(
-        #     ' ', 'perf impro', 'variance'
-        # ))
-        # self.logger.info('{:<30s}: [{:>6s}, {:>6s}, {:>6s}], {:>6s}, {:>6s}, {:>6s}'.format(
-        #     'Parameter', 'Mean', 'Median', 'Max', 'p_var', 't_var', 'frac'
-        # ))
-        # self.logger.info('-'*80)
-        tmp = []
-        for param in sorted(list(overall_var.keys())):
-            # overall_var[param].extend([inc_perf for _ in range(len(all_preds) - len(overall_var[param]))])
-            # overall_var[param] = np.var(overall_var[param])
-            # self.logger.info('{:<30s}: [{: >6.2f}, {: >6.2f}, {: >6.2f}], {: >6.2f}, {: >6.2f}, {: >6.2f}'.format(
-            #     param, *overall_imp[param]*100, overall_var[param], np.var(all_preds),
-            #     overall_var[param] / sum_var * 100
-            # ))
-            if self.quantify_importance_via_variance:
-                tmp.append([param, overall_var[param] / sum_var])
-            else:
-                tmp.append([param, overall_imp[param][0]])
-        tmp = sorted(tmp, key=lambda x: x[1], reverse=True)
-        tmp = tmp[:min(self.to_evaluate, len(tmp))]
+                overall_var[param] = np.var(performance_dict[param])
+
+            # Creating actual importance value (by normalizing over sum of vars)
+            for param in sorted(list(overall_var.keys())):
+                if self.quantify_importance_via_variance:
+                    evaluated_parameter_importance[param].append(overall_var[param] / sum(overall_var.values()))
+                else:
+                    evaluated_parameter_importance[param].append(overall_imp[param][0])
+
+        evaluated_parameter_importance = {p : (np.mean(i), np.std(i)) for p, i in evaluated_parameter_importance.items()}
+        only_show = sorted(list(evaluated_parameter_importance.keys()),
+                           key=lambda p: evaluated_parameter_importance[p][0])[:min(self.to_evaluate,
+                                                                                    len(evaluated_parameter_importance.keys()))]
+
         self.neighborhood_dict = neighborhood_dict
         self.performance_dict = performance_dict
         self.variance_dict = variance_dict
-        self.evaluated_parameter_importance = OrderedDict(tmp)
-        # Estimate uncertainty using the law of total variance
-        for param in self.evaluated_parameter_importance.keys():
-            mean_over_vars = np.mean(variance_dict[param])
-            var_over_means = np.var(performance_dict[param])
-            # self.logger.debug("vars=%s, means=%s", str(variance_dict[param]), str(performance_dict[param]))
-            self.logger.debug("Using law of total variance yields for %s: mean_over_vars=%f, var_over_means=%f (sum=%f)", param,
-                              mean_over_vars, var_over_means, mean_over_vars + var_over_means)
-            self.evaluated_parameter_importance_uncertainty[param] = mean_over_vars + var_over_means
+        self.evaluated_parameter_importance = OrderedDict([(p, evaluated_parameter_importance[p][0]) for p in only_show])
+        self.evaluated_parameter_importance_uncertainty = OrderedDict([(p, evaluated_parameter_importance[p][1]) for p in only_show])
         all_res = {'imp': self.evaluated_parameter_importance,
                    'order': list(self.evaluated_parameter_importance.keys())}
         return all_res
