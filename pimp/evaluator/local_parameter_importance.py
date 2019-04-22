@@ -43,8 +43,6 @@ class LPI(AbstractEvaluator):
         self.quantify_importance_via_variance = quant_var
         self.evaluated_parameter_importance_uncertainty = OrderedDict()
 
-        self.num_repeats = 10
-
     def _old_sampling_of_one_exchange_neighborhood(self, param, array, index):
         neighbourhood = []
         number_of_sampled_neighbors = 0
@@ -181,13 +179,15 @@ class LPI(AbstractEvaluator):
         evaluated_parameter_importance = {}
 
         # These are used for plotting and hold the predictions for each neighbor of each parameter
+        # That means performance_dict holds the mean, variance_dict the variance of the forest
         performance_dict = {}
         variance_dict = {}
-        # These are used for importance and hold the corresponding importance/variance over neighbors
-        overall_var = {}
+        # This are used for importance and hold the corresponding importance/variance over neighbors
+        # Only import if NOT quantifying importance via performance-variance across neighbours
         overall_imp = {}
-        # Nested list of values per tree
+        # Nested list of values per tree in random forest
         pred_per_tree = {}
+
         # Iterate over parameters
         pbar = tqdm(range(self._sampled_neighbors), ascii=True, disable=not self.verbose)
         for index, param in enumerate(self.incumbent.keys()):
@@ -196,8 +196,8 @@ class LPI(AbstractEvaluator):
                 continue
 
             pbar.set_description('Predicting performances for neighbors of {: >.30s}'.format(param))
-            performance_dict[param] = []  # Save predictions from trees here as nested list and average later
-            variance_dict[param] = []     # Save variance from rf here
+            performance_dict[param] = []
+            variance_dict[param] = []
             pred_per_tree[param] = []
             added_inc = False
             inc_at = 0
@@ -222,7 +222,7 @@ class LPI(AbstractEvaluator):
                 # Predict performance
                 x = np.array(new_configuration.get_array())
                 pred_per_tree[param].append([np.mean(tree_pred) for tree_pred in self.model.rf.all_leaf_values(x)])
-                self.logger.debug(pred_per_tree[param][-1])
+                # self.logger.debug("Pred per tree: %s", str(pred_per_tree[param][-1]))
                 performance_dict[param].append(np.mean(pred_per_tree[param][-1]))
                 variance_dict[param].append(np.var(pred_per_tree[param][-1]))
 
@@ -240,6 +240,8 @@ class LPI(AbstractEvaluator):
                 pbar.update(1)
             # After all neighbors are estimated, look at all performances except the incumbent
             tmp_perf = performance_dict[param][:inc_at] + performance_dict[param][inc_at + 1:]
+            if delta == 0:
+                delta = 1  # To avoid division by zero
             imp_over_mea = (np.mean(tmp_perf) - performance_dict[param][inc_at]) / delta
             imp_over_med = (np.median(tmp_perf) - performance_dict[param][inc_at]) / delta
             try:
@@ -260,10 +262,9 @@ class LPI(AbstractEvaluator):
                                      for tree_idx in range(num_trees)]
         # Normalize
         overall_var_per_tree = {p : [t / sum_var_per_tree[idx] for idx, t in enumerate(trees)] for p, trees in
-                overall_var_per_tree.items()}
+                                                    overall_var_per_tree.items()}
         self.logger.debug("overall_var_per_tree %s (%d trees)",
-                str(overall_var_per_tree),
-                len(list(pred_per_tree.values())[0][0]))
+                str(overall_var_per_tree), len(list(pred_per_tree.values())[0][0]))
         self.logger.debug("sum_var_per_tree %s (%d trees)",
                 str(sum_var_per_tree), len(list(pred_per_tree.values())[0][0]))
         for param in performance_dict.keys():
