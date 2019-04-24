@@ -15,6 +15,7 @@ from smac.runhistory.runhistory import RunHistory
 from ConfigSpace.configuration_space import ConfigurationSpace, Configuration
 from ConfigSpace.util import impute_inactive_values
 from ConfigSpace.hyperparameters import CategoricalHyperparameter, Constant
+from ConfigSpace.exceptions import ForbiddenValueError
 
 try:
     from fanova import fANOVA as fanova_pyrfr
@@ -134,14 +135,20 @@ class fANOVA(AbstractEvaluator):
         if self.cs_contained_constant:
             configs = [Configuration(self.cs, vector=c.get_array()) for c in configs]
         X_non_hyper, X_prime = [], []
+        skipped_forbidden = 0
         for config in configs:
-            config = impute_inactive_values(config).get_array()
+            try:
+                config = impute_inactive_values(config).get_array()
+            except ForbiddenValueError:
+                skipped_forbidden += 1
+                continue
             X_prime.append(config)
             X_non_hyper.append(config)
             for idx, param in enumerate(self.cs.get_hyperparameters()):
                 if not (isinstance(param, CategoricalHyperparameter) or
                         isinstance(param, Constant)):
                     X_non_hyper[-1][idx] = param._transform(X_non_hyper[-1][idx])
+        self.logger.debug("Skipped %d forbidden configurations", skipped_forbidden)
         X_non_hyper = np.array(X_non_hyper)
         X_prime = np.array(X_prime)
         y_prime = np.array(self.model.predict_marginalized_over_instances(X_prime)[0])

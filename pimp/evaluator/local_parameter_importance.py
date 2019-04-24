@@ -193,6 +193,7 @@ class LPI(AbstractEvaluator):
                 added_inc = False
                 inc_at = 0
                 # Iterate over neighbors
+                skipped_forbidden_neighbors = 0
                 for unit_neighbor, neighbor in zip(neighborhood_dict[param][0], neighborhood_dict[param][1]):
                     if not added_inc:
                         if unit_neighbor > incumbent_array[index]:
@@ -207,13 +208,22 @@ class LPI(AbstractEvaluator):
                     new_array = incumbent_array.copy()
                     new_array = change_hp_value(self.incumbent.configuration_space, new_array, param, unit_neighbor,
                                                 index)
-                    new_configuration = impute_inactive_values(Configuration(self.incumbent.configuration_space,
-                                                                             vector=new_array))
+                    try:
+                        new_configuration = impute_inactive_values(Configuration(self.incumbent.configuration_space,
+                                                                                 vector=new_array))
+                    except ForbiddenValueError:
+                        skipped_forbidden_neighbors += 1
+                        continue
                     mean, var = self._predict_over_instance_set(new_configuration)
                     performance_dict[param].append(mean)
                     overall_var[param].append(mean)
                     variance_dict[param].append(var)
                     pbar.update(1)
+                self.logger.debug("Skipped %d (of %d) forbidden neighbors", skipped_forbidden_neighbors,
+                        len(neighborhood_dict[param][0]))
+                if skipped_forbidden_neighbors == len(neighborhood_dict[param][0]):
+                    self.logger.debug("No valid neighbors found for %s, skipping.", param)
+                    continue
                 if len(neighborhood_dict[param][0]) > 0:
                     neighborhood_dict[param][0] = np.insert(neighborhood_dict[param][0], inc_at, incumbent_array[index])
                     neighborhood_dict[param][1] = np.insert(neighborhood_dict[param][1], inc_at, self.incumbent[param])
