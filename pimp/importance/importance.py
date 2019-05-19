@@ -10,7 +10,8 @@ from collections import OrderedDict
 import numpy as np
 from tqdm import tqdm
 
-from smac.utils.util_funcs import get_types
+# from smac.utils.util_funcs import
+from smac.optimizer.smbo import get_types
 from smac.tae.execute_ta_run import StatusType
 from smac.epm.rfr_imputator import RFRImputator
 from smac.utils.io.cmd_reader import truthy
