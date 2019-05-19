@@ -289,21 +289,21 @@ class Importance(object):
             raise ValueError('Specified model %s does not exist or not supported!' % model_short_name)
         elif model_short_name == 'rfi':
             self.types, self.bounds = get_types(self.scenario.cs, self.scenario.feature_array)
-            self._model = RandomForestWithInstances(self.types, self.bounds,
+            self._model = RandomForestWithInstances(self.scenario.cs, self.types, self.bounds,
                                                     instance_features=self.scenario.feature_array,
                                                     seed=12345, logged_y=self.logged_y)
         elif model_short_name == 'urfi':
             self.logged_y = True
             if not self._preprocessed:
                 self.types, self.bounds = get_types(self.scenario.cs, self.scenario.feature_array)
-                self._model = UnloggedEPARXrfi(self.types, self.bounds,
+                self._model = UnloggedEPARXrfi(self.scenario.cs, self.types, self.bounds,
                                                instance_features=self.scenario.feature_array,
                                                seed=12345,
                                                cutoff=self.cutoff, threshold=self.threshold,
                                                logged_y=self.logged_y)
             else:
                 self.types, self.bounds = get_types(self.scenario.cs, None)
-                self._model = Unloggedrfwi(self.types, self.bounds,
+                self._model = Unloggedrfwi(self.scenario.cs, self.types, self.bounds,
                                            instance_features=None,
                                            seed=12345,
                                                logged_y=self.logged_y)

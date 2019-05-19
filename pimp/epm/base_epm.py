@@ -28,7 +28,9 @@ class RandomForestWithInstances(AbstractEPM):
     logger : logging.logger
     """
 
-    def __init__(self, types: np.ndarray,
+    def __init__(self,
+                 configspace,
+                 types: np.ndarray,
                  bounds: np.ndarray,
                  num_trees: int = 10,
                  do_bootstrapping: bool = True,
@@ -80,7 +82,7 @@ class RandomForestWithInstances(AbstractEPM):
             Indicates if the y data is transformed (i.e. put on logscale) or not
         """
         try:
-            super().__init__(types, bounds, seed, **kwargs)
+            super().__init__(types=types, configspace=configspace, bounds=bounds, seed=seed, **kwargs)
         except TypeError:
             try:
                 # To ensure backwards-compatibility with smac==0.10.0
@@ -119,6 +121,11 @@ class RandomForestWithInstances(AbstractEPM):
         self.logger = logging.getLogger(self.__module__ + "." +
                                         self.__class__.__name__)
 
+    def _impute_inactive(self, X: np.ndarray) -> np.ndarray:
+        X = X.copy()
+        X[~np.isfinite(X)] = -1
+        return X
+
     def _train(self, X: np.ndarray, y: np.ndarray, **kwargs):
         """Trains the random forest on X and y.
 
@@ -134,9 +141,8 @@ class RandomForestWithInstances(AbstractEPM):
         self
         """
 
-        self.X = X
+        self.X = self._impute_inactive(X)
         self.y = y.flatten()
-
         if self.n_points_per_tree <= 0:
             self.rf_opts.num_data_points_per_tree = self.X.shape[0]
         else:
@@ -145,6 +151,7 @@ class RandomForestWithInstances(AbstractEPM):
         self.rf.options = self.rf_opts
         data = self.__init_data_container(self.X, self.y)
         self.rf.fit(data, rng=self.rng)
+
         return self
 
     def __init_data_container(self, X: np.ndarray, y: np.ndarray):
