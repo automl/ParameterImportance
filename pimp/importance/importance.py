@@ -17,7 +17,7 @@ from smac.epm.rfr_imputator import RFRImputator
 from smac.utils.io.cmd_reader import truthy
 
 from pimp.configspace import CategoricalHyperparameter, Configuration, \
-    FloatHyperparameter, IntegerHyperparameter, impute_inactive_values
+    FloatHyperparameter, IntegerHyperparameter, impute_inactive_values, Constant
 from pimp.epm.base_epm import RandomForestWithInstances
 from pimp.epm.unlogged_epar_x_rfwi import UnloggedEPARXrfi
 from pimp.epm.unlogged_rfwi import Unloggedrfwi
@@ -275,7 +275,10 @@ class Importance(object):
                 inc_dict[key] = float(val)
             elif isinstance(self.scenario.cs.get_hyperparameter(key), (IntegerHyperparameter)):
                 inc_dict[key] = int(val)
-        incumbent = Configuration(self.scenario.cs, inc_dict)
+            elif isinstance(self.scenario.cs.get_hyperparameter(key), (Constant)):
+                inc_dict[key] = val
+        incumbent = Configuration(self.scenario.cs, inc_dict, allow_inactive_with_values=True)
+        incumbent = impute_inactive_values(incumbent)
         incumbent_cost = incumbent_dict['cost']
         return [incumbent, incumbent_cost]
 

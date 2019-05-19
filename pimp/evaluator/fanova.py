@@ -76,13 +76,13 @@ class fANOVA(AbstractEvaluator):
 
         # Turn all Constants into Categoricals (fANOVA cannot handle Constants)
         self.cs_contained_constant = False
-        if any([isinstance(hp, Constant) for hp in self.cs.get_hyperparameters()]):
-            self.logger.debug("Replacing configspace's hyperparameter Constants by one-value Categoricals.")
-            new_hyperparameters = [CategoricalHyperparameter(hp.name, [hp.value]) if isinstance(hp, Constant)
-                                   else hp for hp in self.cs.get_hyperparameters()]
-            self.cs = ConfigurationSpace()
-            self.cs.add_hyperparameters(new_hyperparameters)
-            self.cs_contained_constant = True
+        # if any([isinstance(hp, Constant) for hp in self.cs.get_hyperparameters()]):
+        #     self.logger.debug("Replacing configspace's hyperparameter Constants by one-value Categoricals.")
+        #     new_hyperparameters = [CategoricalHyperparameter(hp.name, [hp.value]) if isinstance(hp, Constant)
+        #                            else hp for hp in self.cs.get_hyperparameters()]
+        #     self.cs = ConfigurationSpace()
+        #     self.cs.add_hyperparameters(new_hyperparameters)
+        #     self.cs_contained_constant = True
 
         # This way the instance features in X are ignored and a new forest is constructed
         if self.model.instance_features is None:
