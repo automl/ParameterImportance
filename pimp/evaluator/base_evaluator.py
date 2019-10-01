@@ -3,6 +3,7 @@ import logging
 from collections import OrderedDict
 
 from smac.epm.rf_with_instances import RandomForestWithInstances
+from ConfigSpace.hyperparameters import UniformFloatHyperparameter
 
 from pimp.configspace import ConfigurationSpace
 from pimp.utils import Scenario
@@ -102,6 +103,9 @@ class AbstractEvaluator(object):
         y:ndarray
             corresponding y vector
         """
-        self.model = RandomForestWithInstances(types, bounds, seed=12345, do_bootstrapping=True)
+        # We need to fake config-space bypass imputation of inactive values in random forest implementation
+        fake_cs = ConfigurationSpace(name="fake-cs-for-configurator-footprint")
+
+        self.model = RandomForestWithInstances(fake_cs, types, bounds, seed=12345, do_bootstrapping=True)
         self.model.rf_opts.compute_oob_error = True
         self.model.train(X, y)
