@@ -1,6 +1,7 @@
 from collections import OrderedDict
 import pickle
 import warnings
+import copy
 
 import os
 import numpy as np
@@ -37,29 +38,69 @@ __email__ = "biedenka@cs.uni-freiburg.de"
 class fANOVA(AbstractEvaluator):
 
     def __init__(self, scenario, cs, model, to_evaluate: int, runhist: RunHistory, rng,
-                 n_pairs=5, minimize=True, pairwise=True, preprocessed_X=None, preprocessed_y=None, **kwargs):
+                 n_pairs=5, minimize=True, pairwise=True, preprocessed_X=None, preprocessed_y=None,
+                 incumbents=None, **kwargs):
+        """
+        Handler to fANOVA module.
+
+        Parameters
+        ----------
+        scenario: Scenario
+            scenario with information about run_objective
+        cs: ConfigSpace
+            configuration space of scenario to be analyzed
+        model: empirical performance model
+            TODO
+        to_evaluate: int
+            number of parameters to be plotted
+        runhist: RunHistory
+            TODO
+        rng: RandomNumberGenerator
+            rng
+        n_pairs: int
+            how many (most important) parameters should be plotted for pairwise
+            marginals
+        minimize: boolean
+            whether optimum is min or max
+        pairwise: boolean
+            plot pairwise marginals
+        preprocessed_X/Y: data
+            preprocessed data to be reused if model is already trained on data
+            without instance_features
+        incumbents: List[Configuration] or Configuration
+            one or multiple incumbents to be marked in plots
+        """
         super().__init__(scenario, cs, model, to_evaluate, rng, **kwargs)
         self.name = 'fANOVA'
         self.logger = 'pimp.' + self.name
 
         # Turn all Constants into Categoricals (fANOVA cannot handle Constants)
         self.cs_contained_constant = False
-        if any([isinstance(hp, Constant) for hp in self.cs.get_hyperparameters()]):
-            self.logger.debug("Replacing configspace's hyperparameter Constants by one-value Categoricals.")
-            new_hyperparameters = [CategoricalHyperparameter(hp.name, [hp.value]) if isinstance(hp, Constant)
-                                   else hp for hp in self.cs.get_hyperparameters()]
-            self.cs = ConfigurationSpace()
-            self.cs.add_hyperparameters(new_hyperparameters)
-            self.cs_contained_constant = True
+        # if any([isinstance(hp, Constant) for hp in self.cs.get_hyperparameters()]):
+        #     self.logger.debug("Replacing configspace's hyperparameter Constants by one-value Categoricals.")
+        #     new_hyperparameters = [CategoricalHyperparameter(hp.name, [hp.value]) if isinstance(hp, Constant)
+        #                            else hp for hp in self.cs.get_hyperparameters()]
+        #     self.cs = ConfigurationSpace()
+        #     self.cs.add_hyperparameters(new_hyperparameters)
+        #     self.cs_contained_constant = True
 
         # This way the instance features in X are ignored and a new forest is constructed
         if self.model.instance_features is None:
-            self.logger.info('No preprocessing necessary')
+            self.logger.info('No marginalization necessary')
             if preprocessed_X is not None and preprocessed_y is not None:
-                self.X = preprocessed_X
-                self.y = preprocessed_y
+                self._X = preprocessed_X
+                self._y = preprocessed_y
             else:
-                self._preprocess(runhist)
+                self.logger.info('Preprocessing X')
+                self._X = copy.deepcopy(self.X)
+                self._y = copy.deepcopy(self.y)
+                for c_idx, config in enumerate(self.X):
+                    # print("{}/{}".format(c_idx, len(self.X)))
+                    for p_idx, param in enumerate(self.cs.get_hyperparameters()):
+                        if not (isinstance(param, CategoricalHyperparameter) or
+                                isinstance(param, Constant)):
+                            # getting the parameters out of the hypercube setting as used in smac runhistory
+                            self._X[c_idx][p_idx] = param._transform(self.X[c_idx][p_idx])
         else:
             self._preprocess(runhist)
         cutoffs = (-np.inf, np.inf)
@@ -71,12 +112,13 @@ class fANOVA(AbstractEvaluator):
             cutoffs = (self.model.predict_marginalized_over_instances(
                 np.array([impute_inactive_values( self.cs.get_default_configuration()).get_array()]))[0].flatten()[0],
                        np.inf)
-        self.evaluator = fanova_pyrfr(X=self.X, Y=self.y.flatten(), config_space=self.cs,
+        self.evaluator = fanova_pyrfr(X=self._X, Y=self._y.flatten(), config_space=self.cs,
                                       seed=self.rng.randint(2**31-1), cutoffs=cutoffs)
         self.n_most_imp_pairs = n_pairs
         self.num_single = None
         self.pairwise = pairwise
         self.evaluated_parameter_importance_uncertainty = OrderedDict()
+        self.incumbents = incumbents
 
     def _preprocess(self, runhistory):
         """
@@ -103,8 +145,8 @@ class fANOVA(AbstractEvaluator):
         X_non_hyper = np.array(X_non_hyper)
         X_prime = np.array(X_prime)
         y_prime = np.array(self.model.predict_marginalized_over_instances(X_prime)[0])
-        self.X = X_non_hyper
-        self.y = y_prime
+        self._X = X_non_hyper
+        self._y = y_prime
         self.logger.info('Size of training X after preprocessing: %s' % str(self.X.shape))
         self.logger.info('Size of training y after preprocessing: %s' % str(self.y.shape))
         self.logger.info('Finished Preprocessing')
@@ -126,18 +168,19 @@ class fANOVA(AbstractEvaluator):
             plt.close('all')
             plt.clf()
             param = list(self.evaluated_parameter_importance.keys())[i]
-            outfile_name = os.path.join(name, param.replace(os.sep, "_") + ".png")
-            vis.plot_marginal(self.cs.get_idx_by_hyperparameter_name(param), log_scale=False, show=False)
-            fig = plt.gcf()
-            fig.savefig(outfile_name)
-            plt.close('all')
-            plt.clf()
-            outfile_name = os.path.join(name, param.replace(os.sep, "_") + "_log.png")
-            vis.plot_marginal(self.cs.get_idx_by_hyperparameter_name(param), log_scale=True, show=False)
-            fig = plt.gcf()
-            fig.savefig(outfile_name)
-            plt.close('all')
-            plt.clf()
+            # Plot once in log, once linear
+            for mode in [(True, '_log'), (False, '')]:
+                outfile_name = os.path.join(name, param.replace(os.sep, "_") + mode[1] + ".png")
+                # The try/except clause is only for back-compatibility with fanova <= 2.0.11
+                try:
+                    vis.plot_marginal(self.cs.get_idx_by_hyperparameter_name(param), log_scale=mode[0], show=False, incumbents=self.incumbents)
+                except TypeError:
+                    self.logger.debug("Plotting incumbents not supported by fanova < 2.0.12")
+                    vis.plot_marginal(self.cs.get_idx_by_hyperparameter_name(param), log_scale=mode[0], show=False)
+                fig = plt.gcf()
+                fig.savefig(outfile_name)
+                plt.close('all')
+                plt.clf()
             if show:
                 plt.show()
             pbar.set_description('Creating fANOVA plot: {: <.30s}'.format(outfile_name.split(os.path.sep)[-1]))

@@ -10,12 +10,14 @@ from collections import OrderedDict
 import numpy as np
 from tqdm import tqdm
 
-from smac.utils.util_funcs import get_types
+# from smac.utils.util_funcs import
+from smac.optimizer.smbo import get_types
 from smac.tae.execute_ta_run import StatusType
 from smac.epm.rfr_imputator import RFRImputator
+from smac.utils.io.cmd_reader import truthy
 
 from pimp.configspace import CategoricalHyperparameter, Configuration, \
-    FloatHyperparameter, IntegerHyperparameter, impute_inactive_values
+    FloatHyperparameter, IntegerHyperparameter, impute_inactive_values, Constant
 from pimp.epm.base_epm import RandomForestWithInstances
 from pimp.epm.unlogged_epar_x_rfwi import UnloggedEPARXrfi
 from pimp.epm.unlogged_rfwi import Unloggedrfwi
@@ -62,7 +64,7 @@ class Importance(object):
                ignored.
         :param verbose: Toggle output to stdout (not logging, but tqdm-progress bars)
         """
-        self.logger = logging.getLogger("Importance")
+        self.logger = logging.getLogger("pimp.Importance")
         self.rng = np.random.RandomState(seed)
         self._parameters_to_evaluate = parameters_to_evaluate
         self._evaluator = None
@@ -265,13 +267,18 @@ class Importance(object):
         inc_dict = {}
         for key_val in incumbent_dict['incumbent']:  # convert string to Configuration
             key, val = key_val.replace("'", '').split('=')
+            if val.lower() in ('yes', 'true', 'on', '1', 'no', 'false', 'off', '0'):
+                val = truthy(val)
             if isinstance(self.scenario.cs.get_hyperparameter(key), (CategoricalHyperparameter)):
                 inc_dict[key] = val
             elif isinstance(self.scenario.cs.get_hyperparameter(key), (FloatHyperparameter)):
                 inc_dict[key] = float(val)
             elif isinstance(self.scenario.cs.get_hyperparameter(key), (IntegerHyperparameter)):
                 inc_dict[key] = int(val)
-        incumbent = Configuration(self.scenario.cs, inc_dict)
+            elif isinstance(self.scenario.cs.get_hyperparameter(key), (Constant)):
+                inc_dict[key] = val
+        incumbent = Configuration(self.scenario.cs, inc_dict, allow_inactive_with_values=True)
+        incumbent = impute_inactive_values(incumbent)
         incumbent_cost = incumbent_dict['cost']
         return [incumbent, incumbent_cost]
 
@@ -285,24 +292,22 @@ class Importance(object):
             raise ValueError('Specified model %s does not exist or not supported!' % model_short_name)
         elif model_short_name == 'rfi':
             self.types, self.bounds = get_types(self.scenario.cs, self.scenario.feature_array)
-            self._model = RandomForestWithInstances(self.types, self.bounds,
+            self._model = RandomForestWithInstances(self.scenario.cs, self.types, self.bounds, 12345,
                                                     instance_features=self.scenario.feature_array,
-                                                    seed=12345, logged_y=self.logged_y)
+                                                    logged_y=self.logged_y)
         elif model_short_name == 'urfi':
             self.logged_y = True
             if not self._preprocessed:
                 self.types, self.bounds = get_types(self.scenario.cs, self.scenario.feature_array)
-                self._model = UnloggedEPARXrfi(self.types, self.bounds,
+                self._model = UnloggedEPARXrfi(self.scenario.cs, self.types, self.bounds, 12345,
                                                instance_features=self.scenario.feature_array,
-                                               seed=12345,
                                                cutoff=self.cutoff, threshold=self.threshold,
                                                logged_y=self.logged_y)
             else:
                 self.types, self.bounds = get_types(self.scenario.cs, None)
-                self._model = Unloggedrfwi(self.types, self.bounds,
+                self._model = Unloggedrfwi(self.scenario.cs, self.types, self.bounds, 12345,
                                            instance_features=None,
-                                           seed=12345,
-                                               logged_y=self.logged_y)
+                                           logged_y=self.logged_y)
         self._model.rf_opts.compute_oob_error = True
 
     @property
@@ -369,6 +374,7 @@ class Importance(object):
                                pairwise=self.pairiwse_fANOVA,
                                preprocessed_X=self.X_fanova,
                                preprocessed_y=self.y_fanova,
+                               incumbents=self.incumbent,
                                verbose=self.verbose)
         elif evaluation_method in ['incneighbor', 'lpi']:
             if self.incumbent is None:
@@ -421,6 +427,7 @@ class Importance(object):
 
         params = self.scenario.cs.get_hyperparameters()
         num_params = len(params)
+        self.logger.debug("Counted %d hyperparameters", num_params)
 
         if self.scenario.run_obj == "runtime":
             self.cutoff = self.scenario.cutoff
@@ -433,9 +440,10 @@ class Importance(object):
             cutoff = np.log10(self.scenario.cutoff)
             threshold = np.log10(self.scenario.cutoff *
                                  self.scenario.par_factor)
-            model = RandomForestWithInstances(self.types, self.bounds,
+            model = RandomForestWithInstances(self.scenario.cs,
+                                              self.types, self.bounds, 12345,
                                               instance_features=self.scenario.feature_array,
-                                              seed=12345)
+                                              )
 
             imputor = RFRImputator(rng=self.rng,
                                    cutoff=cutoff,
@@ -501,8 +509,14 @@ class Importance(object):
             self.evaluators.append(self.evaluator)
             if save_folder:
                 self.evaluator.plot_result(os.path.join(save_folder, self.evaluator.name.lower()), show=False)
-            with open(fn, 'r+' if load else 'w') as out_file:
-                json.dump(dict_, out_file, sort_keys=True, indent=4, separators=(',', ': '))
+            if load:
+                with open(fn, 'r') as in_file:
+                    doct = json.load(in_file)
+                    for key in doct:
+                        dict_[key] = doct[key]
+            with open(fn, 'w') as out_file:
+                json.dump(dict_,
+                          out_file, sort_keys=True, indent=4, separators=(',', ': '))
                 load = True
         return dict_, self.evaluators
 

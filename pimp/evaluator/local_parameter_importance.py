@@ -172,107 +172,117 @@ class LPI(AbstractEvaluator):
         """
         neighborhood_dict = self._get_one_exchange_neighborhood_by_parameter()  # sampled on a unit-hypercube!
         self.neighborhood_dict = neighborhood_dict
-        performance_dict = {}
-        variance_dict = {}
         incumbent_array = self.incumbent.get_array()
-        overall_var = {}
-        overall_imp = {}
-        all_preds = []
         def_perf, def_var = self._predict_over_instance_set(impute_inactive_values(self.cs.get_default_configuration()))
         inc_perf, inc_var = self._predict_over_instance_set(impute_inactive_values(self.incumbent))
         delta = def_perf - inc_perf
+        evaluated_parameter_importance = {}
+
+        # These are used for plotting and hold the predictions for each neighbor of each parameter
+        # That means performance_dict holds the mean, variance_dict the variance of the forest
+        performance_dict = {}
+        variance_dict = {}
+        # This are used for importance and hold the corresponding importance/variance over neighbors
+        # Only import if NOT quantifying importance via performance-variance across neighbours
+        overall_imp = {}
+        # Nested list of values per tree in random forest
+        pred_per_tree = {}
+
+        # Iterate over parameters
         pbar = tqdm(range(self._sampled_neighbors), ascii=True, disable=not self.verbose)
-        sum_var = 0
         for index, param in enumerate(self.incumbent.keys()):
-            # Iterate over parameters
-            if param in neighborhood_dict:
-                pbar.set_description('Predicting performances for neighbors of {: >.30s}'.format(param))
-                performance_dict[param] = []
-                variance_dict[param] = []
-                overall_var[param] = []
-                added_inc = False
-                inc_at = 0
-                # Iterate over neighbors
-                for unit_neighbor, neighbor in zip(neighborhood_dict[param][0], neighborhood_dict[param][1]):
-                    if not added_inc:
-                        if unit_neighbor > incumbent_array[index]:
-                            performance_dict[param].append(inc_perf)
-                            overall_var[param].append(inc_perf)
-                            variance_dict[param].append(inc_var)
-                            pbar.update(1)
-                            added_inc = True
-                        else:
-                            inc_at += 1
-                    # self.logger.debug('%s -> %s' % (self.incumbent[param], neighbor))
-                    new_array = incumbent_array.copy()
-                    new_array = change_hp_value(self.incumbent.configuration_space, new_array, param, unit_neighbor,
-                                                index)
-                    new_configuration = impute_inactive_values(Configuration(self.incumbent.configuration_space,
-                                                                             vector=new_array))
-                    mean, var = self._predict_over_instance_set(new_configuration)
-                    performance_dict[param].append(mean)
-                    overall_var[param].append(mean)
-                    variance_dict[param].append(var)
-                    pbar.update(1)
-                if len(neighborhood_dict[param][0]) > 0:
-                    neighborhood_dict[param][0] = np.insert(neighborhood_dict[param][0], inc_at, incumbent_array[index])
-                    neighborhood_dict[param][1] = np.insert(neighborhood_dict[param][1], inc_at, self.incumbent[param])
-                else:
-                    neighborhood_dict[param][0] = np.array(incumbent_array[index])
-                    neighborhood_dict[param][1] = [self.incumbent[param]]
-                if not added_inc:
-                    mean, var = self._predict_over_instance_set(impute_inactive_values(self.incumbent))
-                    performance_dict[param].append(mean)
-                    overall_var[param].append(mean)
-                    variance_dict[param].append(var)
-                    pbar.update(1)
-                all_preds.extend(performance_dict[param])
-                tmp_perf = performance_dict[param][:inc_at]
-                tmp_perf.extend(performance_dict[param][inc_at + 1:])
-                imp_over_mea = (np.mean(tmp_perf) - performance_dict[param][inc_at]) / delta
-                imp_over_med = (np.median(tmp_perf) - performance_dict[param][inc_at]) / delta
-                try:
-                    imp_over_max = (np.max(tmp_perf) - performance_dict[param][inc_at]) / delta
-                except ValueError:
-                    imp_over_max = np.nan  # Hacky fix as this is never used anyway
-                overall_imp[param] = np.array([imp_over_mea, imp_over_med, imp_over_max])
-                overall_var[param] = np.var(overall_var[param])
-                sum_var += overall_var[param]
-            else:
+            if param not in neighborhood_dict:
                 pbar.set_description('{: >.70s}'.format('Parameter %s is inactive' % param))
-        # self.logger.info('{:<30s}  {:^24s}, {:^25s}'.format(
-        #     ' ', 'perf impro', 'variance'
-        # ))
-        # self.logger.info('{:<30s}: [{:>6s}, {:>6s}, {:>6s}], {:>6s}, {:>6s}, {:>6s}'.format(
-        #     'Parameter', 'Mean', 'Median', 'Max', 'p_var', 't_var', 'frac'
-        # ))
-        # self.logger.info('-'*80)
-        tmp = []
-        for param in sorted(list(overall_var.keys())):
-            # overall_var[param].extend([inc_perf for _ in range(len(all_preds) - len(overall_var[param]))])
-            # overall_var[param] = np.var(overall_var[param])
-            # self.logger.info('{:<30s}: [{: >6.2f}, {: >6.2f}, {: >6.2f}], {: >6.2f}, {: >6.2f}, {: >6.2f}'.format(
-            #     param, *overall_imp[param]*100, overall_var[param], np.var(all_preds),
-            #     overall_var[param] / sum_var * 100
-            # ))
-            if self.quantify_importance_via_variance:
-                tmp.append([param, overall_var[param] / sum_var])
+                continue
+
+            pbar.set_description('Predicting performances for neighbors of {: >.30s}'.format(param))
+            performance_dict[param] = []
+            variance_dict[param] = []
+            pred_per_tree[param] = []
+            added_inc = False
+            inc_at = 0
+            # Iterate over neighbors
+            for unit_neighbor, neighbor in zip(neighborhood_dict[param][0], neighborhood_dict[param][1]):
+                if not added_inc:
+                    # Detect incumbent
+                    if unit_neighbor > incumbent_array[index]:
+                        performance_dict[param].append(inc_perf)
+                        variance_dict[param].append(inc_var)
+                        pbar.update(1)
+                        added_inc = True
+                    else:
+                        inc_at += 1
+                # self.logger.debug('%s -> %s' % (self.incumbent[param], neighbor))
+                # Create the neighbor-Configuration object
+                new_array = incumbent_array.copy()
+                new_array = change_hp_value(self.incumbent.configuration_space, new_array,
+                                            param, unit_neighbor, index)
+                new_configuration = impute_inactive_values(Configuration(self.incumbent.configuration_space,
+                                                                         vector=new_array))
+                # Predict performance
+                x = np.array(new_configuration.get_array())
+                pred_per_tree[param].append([np.mean(tree_pred) for tree_pred in self.model.rf.all_leaf_values(x)])
+                # self.logger.debug("Pred per tree: %s", str(pred_per_tree[param][-1]))
+                performance_dict[param].append(np.mean(pred_per_tree[param][-1]))
+                variance_dict[param].append(np.var(pred_per_tree[param][-1]))
+
+                pbar.update(1)
+            if len(neighborhood_dict[param][0]) > 0:
+                neighborhood_dict[param][0] = np.insert(neighborhood_dict[param][0], inc_at, incumbent_array[index])
+                neighborhood_dict[param][1] = np.insert(neighborhood_dict[param][1], inc_at, self.incumbent[param])
             else:
-                tmp.append([param, overall_imp[param][0]])
-        tmp = sorted(tmp, key=lambda x: x[1], reverse=True)
-        tmp = tmp[:min(self.to_evaluate, len(tmp))]
+                neighborhood_dict[param][0] = np.array(incumbent_array[index])
+                neighborhood_dict[param][1] = [self.incumbent[param]]
+            if not added_inc:
+                mean, var = self._predict_over_instance_set(impute_inactive_values(self.incumbent))
+                performance_dict[param].append(mean)
+                variance_dict[param].append(var)
+                pbar.update(1)
+            # After all neighbors are estimated, look at all performances except the incumbent
+            tmp_perf = performance_dict[param][:inc_at] + performance_dict[param][inc_at + 1:]
+            if delta == 0:
+                delta = 1  # To avoid division by zero
+            imp_over_mea = (np.mean(tmp_perf) - performance_dict[param][inc_at]) / delta
+            imp_over_med = (np.median(tmp_perf) - performance_dict[param][inc_at]) / delta
+            try:
+                imp_over_max = (np.max(tmp_perf) - performance_dict[param][inc_at]) / delta
+            except ValueError:
+                imp_over_max = np.nan  # Hacky fix as this is never used anyway
+            overall_imp[param] = np.array([imp_over_mea, imp_over_med, imp_over_max])
+
+        # Creating actual importance value (by normalizing over sum of vars)
+        num_trees = len(list(pred_per_tree.values())[0][0])
+        params = list(performance_dict.keys())
+        overall_var_per_tree = {
+                param : [np.var([neighbor[tree_idx] for neighbor in pred_per_tree[param]])
+                            for tree_idx in range(num_trees)]
+                                for param in params}
+        # Sum up variances per tree across parameters
+        sum_var_per_tree = [sum([overall_var_per_tree[param][tree_idx] for param in params])
+                                     for tree_idx in range(num_trees)]
+        # Normalize
+        overall_var_per_tree = {p : [t / sum_var_per_tree[idx] for idx, t in enumerate(trees)] for p, trees in
+                                                    overall_var_per_tree.items()}
+        self.logger.debug("overall_var_per_tree %s (%d trees)",
+                str(overall_var_per_tree), len(list(pred_per_tree.values())[0][0]))
+        self.logger.debug("sum_var_per_tree %s (%d trees)",
+                str(sum_var_per_tree), len(list(pred_per_tree.values())[0][0]))
+        for param in performance_dict.keys():
+            if self.quantify_importance_via_variance:
+                evaluated_parameter_importance[param] = np.mean(overall_var_per_tree[param])
+            else:
+                evaluated_parameter_importance[param] = overall_imp[param][0]
+
+        only_show = sorted(list(evaluated_parameter_importance.keys()),
+                           key=lambda p: evaluated_parameter_importance[p])[:min(self.to_evaluate,
+                                                                                 len(evaluated_parameter_importance.keys()))]
+
         self.neighborhood_dict = neighborhood_dict
         self.performance_dict = performance_dict
         self.variance_dict = variance_dict
-        self.evaluated_parameter_importance = OrderedDict(tmp)
-        # Estimate uncertainty using the law of total variance
-        for param in self.evaluated_parameter_importance.keys():
-            mean_over_vars = np.mean(variance_dict[param])
-            var_over_means = np.var(performance_dict[param])
-            # self.logger.debug("vars=%s, means=%s", str(variance_dict[param]), str(performance_dict[param]))
-            self.logger.debug("Using law of total variance yields for %s: mean_over_vars=%f, var_over_means=%f (sum=%f)", param,
-                              mean_over_vars, var_over_means, mean_over_vars + var_over_means)
-            self.evaluated_parameter_importance_uncertainty[param] = mean_over_vars + var_over_means
+        self.evaluated_parameter_importance = OrderedDict([(p, evaluated_parameter_importance[p]) for p in only_show])
+        if self.quantify_importance_via_variance:
+            self.evaluated_parameter_importance_uncertainty = OrderedDict([(p, np.std(overall_var_per_tree[p])) for p in only_show])
         all_res = {'imp': self.evaluated_parameter_importance,
                    'order': list(self.evaluated_parameter_importance.keys())}
         return all_res
@@ -365,6 +375,8 @@ class LPI(AbstractEvaluator):
                             color_ = (1, 0, 0)
                         t.set_color(color_)
 
+                if not isinstance(self.cs.get_hyperparameter(param), CategoricalHyperparameter):
+                    ax1.set_xscale('log' if self.cs.get_hyperparameter(param).log else 'linear')
                 plt.xlabel(param)
                 if self.scenario.run_obj == 'runtime':
                     ax1.set_ylabel('runtime [sec]', zorder=81, **self.LABEL_FONT)

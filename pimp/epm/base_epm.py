@@ -4,6 +4,12 @@ import logging
 from pyrfr import regression
 
 from smac.epm.base_epm import AbstractEPM
+from smac.configspace import (
+    CategoricalHyperparameter,
+    UniformFloatHyperparameter,
+    UniformIntegerHyperparameter,
+    Constant,
+)
 
 
 class RandomForestWithInstances(AbstractEPM):
@@ -28,8 +34,11 @@ class RandomForestWithInstances(AbstractEPM):
     logger : logging.logger
     """
 
-    def __init__(self, types: np.ndarray,
+    def __init__(self,
+                 configspace,
+                 types: np.ndarray,
                  bounds: np.ndarray,
+                 seed: int,
                  num_trees: int = 10,
                  do_bootstrapping: bool = True,
                  n_points_per_tree: int = -1,
@@ -39,13 +48,14 @@ class RandomForestWithInstances(AbstractEPM):
                  max_depth: int = 20,
                  eps_purity: int = 1e-8,
                  max_num_nodes: int = 2 ** 20,
-                 seed: int = 42,
                  logged_y: bool = True,
                  **kwargs):
         """Constructor
 
         Parameters
         ----------
+        configspace: ConfigurationSpace
+            configspace to be passed to random forest (used to impute inactive parameter-values)
         types : np.ndarray (D)
             Specifies the number of categorical values of an input dimension where
             the i-th entry corresponds to the i-th input dimension. Let's say we
@@ -54,6 +64,8 @@ class RandomForestWithInstances(AbstractEPM):
             have to pass np.array([2, 0]). Note that we count starting from 0.
         bounds : np.ndarray (D, 2)
             Specifies the bounds for continuous features.
+        seed : int
+            The seed that is passed to the random_forest_run library.
         num_trees : int
             The number of trees in the random forest.
         do_bootstrapping : bool
@@ -74,17 +86,20 @@ class RandomForestWithInstances(AbstractEPM):
             different
         max_num_nodes : int
             The maxmimum total number of nodes in a tree
-        seed : int
-            The seed that is passed to the random_forest_run library.
         logged_y: bool
             Indicates if the y data is transformed (i.e. put on logscale) or not
         """
         try:
-            super().__init__(types, bounds, **kwargs)
+            super().__init__(configspace=configspace, types=types, bounds=bounds, seed=seed, **kwargs)
         except TypeError:
-            # To ensure backwards-compatibility with smac<0.9.0
-            super().__init__(**kwargs)
+            try:
+                # To ensure backwards-compatibility with smac==0.10.0
+                super().__init__(types, bounds, **kwargs)
+            except TypeError:
+                # To ensure backwards-compatibility with smac<0.9.0
+                super().__init__(**kwargs)
 
+        self.configspace = configspace
         self.types = types
         self.bounds = bounds
         self.rng = regression.default_random_engine(seed)
@@ -112,8 +127,32 @@ class RandomForestWithInstances(AbstractEPM):
                        min_samples_leaf, max_depth, eps_purity, seed]
         self.seed = seed
 
+        self.impute_values = {}
+
         self.logger = logging.getLogger(self.__module__ + "." +
                                         self.__class__.__name__)
+
+    def _impute_inactive(self, X: np.ndarray) -> np.ndarray:
+        X = X.copy()
+        for idx, hp in enumerate(self.configspace.get_hyperparameters()):
+            if idx not in self.impute_values:
+                parents = self.configspace.get_parents_of(hp.name)
+                if len(parents) == 0:
+                    self.impute_values[idx] = None
+                else:
+                    if isinstance(hp, CategoricalHyperparameter):
+                        self.impute_values[idx] = len(hp.choices)
+                    elif isinstance(hp, (UniformFloatHyperparameter, UniformIntegerHyperparameter)):
+                        self.impute_values[idx] = -1
+                    elif isinstance(hp, Constant):
+                        self.impute_values[idx] = 1
+                    else:
+                        raise ValueError
+
+            nonfinite_mask = ~np.isfinite(X[:, idx])
+            X[nonfinite_mask, idx] = self.impute_values[idx]
+
+        return X
 
     def _train(self, X: np.ndarray, y: np.ndarray, **kwargs):
         """Trains the random forest on X and y.
@@ -130,9 +169,8 @@ class RandomForestWithInstances(AbstractEPM):
         self
         """
 
-        self.X = X
+        self.X = self._impute_inactive(X)
         self.y = y.flatten()
-
         if self.n_points_per_tree <= 0:
             self.rf_opts.num_data_points_per_tree = self.X.shape[0]
         else:
@@ -141,6 +179,7 @@ class RandomForestWithInstances(AbstractEPM):
         self.rf.options = self.rf_opts
         data = self.__init_data_container(self.X, self.y)
         self.rf.fit(data, rng=self.rng)
+
         return self
 
     def __init_data_container(self, X: np.ndarray, y: np.ndarray):
@@ -200,6 +239,9 @@ class RandomForestWithInstances(AbstractEPM):
                              (self.types.shape[0], X.shape[1]))
 
         means, vars_ = [], []
+
+        X = self._impute_inactive(X)
+
         for row_X in X:
             mean, var = self.rf.predict_mean_var(row_X)
             means.append(mean)
