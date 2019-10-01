@@ -12,7 +12,7 @@ __email__ = "biedenka@cs.uni-freiburg.de"
 
 class EPARrfi(rfi):
 
-    def __init__(self, types, bounds,
+    def __init__(self, configspace, types, bounds, seed,
                  cutoff=0,
                  threshold=0, **kwargs):
         """
@@ -21,6 +21,8 @@ class EPARrfi(rfi):
 
         Parameters
         ----------
+        configspace: ConfigurationSpace
+            configspace to be passed to random forest (used to impute inactive parameter-values)
         types: np.ndarray (D)
             Specifies the number of categorical values of an input dimension. Where
             the i-th entry corresponds to the i-th input dimension. Let say we have
@@ -29,6 +31,8 @@ class EPARrfi(rfi):
             have to pass np.array([2, 0]). Note that we count starting from 0.
         bounds: np.ndarray (D)
             Specifies the bounds
+        seed: int
+            The seed that is passed to the random_forest_run library.
         instance_features: np.ndarray (I, K)
             Contains the K dimensional instance features
             of the I different instances
@@ -48,16 +52,13 @@ class EPARrfi(rfi):
 
         max_num_nodes: int
 
-        seed: int
-            The seed that is passed to the random_forest_run library.
-
         cutoff: int
             The cutoff used in the specified scenario
 
         threshold:
             Maximal possible value
         """
-        super().__init__(types=types, bounds=bounds, **kwargs)
+        super().__init__(configspace=configspace, types=types, bounds=bounds, seed=seed, **kwargs)
         np.seterr(divide='ignore', invalid='ignore')
         self.cutoff = cutoff
         self.threshold = threshold

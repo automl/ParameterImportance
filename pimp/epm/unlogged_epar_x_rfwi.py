@@ -10,14 +10,14 @@ __email__ = "biedenka@cs.uni-freiburg.de"
 
 class UnloggedEPARXrfi(EPARrfi, Urfi):
 
-    def __init__(self, types, bounds,
+    def __init__(self, configspace, types, bounds, seed,
                  cutoff=0,
                  threshold=0, **kwargs):
         """
         TODO
         """
-        Urfi.__init__(self, types=types, bounds=bounds, **kwargs)
-        EPARrfi.__init__(self, types=types, bounds=bounds, cutoff=cutoff, threshold=threshold, **kwargs)
+        Urfi.__init__(self, configspace=configspace, types=types, bounds=bounds, seed=seed, **kwargs)
+        EPARrfi.__init__(self, configspace=configspace, types=types, bounds=bounds, seed=seed, cutoff=cutoff, threshold=threshold, **kwargs)
 
     def predict(self, X):
         """

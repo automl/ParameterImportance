@@ -292,24 +292,22 @@ class Importance(object):
             raise ValueError('Specified model %s does not exist or not supported!' % model_short_name)
         elif model_short_name == 'rfi':
             self.types, self.bounds = get_types(self.scenario.cs, self.scenario.feature_array)
-            self._model = RandomForestWithInstances(self.scenario.cs, self.types, self.bounds,
+            self._model = RandomForestWithInstances(self.scenario.cs, self.types, self.bounds, 12345,
                                                     instance_features=self.scenario.feature_array,
-                                                    seed=12345, logged_y=self.logged_y)
+                                                    logged_y=self.logged_y)
         elif model_short_name == 'urfi':
             self.logged_y = True
             if not self._preprocessed:
                 self.types, self.bounds = get_types(self.scenario.cs, self.scenario.feature_array)
-                self._model = UnloggedEPARXrfi(self.scenario.cs, self.types, self.bounds,
+                self._model = UnloggedEPARXrfi(self.scenario.cs, self.types, self.bounds, 12345,
                                                instance_features=self.scenario.feature_array,
-                                               seed=12345,
                                                cutoff=self.cutoff, threshold=self.threshold,
                                                logged_y=self.logged_y)
             else:
                 self.types, self.bounds = get_types(self.scenario.cs, None)
-                self._model = Unloggedrfwi(self.scenario.cs, self.types, self.bounds,
+                self._model = Unloggedrfwi(self.scenario.cs, self.types, self.bounds, 12345,
                                            instance_features=None,
-                                           seed=12345,
-                                               logged_y=self.logged_y)
+                                           logged_y=self.logged_y)
         self._model.rf_opts.compute_oob_error = True
 
     @property
@@ -429,6 +427,7 @@ class Importance(object):
 
         params = self.scenario.cs.get_hyperparameters()
         num_params = len(params)
+        self.logger.debug("Counted %d hyperparameters", num_params)
 
         if self.scenario.run_obj == "runtime":
             self.cutoff = self.scenario.cutoff
@@ -441,9 +440,10 @@ class Importance(object):
             cutoff = np.log10(self.scenario.cutoff)
             threshold = np.log10(self.scenario.cutoff *
                                  self.scenario.par_factor)
-            model = RandomForestWithInstances(self.types, self.bounds,
+            model = RandomForestWithInstances(self.scenario.cs,
+                                              self.types, self.bounds, 12345,
                                               instance_features=self.scenario.feature_array,
-                                              seed=12345)
+                                              )
 
             imputor = RFRImputator(rng=self.rng,
                                    cutoff=cutoff,
