@@ -26,6 +26,7 @@ from pimp.evaluator.local_parameter_importance import LPI
 from pimp.evaluator.forward_selection import ForwardSelector, AbstractEvaluator
 from pimp.evaluator.influence_models import InfluenceModel
 from pimp.utils import RunHistory, RunHistory2EPM4Cost, RunHistory2EPM4LogCost, Scenario, average_cost
+from pimp.utils.io.traj_logger import TrajLogger as PimpTrajLogger
 from pimp.evaluator.fanova import fANOVA
 
 __author__ = "Andre Biedenkapp"
@@ -259,27 +260,20 @@ class Importance(object):
         """
         if not (os.path.exists(fn) and os.path.isfile(fn)):  # File existence check
             raise FileNotFoundError('File %s not found!' % fn)
-        with open(fn, 'r') as fh:
-            for line in fh.readlines():
-                pass
-        line = line.strip()
-        incumbent_dict = json.loads(line)
-        inc_dict = {}
-        for key_val in incumbent_dict['incumbent']:  # convert string to Configuration
-            key, val = key_val.replace("'", '').split('=')
-            if val.lower() in ('yes', 'true', 'on', '1', 'no', 'false', 'off', '0'):
-                val = truthy(val)
-            if isinstance(self.scenario.cs.get_hyperparameter(key), (CategoricalHyperparameter)):
-                inc_dict[key] = val
-            elif isinstance(self.scenario.cs.get_hyperparameter(key), (FloatHyperparameter)):
-                inc_dict[key] = float(val)
-            elif isinstance(self.scenario.cs.get_hyperparameter(key), (IntegerHyperparameter)):
-                inc_dict[key] = int(val)
-            elif isinstance(self.scenario.cs.get_hyperparameter(key), (Constant)):
-                inc_dict[key] = val
-        incumbent = Configuration(self.scenario.cs, inc_dict, allow_inactive_with_values=True)
-        incumbent = impute_inactive_values(incumbent)
-        incumbent_cost = incumbent_dict['cost']
+        with open(fn) as fp:
+            # In aclib2, the incumbent is a list of strings, in alljson it's a dictionary.
+            fileformat = 'aclib2' if isinstance(json.loads(fp.readline())["incumbent"], list) else 'alljson'
+
+        # If minimum SMAC is > 0.11.1, use TrajLogger from SMAC directly!
+        if fileformat == "aclib2":
+            self.logger.info("Format is 'aclib2'. This format has issues with recovering configurations properly. We "
+                             "recommend to use the alljson-format.")
+            traj = PimpTrajLogger.read_traj_aclib_format(fn, self.scenario.cs)
+        else:
+            traj = PimpTrajLogger.read_traj_alljson_format(fn, self.scenario.cs)
+
+        incumbent_cost = traj[-1]['cost']
+        incumbent = traj[-1]['incumbent']
         return [incumbent, incumbent_cost]
 
     @property
