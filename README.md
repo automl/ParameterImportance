@@ -35,7 +35,7 @@ Results in an image such as:
 ## Surrogate-ablation
 An example call of surrogate-ablation:
 `
-pimp --scenario_file scenario.txt --history smac-output/runhistory.json --trajectory smac-output/traj_aclib2.json --modus ablation
+pimp --scenario_file scenario.txt --history smac3-out/runhistory.json --trajectory smac3-out/traj.json --modus ablation
 `
 Results in two plots:
 ![](examples/Ablationpercentage.png)
