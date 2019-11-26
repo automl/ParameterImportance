@@ -5,9 +5,13 @@ import copy
 
 import os
 import numpy as np
+import pandas as pd
 import matplotlib as mpl
 import itertools as it
 from tqdm import tqdm
+
+from pimp.utils.bokeh_helpers import bokeh_boxplot, bokeh_line_uncertainty, save_and_show
+
 mpl.use('Agg')
 from matplotlib import pyplot as plt
 
@@ -24,6 +28,21 @@ except ImportError:
     warnings.warn('\n{0}\n{0}{1}{0}\n{0}'.format('!'*120,
                                      '\nfANOVA is not installed in your environment. To install it please run '
                                      '"git+http://github.com/automl/fanova.git@master"\n'))
+
+try:
+    from bokeh.io import show, output_file, save
+    from bokeh.plotting import figure
+    from bokeh.palettes import Inferno256
+    from bokeh.layouts import Row
+    from bokeh.models import ColumnDataSource, Span, CDSView, IndexFilter, BasicTickFormatter, \
+        ContinuousColorMapper, LinearColorMapper, ColorBar, BasicTicker
+    from bokeh.models import PrintfTickFormatter
+    from bokeh.models.widgets import Tabs, Panel
+    from bokeh.transform import transform
+except ImportError as err:
+    pass
+    #self.logger.debug(err, exc_info=1)
+    #self.logger.error("To use bokeh-plotting, you need to install bokeh (e.g. pip install bokeh)")
 
 from pimp.evaluator.base_evaluator import AbstractEvaluator
 
@@ -151,17 +170,22 @@ class fANOVA(AbstractEvaluator):
         self.logger.info('Size of training y after preprocessing: %s' % str(self.y.shape))
         self.logger.info('Finished Preprocessing')
 
+    def _get_label(self, run_obj):
+        if run_obj == 'runtime':
+            label = 'runtime [sec]'
+        elif run_obj == 'quality':
+            label = 'cost'
+        else:
+            label = '%s' % self.scenario.run_obj
+        return label
+
     def plot_result(self, name='fANOVA', show=True):
         if not os.path.exists(name):
             os.mkdir(name)
 
-        if self.scenario.run_obj == 'runtime':
-            label = 'runtime [sec]'
-        elif self.scenario.run_obj == 'quality':
-            label = 'cost'
-        else:
-            label = '%s' % self.scenario.run_obj
-        vis = Visualizer(self.evaluator, self.cs, directory=name, y_label=label)
+        self.plot_bokeh()
+
+        vis = Visualizer(self.evaluator, self.cs, directory=name, y_label=self._get_label(self.scenario.run_obj))
         self.logger.info('Getting Marginals!')
         pbar = tqdm(range(self.to_evaluate), ascii=True, disable=not self.verbose)
         for i in pbar:
@@ -193,6 +217,138 @@ class fANOVA(AbstractEvaluator):
             except TypeError:
                 self.logger.warning('Could not create pairwise plots!')
             plt.close('all')
+
+    def _bokeh_helper_pairwise_cat_cat(self, p1_name, p2_name, data):
+        # Reshape into 1D array
+        df = pd.DataFrame(data.stack(), columns=['zz']).reset_index()
+        # Plot (this is really the bokeh-part...)
+        source = ColumnDataSource(df)
+        mapper = LinearColorMapper(palette=Inferno256, low=df['zz'].min(), high=df['zz'].max())
+        p = figure(x_range=[str(c) for c in data.index], y_range=[str(c) for c in reversed(data.columns)],
+                   toolbar_location=None, tools="")
+        p.rect(x=p1_name, y=p2_name, width=1, height=1, source=source,
+               fill_color=transform('zz', mapper),
+               line_color=None)
+        color_bar = ColorBar(color_mapper=mapper, location=(0, 0),
+                             ticker=BasicTicker(desired_num_ticks=20),
+                             formatter=BasicTickFormatter(use_scientific=False))
+        p.add_layout(color_bar, 'right')
+        return p
+
+    def plot_bokeh(self, plot_name=None, show_plot=True):
+        vis = Visualizer(self.evaluator, self.cs, directory='.', y_label=self._get_label(self.scenario.run_obj))
+
+        # Single marginals
+        plots_single = []
+        for param_name in self.evaluated_parameter_importance.keys():
+            try:
+                param = self.cs.get_hyperparameter(param_name)
+            except KeyError as err:
+                self.logger.debug(err, exc_info=1)
+                continue
+
+            incumbents = []
+            #if not self.incumbents is None:
+            #    incumbents = self.incumbents.copy() if isinstance(self.incumbents, list) else [self.incumbents]
+            values = [c[param_name] for c in incumbents if param_name in c and c[param_name] is not None]
+
+            if isinstance(param, (CategoricalHyperparameter, Constant)):
+                labels = param.choices if isinstance(param, CategoricalHyperparameter) else str(param)
+                mean, std = vis.generate_marginal(param_name)
+                inc_indices = [labels.index(val) for val in values]
+
+                p = bokeh_boxplot(labels, mean, std,
+                                  x_label="runtime [sec]" if self.scenario.run_obj == "runtime" else "cost",
+                                  y_label=param.name,
+                                  runtime=self.scenario.run_obj=="runtime",
+                                  inc_indices=inc_indices)
+
+            else:
+                mean, std, grid = vis.generate_marginal(param_name, 100)
+                mean, std = np.asarray(mean), np.asarray(std)
+                log_scale = param.log or (np.diff(grid).std() > 0.000001)
+                inc_indices = [(np.abs(np.asarray(grid) - val)).argmin() for val in values]
+
+                p = bokeh_line_uncertainty(grid, mean, std, log_scale,
+                                           x_label="runtime [sec]" if self.scenario.run_obj == "runtime" else "cost",
+                                           y_label=param.name,
+                                           inc_indices=inc_indices)
+
+            plots_single.append(Panel(child=Row(p), title=param_name))
+
+        # Pairwise marginals
+        most_important_ones = list(self.evaluated_parameter_importance.keys())[
+                              :min(self.num_single, self.n_most_imp_pairs)]
+        most_important_pairwise_marginals = vis.fanova.get_most_important_pairwise_marginals(params=most_important_ones)
+
+        plots_pairwise = []
+        for p1_name, p2_name in most_important_pairwise_marginals:
+            p1, p2 = self.cs.get_hyperparameter(p1_name), self.cs.get_hyperparameter(p2_name)
+            p1_idx = self.cs.get_idx_by_hyperparameter_name(p1_name)
+            p2_idx = self.cs.get_idx_by_hyperparameter_name(p2_name)
+            first_is_cat = isinstance(p1, CategoricalHyperparameter)
+            second_is_cat = isinstance(p2, CategoricalHyperparameter)
+            # There are essentially three cases / different plots:
+            # First case: both categorical -> heatmap
+            if first_is_cat or second_is_cat:
+                choices, zz = vis.generate_pairwise_marginal((p1_idx, p2_idx), 20)
+                # Working with pandas makes life easier
+                data = pd.DataFrame(zz, index=choices[0], columns=choices[1])
+                # Setting names for rows and columns and make categoricals strings
+                data.index.name, data.columns.name = p1_name, p2_name
+                data.index = data.index.astype(str) if first_is_cat else data.index
+                data.columns = data.columns.astype(str) if second_is_cat else data.columns
+                if first_is_cat and second_is_cat:
+                    p = self._bokeh_helper_pairwise_cat_cat(p1_name, p2_name, data)
+                else:
+                    continue
+                    raise NotImplementedError("fANOVA has to be fixed before it makes sense to work on this...")
+                    # Only one of them is categorical -> create multi-line-plot
+                    # Make distinction between categorical and noncategorical:
+                    cat_name = p1_name if first_is_cat else p2_name
+                    noncat_name = p1_name if second_is_cat else p2_name
+                    # ASSUMING DATA IS NOT SWAPPED IN FANOVA (NOT SURE IF THIS HOLDS)
+                    cat_choices = p1.choices if first_is_cat else p2.choices
+                    # We want categorical values be represented by columns:
+                    if not second_is_cat:
+                        data = data.transpose()
+                    # Find y_min and y_max BEFORE resetting index (otherwise index max obscure the query)
+                    y_min, y_max = data.min().min(), data.max().max()
+                    print(y_min)
+                    # We want the index as a column (for plotting on x-axis)
+                    print(data)
+                    data = data.reset_index()
+                    print(data)
+                    source = ColumnDataSource(data)
+
+                    print(data[noncat_name].min())
+                    p = figure(x_range=(data[noncat_name].min(), data[noncat_name].max()),
+                               y_range=(y_min, y_max),
+                               toolbar_location=None, tools="")
+                    for i, cat in enumerate(cat_choices):
+                        p.line(x=noncat_name,
+                               y=cat,
+                               source=source)
+
+            else:
+                continue
+                raise NotImplementedError("We might end up doing something like the 3DSurface example on bokeh")
+                # Third case: both continous
+            #outfile_name = os.path.join(self.directory, str(param_names).replace(" ", "_") + ".png")
+
+            plots_pairwise.append(Panel(child=Row(p), title=p1_name+p2_name))
+
+        print(len(plots_pairwise))
+        print(len(plots_single))
+        # Putting both together
+        layout = Tabs(tabs=[*plots_pairwise,*plots_single])
+        print(layout)
+        show(layout)
+
+        # Save and show...
+        save_and_show(plot_name, show_plot, layout)
+
+        return layout
 
     def run(self) -> OrderedDict:
         try:
