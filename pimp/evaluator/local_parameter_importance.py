@@ -310,7 +310,6 @@ class LPI(AbstractEvaluator):
         return mean.squeeze(), var.squeeze()
 
     def plot_result(self, name='incneighbor', show=True):
-        self.plot_bokeh(name, show)
         if not os.path.exists(name):
             os.mkdir(name)
         keys = deepcopy(list(self.incumbent.keys()))
