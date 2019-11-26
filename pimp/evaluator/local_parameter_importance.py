@@ -3,7 +3,12 @@ from collections import OrderedDict
 from copy import deepcopy
 
 import numpy as np
+from bokeh.io import output_file, save, show
+from bokeh.models import Row, Panel, Tabs
 from tqdm import tqdm
+
+from pimp.utils.bokeh_helpers import bokeh_boxplot, bokeh_line_uncertainty, save_and_show
+
 tqdm.monitor_interval = 0
 import matplotlib as mpl
 mpl.use('Agg')
@@ -305,6 +310,7 @@ class LPI(AbstractEvaluator):
         return mean.squeeze(), var.squeeze()
 
     def plot_result(self, name='incneighbor', show=True):
+        self.plot_bokeh(name, show)
         if not os.path.exists(name):
             os.mkdir(name)
         keys = deepcopy(list(self.incumbent.keys()))
@@ -398,3 +404,41 @@ class LPI(AbstractEvaluator):
                 ax1.set_ylim([min_y * 0.95, max_y])
                 plt.savefig(os.path.join(name, param + '_log.png'))
                 plt.close('all')
+
+    def plot_bokeh(self, plot_name='incneighbor', show_plot=True):
+        plots = []
+        pbar = tqdm(deepcopy(list(self.incumbent.keys())), ascii=True, disable=not self.verbose)
+        for param in pbar:
+            pbar.set_description('Plotting results (in bokeh) for %s' % param)
+            if param in self.performance_dict:
+                # Data to be plotted:
+                p, v = self.performance_dict[param], self.variance_dict[param]
+                std = np.array(list(map(lambda s: np.sqrt(s), v))).flatten()
+
+                # Find incumbent indices
+                inc_indices = [n_idx for n_idx, neighbor in enumerate(self.neighborhood_dict[param][1])
+                               if neighbor == self.incumbent[param]]
+
+                # Boxplot if categorical, else line
+                if isinstance(self.incumbent.configuration_space.get_hyperparameter(param), CategoricalHyperparameter):
+                    p = bokeh_boxplot(self.neighborhood_dict[param][1], p, std,
+                                      y_label="runtime [sec]" if self.scenario.run_obj == "runtime" else "cost",
+                                      x_label=param,
+                                      runtime=self.scenario.run_obj=="runtime",
+                                      inc_indices=inc_indices)
+                else:
+                    p = bokeh_line_uncertainty(self.neighborhood_dict[param][1], p, std,
+                                               self.cs.get_hyperparameter(param).log,
+                                               y_label="runtime [sec]" if self.scenario.run_obj == "runtime" else "cost",
+                                               x_label=param,
+                                               inc_indices=inc_indices)
+
+            # Add as Panel so it can be easily put into Tabs
+            plots.append(Panel(child=Row(p), title=param))
+
+        # Putting the Tabs together
+        layout = Tabs(tabs=[*plots])
+
+        save_and_show(plot_name, show_plot, layout)
+
+        return layout
