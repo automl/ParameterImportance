@@ -5,6 +5,8 @@ from collections import OrderedDict
 import matplotlib as mpl
 import numpy as np
 
+from pimp.utils.bokeh_helpers import save_and_show
+
 mpl.use('Agg')
 from matplotlib import pyplot as plt
 
@@ -451,7 +453,7 @@ class Ablation(AbstractEvaluator):
             cut_chars += 1
         return short
 
-    def plot_bokeh(self, plot_name=None, show=False, predicted_percentage=True, predicted_performance=True):
+    def plot_bokeh(self, plot_name=None, show_plot=False, predicted_percentage=True, predicted_performance=True):
         """
         Plot ablation results in an interactive bokeh-plot.
 
@@ -537,13 +539,7 @@ class Ablation(AbstractEvaluator):
         layout = Row(*plots)
 
         # Save and show...
-        if plot_name:
-            if not plot_name.endswith('.html'):
-                plot_name = plot_name + '.html'
-            output_file(plot_name)
-            save(layout)
-        if show:
-            show(layout)
+        save_and_show(plot_name, show_plot, layout)
 
         return layout
 

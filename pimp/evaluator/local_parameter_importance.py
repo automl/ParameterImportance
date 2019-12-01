@@ -404,7 +404,7 @@ class LPI(AbstractEvaluator):
                 plt.savefig(os.path.join(name, param + '_log.png'))
                 plt.close('all')
 
-    def plot_bokeh(self, plot_name='incneighbor', show_plot=True):
+    def plot_bokeh(self, plot_name=None, show_plot=True):
         plots = []
         pbar = tqdm(deepcopy(list(self.incumbent.keys())), ascii=True, disable=not self.verbose)
         for param in pbar:
