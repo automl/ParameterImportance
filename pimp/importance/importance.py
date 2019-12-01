@@ -474,7 +474,7 @@ class Importance(object):
             self.logger.info('Fitting Model')
             self.model.train(X, Y)
 
-    def evaluate_scenario(self, methods, save_folder=None) -> Union[
+    def evaluate_scenario(self, methods, save_folder=None, plot_pyplot=True, plot_bokeh=False) -> Union[
             Tuple[Dict[str, Dict[str, float]], List[AbstractEvaluator]], Dict[str, Dict[str, float]]]:
         """
         Evaluate the given scenario
@@ -492,7 +492,8 @@ class Importance(object):
                       dict[evalution_method] -> importance values
         """
         # influence-model currently not supported
-        assert(len(methods) >= 1)
+        if not len(methods) >= 1:
+            raise ValueError("Specify at least one method to evaluate the scenario!")
         fn = os.path.join(save_folder, 'pimp_results.json')
         load = os.path.exists(fn)
         dict_ = {}
@@ -501,17 +502,19 @@ class Importance(object):
             self.evaluator = method
             dict_[self.evaluator.name.lower()] = self.evaluator.run()
             self.evaluators.append(self.evaluator)
-            if save_folder:
+            if save_folder and plot_pyplot:
                 self.evaluator.plot_result(os.path.join(save_folder, self.evaluator.name.lower()), show=False)
+            if save_folder and plot_bokeh:
+                self.evaluator.plot_bokeh(os.path.join(save_folder, self.evaluator.name.lower() + "_bokeh"))
             if load:
                 with open(fn, 'r') as in_file:
                     doct = json.load(in_file)
                     for key in doct:
                         dict_[key] = doct[key]
-            with open(fn, 'w') as out_file:
-                json.dump(dict_,
-                          out_file, sort_keys=True, indent=4, separators=(',', ': '))
-                load = True
+            if save_folder:
+                with open(fn, 'w') as out_file:
+                    json.dump(dict_, out_file, sort_keys=True, indent=4, separators=(',', ': '))
+                    load = True
         return dict_, self.evaluators
 
     def plot_results(self, name: Union[List[str], str, None] = None, evaluators: Union[List[AbstractEvaluator],

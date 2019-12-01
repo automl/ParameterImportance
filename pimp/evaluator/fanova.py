@@ -10,7 +10,8 @@ import matplotlib as mpl
 import itertools as it
 from tqdm import tqdm
 
-from pimp.utils.bokeh_helpers import bokeh_boxplot, bokeh_line_uncertainty, save_and_show
+from pimp.utils.bokeh_helpers import bokeh_boxplot, bokeh_heatmap_cat, bokeh_heatmap_num, save_and_show, \
+    bokeh_multiline, bokeh_line_uncertainty
 
 mpl.use('Agg')
 from matplotlib import pyplot as plt
@@ -183,8 +184,6 @@ class fANOVA(AbstractEvaluator):
         if not os.path.exists(name):
             os.mkdir(name)
 
-        self.plot_bokeh()
-
         vis = Visualizer(self.evaluator, self.cs, directory=name, y_label=self._get_label(self.scenario.run_obj))
         self.logger.info('Getting Marginals!')
         pbar = tqdm(range(self.to_evaluate), ascii=True, disable=not self.verbose)
@@ -212,28 +211,13 @@ class fANOVA(AbstractEvaluator):
             self.logger.info('Plotting Pairwise-Marginals!')
             most_important_ones = list(self.evaluated_parameter_importance.keys())[
                                   :min(self.num_single, self.n_most_imp_pairs)]
+            vis.create_most_important_pairwise_marginal_plots(most_important_ones)
             try:
                 vis.create_most_important_pairwise_marginal_plots(most_important_ones)
-            except TypeError:
+            except TypeError as err:
+                self.logger.debug(err, exc_info=1)
                 self.logger.warning('Could not create pairwise plots!')
             plt.close('all')
-
-    def _bokeh_helper_pairwise_cat_cat(self, p1_name, p2_name, data):
-        # Reshape into 1D array
-        df = pd.DataFrame(data.stack(), columns=['zz']).reset_index()
-        # Plot (this is really the bokeh-part...)
-        source = ColumnDataSource(df)
-        mapper = LinearColorMapper(palette=Inferno256, low=df['zz'].min(), high=df['zz'].max())
-        p = figure(x_range=[str(c) for c in data.index], y_range=[str(c) for c in reversed(data.columns)],
-                   toolbar_location=None, tools="")
-        p.rect(x=p1_name, y=p2_name, width=1, height=1, source=source,
-               fill_color=transform('zz', mapper),
-               line_color=None)
-        color_bar = ColorBar(color_mapper=mapper, location=(0, 0),
-                             ticker=BasicTicker(desired_num_ticks=20),
-                             formatter=BasicTickFormatter(use_scientific=False))
-        p.add_layout(color_bar, 'right')
-        return p
 
     def plot_bokeh(self, plot_name=None, show_plot=True):
         vis = Visualizer(self.evaluator, self.cs, directory='.', y_label=self._get_label(self.scenario.run_obj))
@@ -246,10 +230,11 @@ class fANOVA(AbstractEvaluator):
             except KeyError as err:
                 self.logger.debug(err, exc_info=1)
                 continue
+            self.logger.info("Plotting with bokeh: {}".format(param_name))
 
             incumbents = []
-            #if not self.incumbents is None:
-            #    incumbents = self.incumbents.copy() if isinstance(self.incumbents, list) else [self.incumbents]
+            if not self.incumbents is None:
+                incumbents = self.incumbents.copy() if isinstance(self.incumbents, list) else [self.incumbents]
             values = [c[param_name] for c in incumbents if param_name in c and c[param_name] is not None]
 
             if isinstance(param, (CategoricalHyperparameter, Constant)):
@@ -258,8 +243,8 @@ class fANOVA(AbstractEvaluator):
                 inc_indices = [labels.index(val) for val in values]
 
                 p = bokeh_boxplot(labels, mean, std,
-                                  x_label="runtime [sec]" if self.scenario.run_obj == "runtime" else "cost",
-                                  y_label=param.name,
+                                  x_label=param.name,
+                                  y_label="runtime [sec]" if self.scenario.run_obj == "runtime" else "cost",
                                   runtime=self.scenario.run_obj=="runtime",
                                   inc_indices=inc_indices)
 
@@ -270,8 +255,8 @@ class fANOVA(AbstractEvaluator):
                 inc_indices = [(np.abs(np.asarray(grid) - val)).argmin() for val in values]
 
                 p = bokeh_line_uncertainty(grid, mean, std, log_scale,
-                                           x_label="runtime [sec]" if self.scenario.run_obj == "runtime" else "cost",
-                                           y_label=param.name,
+                                           x_label=param.name,
+                                           y_label="runtime [sec]" if self.scenario.run_obj == "runtime" else "cost",
                                            inc_indices=inc_indices)
 
             plots_single.append(Panel(child=Row(p), title=param_name))
@@ -282,68 +267,54 @@ class fANOVA(AbstractEvaluator):
         most_important_pairwise_marginals = vis.fanova.get_most_important_pairwise_marginals(params=most_important_ones)
 
         plots_pairwise = []
-        for p1_name, p2_name in most_important_pairwise_marginals:
-            p1, p2 = self.cs.get_hyperparameter(p1_name), self.cs.get_hyperparameter(p2_name)
-            p1_idx = self.cs.get_idx_by_hyperparameter_name(p1_name)
-            p2_idx = self.cs.get_idx_by_hyperparameter_name(p2_name)
+        # combis = list(it.combinations(self.cs.get_hyperparameters(), 2))
+        combis = [(self.cs.get_hyperparameter(name1), self.cs.get_hyperparameter(name2)) for name1, name2 in most_important_pairwise_marginals]
+        for p1, p2 in combis:
             first_is_cat = isinstance(p1, CategoricalHyperparameter)
             second_is_cat = isinstance(p2, CategoricalHyperparameter)
             # There are essentially three cases / different plots:
             # First case: both categorical -> heatmap
             if first_is_cat or second_is_cat:
-                choices, zz = vis.generate_pairwise_marginal((p1_idx, p2_idx), 20)
+                choices, zz = vis.generate_pairwise_marginal((p1.name, p2.name), 20)
                 # Working with pandas makes life easier
                 data = pd.DataFrame(zz, index=choices[0], columns=choices[1])
                 # Setting names for rows and columns and make categoricals strings
-                data.index.name, data.columns.name = p1_name, p2_name
+                data.index.name, data.columns.name = p1.name, p2.name
                 data.index = data.index.astype(str) if first_is_cat else data.index
                 data.columns = data.columns.astype(str) if second_is_cat else data.columns
                 if first_is_cat and second_is_cat:
-                    p = self._bokeh_helper_pairwise_cat_cat(p1_name, p2_name, data)
+                    p = bokeh_heatmap_cat(data, p1.name, p2.name)
                 else:
-                    continue
-                    raise NotImplementedError("fANOVA has to be fixed before it makes sense to work on this...")
                     # Only one of them is categorical -> create multi-line-plot
-                    # Make distinction between categorical and noncategorical:
-                    cat_name = p1_name if first_is_cat else p2_name
-                    noncat_name = p1_name if second_is_cat else p2_name
-                    # ASSUMING DATA IS NOT SWAPPED IN FANOVA (NOT SURE IF THIS HOLDS)
                     cat_choices = p1.choices if first_is_cat else p2.choices
                     # We want categorical values be represented by columns:
                     if not second_is_cat:
                         data = data.transpose()
                     # Find y_min and y_max BEFORE resetting index (otherwise index max obscure the query)
-                    y_min, y_max = data.min().min(), data.max().max()
-                    print(y_min)
+                    y_limits = (data.min().min(), data.max().max())
+                    x_limits = (p1.lower if second_is_cat else p2.lower, p1.upper if second_is_cat else p2.upper)
                     # We want the index as a column (for plotting on x-axis)
-                    print(data)
                     data = data.reset_index()
-                    print(data)
-                    source = ColumnDataSource(data)
-
-                    print(data[noncat_name].min())
-                    p = figure(x_range=(data[noncat_name].min(), data[noncat_name].max()),
-                               y_range=(y_min, y_max),
-                               toolbar_location=None, tools="")
-                    for i, cat in enumerate(cat_choices):
-                        p.line(x=noncat_name,
-                               y=cat,
-                               source=source)
+                    p = bokeh_multiline(data, x_limits, y_limits,
+                                        p1.name if second_is_cat else p2.name,
+                                        cat_choices,
+                                        y_label="runtime [sec]" if self.scenario.run_obj == "runtime" else "cost",
+                                        z_label=p1.name if first_is_cat else p2.name,
+                                        )
 
             else:
-                continue
-                raise NotImplementedError("We might end up doing something like the 3DSurface example on bokeh")
                 # Third case: both continous
-            #outfile_name = os.path.join(self.directory, str(param_names).replace(" ", "_") + ".png")
+                grid, zz = vis.generate_pairwise_marginal((p1.name, p2.name), 20)
+                data = pd.DataFrame(zz, index=grid[0], columns=grid[1])
+                data.index.name, data.columns.name = p1.name, p2.name
+                p = bokeh_heatmap_num(data, p1.name, p2.name, p1.log, p2.log)
 
-            plots_pairwise.append(Panel(child=Row(p), title=p1_name+p2_name))
+            plots_pairwise.append(Panel(child=Row(p), title=" & ".join([p1.name, p2.name])))
 
-        print(len(plots_pairwise))
-        print(len(plots_single))
         # Putting both together
-        layout = Tabs(tabs=[*plots_pairwise,*plots_single])
-        print(layout)
-        show(layout)
+        tabs_single = Tabs(tabs=[*plots_single])
+        tabs_pairwise = Tabs(tabs=[*plots_pairwise])
+        layout = Column(tabs_single, tabs_pairwise)
 
         # Save and show...
         save_and_show(plot_name, show_plot, layout)
