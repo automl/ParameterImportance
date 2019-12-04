@@ -3,31 +3,27 @@ import json
 import logging
 import os
 import sys
-import warnings
-from typing import Union, List, Dict, Tuple
 from collections import OrderedDict
+from typing import Union, List, Dict, Tuple
 
 import numpy as np
-from tqdm import tqdm
-
-# from smac.utils.util_funcs import
+from smac.epm.rfr_imputator import RFRImputator
 from smac.optimizer.smbo import get_types
 from smac.tae.execute_ta_run import StatusType
-from smac.epm.rfr_imputator import RFRImputator
-from smac.utils.io.cmd_reader import truthy
+from tqdm import tqdm
 
 from pimp.configspace import CategoricalHyperparameter, Configuration, \
-    FloatHyperparameter, IntegerHyperparameter, impute_inactive_values, Constant
+    impute_inactive_values
 from pimp.epm.base_epm import RandomForestWithInstances
 from pimp.epm.unlogged_epar_x_rfwi import UnloggedEPARXrfi
 from pimp.epm.unlogged_rfwi import Unloggedrfwi
 from pimp.evaluator.ablation import Ablation
-from pimp.evaluator.local_parameter_importance import LPI
+from pimp.evaluator.fanova import fANOVA
 from pimp.evaluator.forward_selection import ForwardSelector, AbstractEvaluator
 from pimp.evaluator.influence_models import InfluenceModel
+from pimp.evaluator.local_parameter_importance import LPI
 from pimp.utils import RunHistory, RunHistory2EPM4Cost, RunHistory2EPM4LogCost, Scenario, average_cost
 from pimp.utils.io.traj_logger import TrajLogger as PimpTrajLogger
-from pimp.evaluator.fanova import fANOVA
 
 __author__ = "Andre Biedenkapp"
 __copyright__ = "Copyright 2016, ML4AAD"
@@ -486,6 +482,8 @@ class Importance(object):
             3 => fANOVA, Ablation, Forward Selection
             4 => Forward Selection, Ablation, fANOVA
             5 => Forward Selection, fANOVA, Ablation
+        :param plot_pyplot: whether to perform standard matplotlib- plotting
+        :param plot_bokeh: whether to perform advanced bokeh plotting
         :return: if evaluation all: Tupel of dictionary[evaluation_method] -> importance values, List ov evaluator
                                     names, ordered according to sort_by
                  else:

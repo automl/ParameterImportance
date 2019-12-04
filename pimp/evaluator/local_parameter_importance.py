@@ -3,7 +3,6 @@ from collections import OrderedDict
 from copy import deepcopy
 
 import numpy as np
-from bokeh.io import output_file, save, show
 from bokeh.models import Row, Panel, Tabs
 from tqdm import tqdm
 
@@ -404,7 +403,22 @@ class LPI(AbstractEvaluator):
                 plt.savefig(os.path.join(name, param + '_log.png'))
                 plt.close('all')
 
-    def plot_bokeh(self, plot_name=None, show_plot=True):
+    def plot_bokeh(self, plot_name=None, show_plot=False):
+        """
+        Plot local parameter importance in an interactive bokeh-plot.
+
+        Parameters
+        ----------
+        plot_name: str
+            path where to store the plot, None to not save it
+        show_plot: bool
+            whether or not to open plot in standard browser
+
+        Returns
+        -------
+        layout: bokeh.models.Row
+            bokeh plot (can be used in notebook or comparted with components)
+        """
         plots = []
         pbar = tqdm(deepcopy(list(self.incumbent.keys())), ascii=True, disable=not self.verbose)
         for param in pbar:

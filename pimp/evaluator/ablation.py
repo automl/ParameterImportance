@@ -1,11 +1,12 @@
 import copy
-import os
 from collections import OrderedDict
 
 import matplotlib as mpl
 import numpy as np
+from bokeh.models import ColumnDataSource, CDSView, IndexFilter, Span, BasicTickFormatter, Row
+from bokeh.plotting import figure
 
-from pimp.utils.bokeh_helpers import save_and_show
+from pimp.utils.bokeh_helpers import save_and_show, shorten_unique
 
 mpl.use('Agg')
 from matplotlib import pyplot as plt
@@ -426,32 +427,6 @@ class Ablation(AbstractEvaluator):
         self.logger.info('Saved plots as %s[percentage|performance].png' % name)
         plt.close('all')
 
-    @staticmethod
-    def _shorten_unique(names, keep_first=4, keep_last=4):
-        """
-        Shorten strings, inserting (...), while keeping them unique.
-
-        Parameters
-        ----------
-        names: List[str]
-            list of strings to be shortened
-        keep_first: int
-            always keep the first N letters
-        keep_last: int
-            always keep the last N letters
-
-        Returns
-        -------
-        shortened_names: List[str]
-            list with shortened strings
-        """
-        short, cut_chars, longest_str = [], 0, max([len(p) for p in names])
-        while len(set(short)) != len(set(names)) and cut_chars <= longest_str:
-            short = [p[:keep_first + cut_chars] + '(...)' + p[-keep_last:]
-                     if len(p) > sum([keep_first, keep_last, cut_chars])
-                     else p for p in names]
-            cut_chars += 1
-        return short
 
     def plot_bokeh(self, plot_name=None, show_plot=False, predicted_percentage=True, predicted_performance=True):
         """
@@ -459,6 +434,10 @@ class Ablation(AbstractEvaluator):
 
         Parameters
         ----------
+        plot_name: str
+            path where to store the plot, None to not save it
+        show_plot: bool
+            whether or not to open plot in standard browser
         predicted_percentage: bool
             include a barchart of individual parameter contributions of the improvement from source to target
         predicted_performance: bool
@@ -466,27 +445,23 @@ class Ablation(AbstractEvaluator):
 
         Returns
         -------
-        bokehplot: Layout
-            return a single layout including the requested bokeh-plots
+        layout: bokeh.models.Row
+            bokeh plot (can be used in notebook or comparted with components)
         """
-        try:
-            from bokeh.io import show, output_file, save
-            from bokeh.plotting import figure
-            from bokeh.layouts import Row
-            from bokeh.models import ColumnDataSource, Span, CDSView, IndexFilter, BasicTickFormatter
-        except ImportError as err:
-            self.logger.debug(err, exc_info=1)
-            self.logger.error("To use bokeh-plotting, you need to install bokeh (e.g. pip install bokeh)")
 
         # Get all relevant data-points
         p_names = list(self.evaluated_parameter_importance.keys())
-        p_names_short = self._shorten_unique(p_names)
+        p_names_short = shorten_unique(p_names)
         p_importance = [100 * self.evaluated_parameter_importance[p] for p in p_names]
         p_performance = [self.predicted_parameter_performances[p] for p in p_names]
         p_variance = [self.predicted_parameter_variances[p] for p in p_names]
 
-        # Customizing plot-style
+        # We don't always want to plot everything, reduce plotted parameters by taking out the least important ones
         max_to_plot = min(len(p_names), self.MAX_PARAMS_TO_PLOT)
+        plot_indices = sorted(range(1, len(p_importance) - 1), key=lambda x: p_importance[x], reverse=True)[:max_to_plot]
+        plot_indices = [0] + plot_indices + [len(p_importance) - 1]  # Always keep "source" and "target"
+
+        # Customizing plot-style
         bar_width = 25
         tooltips = [("Parameter", "@parameter_names"),
                     ("Importance", "@parameter_importance"),
@@ -499,15 +474,17 @@ class Ablation(AbstractEvaluator):
                                             parameter_performance=p_performance,
                                             parameter_variance=p_variance,
                                             ))
-        plots = []
 
+        plots = []
         if predicted_percentage:
-            view_predicted_percentage = CDSView(source=source, filters=[IndexFilter(list(range(1, len(p_names) -1)))])
-            p = figure(x_range=p_names_short[1:-1],
+            # Don't plot source and target in this plot, use IndexFilter
+            view_predicted_percentage = CDSView(source=source, filters=[IndexFilter(plot_indices[1:-1])])
+            p = figure(x_range=[p_names_short[idx] for idx in plot_indices[1:-1]],
                        plot_height=350, plot_width=100+max_to_plot*bar_width,
                        toolbar_location=None, tools="hover", tooltips=tooltips)
 
-            p.vbar(x='parameter_names_short', top='parameter_importance', width=0.9, source=source, view=view_predicted_percentage)
+            p.vbar(x='parameter_names_short', top='parameter_importance', width=0.9,
+                   source=source, view=view_predicted_percentage)
             for value in [self.IMPORTANCE_THRESHOLD, -self.IMPORTANCE_THRESHOLD]:
                 p.add_layout(Span(location=value*100, dimension='width', line_color='red', line_dash='dashed'))
 
@@ -515,16 +492,17 @@ class Ablation(AbstractEvaluator):
             plots.append(p)
 
         if predicted_performance:
-            view_predicted_performance = CDSView(source=source, filters=[IndexFilter(list(range(len(p_names))))])
-            p = figure(x_range=p_names_short,
+            view_predicted_performance = CDSView(source=source, filters=[IndexFilter(plot_indices)])
+            p = figure(x_range=[p_names_short[idx] for idx in plot_indices],
                        plot_height=350, plot_width=100 + max_to_plot * bar_width,
                        toolbar_location=None, tools="hover", tooltips=tooltips)
 
             p.line(x='parameter_names_short', y='parameter_performance', source=source, view=view_predicted_performance)
-            band_x = np.append(list(range(len(p_names_short))), list(range(len(p_names_short)))[::-1])
+            band_x = np.append(list(range(len(plot_indices))), list(range(len(plot_indices)))[::-1])
             band_y = np.append([max(p-np.sqrt(v), 0) if self.scenario.run_obj == "runtime" else p-np.sqrt(v)
-                                for p, v in zip(p_performance, p_variance)],
-                               [p+np.sqrt(v) for p, v in zip(p_performance, p_variance)][::-1])
+                                for p, v in [(p_performance[idx], p_variance[idx]) for idx in plot_indices]],
+                               [p+np.sqrt(v) for p, v in [(p_performance[idx], p_variance[idx])
+                                                          for idx in plot_indices][::-1]])
             p.patch(band_x, band_y, color='#7570B3', fill_alpha=0.2)
 
             p.yaxis.axis_label = "est. runtime [sec]" if self.scenario.run_obj == 'runtime' else 'est. cost'
@@ -548,7 +526,7 @@ class Ablation(AbstractEvaluator):
         Method to plot a barchart of individual parameter contributions of the improvement from source to target
         """
         p_names = np.array(list(self.evaluated_parameter_importance.keys())[1:-1])
-        p_names_short = np.array(self._shorten_unique(p_names))
+        p_names_short = np.array(self.shorten_unique(p_names))
         p_importance = np.array([100 * self.evaluated_parameter_importance[p] for p in p_names])
         max_to_plot = min(len(p_names), self.MAX_PARAMS_TO_PLOT)
 
@@ -601,7 +579,7 @@ class Ablation(AbstractEvaluator):
         y_label = self.scenario.run_obj if self.scenario.run_obj != 'quality' else 'cost'
 
         path = list(self.predicted_parameter_performances.keys())
-        path = np.array(self._shorten_unique(path))
+        path = np.array(self.shorten_unique(path))
         max_to_plot = min(len(path), self.MAX_PARAMS_TO_PLOT)
         performances = list(self.predicted_parameter_performances.values())
         performances = np.array(performances).reshape((-1, 1))

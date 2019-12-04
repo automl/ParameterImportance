@@ -1,8 +1,13 @@
 import time
 from collections import OrderedDict
 
-import numpy as np
 import matplotlib as mpl
+import numpy as np
+from bokeh.models import ColumnDataSource, CDSView, Span, BasicTickFormatter, Row, IndexFilter
+from bokeh.plotting import figure
+
+from pimp.utils.bokeh_helpers import shorten_unique, save_and_show
+
 mpl.use('Agg')
 from matplotlib import pyplot as plt
 from tqdm import tqdm, trange
@@ -196,3 +201,78 @@ class ForwardSelector(AbstractEvaluator):
         self._plot_result(name + '-chng.png', False, show)
         plt.close('all')
         self.logger.info('Saved plot as %s-[barplot|chng].png' % name)
+
+    def plot_bokeh(self, plot_name=None, show_plot=False, barplot=True, chng=True):
+        """
+        Plot OOB-scores as bar- or linechart in bokeh.
+
+        Parameters
+        ----------
+        plot_name: str
+            path where to store the plot, None to not save it
+        show_plot: bool
+            whether or not to open plot in standard browser
+        barplot: bool
+            plot OOB as barchart
+        chng: bool
+            plot OOB as linechart
+
+        Returns
+        -------
+        layout: bokeh.models.Row
+            bokeh plot (can be used in notebook or comparted with components)
+        """
+        # Get all relevant data-points
+        params = list(self.evaluated_parameter_importance.keys())
+        p_names_short = shorten_unique(params)
+        errors = list(self.evaluated_parameter_importance.values())
+        max_to_plot = min(len(errors), self.MAX_PARAMS_TO_PLOT)
+        plot_indices = sorted(range(len(errors)), key=lambda x: errors[x], reverse=True)[:max_to_plot]
+
+        # Customizing plot-style
+        bar_width = 25
+
+        # Create ColumnDataSource for both plots
+        source = ColumnDataSource(data=dict(parameter_names_short=p_names_short,
+                                            parameter_names=params,
+                                            parameter_importance=errors,
+                                            ))
+        plots = []
+
+        view = CDSView(source=source, filters=[IndexFilter(plot_indices)])
+        tooltips = [("Parameter", "@parameter_names"),
+                    ("Importance", "@parameter_importance"),
+                    ]
+        if barplot:
+            p = figure(x_range=p_names_short,
+                       plot_height=350, plot_width=100 + max_to_plot * bar_width,
+                       toolbar_location=None, tools="hover", tooltips=tooltips)
+
+            p.vbar(x='parameter_names_short', top='parameter_importance', width=0.9, source=source, view=view)
+            for value in [self.IMPORTANCE_THRESHOLD, -self.IMPORTANCE_THRESHOLD]:
+                p.add_layout(Span(location=value, dimension='width', line_color='red', line_dash='dashed'))
+
+            plots.append(p)
+
+        if chng:
+            p = figure(x_range=p_names_short,
+                       plot_height=350, plot_width=100 + max_to_plot * bar_width,
+                       toolbar_location=None, tools="hover", tooltips=tooltips)
+
+            p.line(x='parameter_names_short', y='parameter_importance', source=source, view=view)
+
+            plots.append(p)
+
+        # Common styling:
+        for p in plots:
+            p.xaxis.major_label_orientation = 1.3
+            p.xaxis.major_label_text_font_size = "14pt"
+            p.yaxis.formatter = BasicTickFormatter(use_scientific=False)
+            p.yaxis.axis_label = 'CV-RMSE' if self.cv else 'OOB'
+
+        layout = Row(*plots)
+
+        # Save and show...
+        save_and_show(plot_name, show_plot, layout)
+
+        return layout
