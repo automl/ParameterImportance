@@ -1,18 +1,24 @@
-from collections import OrderedDict
+import itertools as it
+import os
 import pickle
 import warnings
-import copy
+from collections import OrderedDict
+from copy import deepcopy
 
-import os
-import numpy as np
 import matplotlib as mpl
-import itertools as it
+import numpy as np
+import pandas as pd
+from bokeh.models import Row, Panel, Tabs, Column
 from tqdm import tqdm
+
+from pimp.utils.bokeh_helpers import bokeh_boxplot, bokeh_heatmap_cat, bokeh_heatmap_num, save_and_show, \
+    bokeh_multiline, bokeh_line_uncertainty
+
 mpl.use('Agg')
 from matplotlib import pyplot as plt
 
 from smac.runhistory.runhistory import RunHistory
-from ConfigSpace.configuration_space import ConfigurationSpace, Configuration
+from ConfigSpace.configuration_space import Configuration
 from ConfigSpace.util import impute_inactive_values
 from ConfigSpace.hyperparameters import CategoricalHyperparameter, Constant
 
@@ -92,8 +98,8 @@ class fANOVA(AbstractEvaluator):
                 self._y = preprocessed_y
             else:
                 self.logger.info('Preprocessing X')
-                self._X = copy.deepcopy(self.X)
-                self._y = copy.deepcopy(self.y)
+                self._X = deepcopy(self.X)
+                self._y = deepcopy(self.y)
                 for c_idx, config in enumerate(self.X):
                     # print("{}/{}".format(c_idx, len(self.X)))
                     for p_idx, param in enumerate(self.cs.get_hyperparameters()):
@@ -151,17 +157,20 @@ class fANOVA(AbstractEvaluator):
         self.logger.info('Size of training y after preprocessing: %s' % str(self.y.shape))
         self.logger.info('Finished Preprocessing')
 
+    def _get_label(self, run_obj):
+        if run_obj == 'runtime':
+            label = 'runtime [sec]'
+        elif run_obj == 'quality':
+            label = 'cost'
+        else:
+            label = '%s' % self.scenario.run_obj
+        return label
+
     def plot_result(self, name='fANOVA', show=True):
         if not os.path.exists(name):
             os.mkdir(name)
 
-        if self.scenario.run_obj == 'runtime':
-            label = 'runtime [sec]'
-        elif self.scenario.run_obj == 'quality':
-            label = 'cost'
-        else:
-            label = '%s' % self.scenario.run_obj
-        vis = Visualizer(self.evaluator, self.cs, directory=name, y_label=label)
+        vis = Visualizer(self.evaluator, self.cs, directory=name, y_label=self._get_label(self.scenario.run_obj))
         self.logger.info('Getting Marginals!')
         pbar = tqdm(range(self.to_evaluate), ascii=True, disable=not self.verbose)
         for i in pbar:
@@ -188,11 +197,155 @@ class fANOVA(AbstractEvaluator):
             self.logger.info('Plotting Pairwise-Marginals!')
             most_important_ones = list(self.evaluated_parameter_importance.keys())[
                                   :min(self.num_single, self.n_most_imp_pairs)]
+            vis.create_most_important_pairwise_marginal_plots(most_important_ones)
             try:
                 vis.create_most_important_pairwise_marginal_plots(most_important_ones)
-            except TypeError:
+            except TypeError as err:
+                self.logger.debug(err, exc_info=1)
                 self.logger.warning('Could not create pairwise plots!')
             plt.close('all')
+
+    def plot_bokeh(self, plot_name=None, show_plot=False, plot_pairwise="most_important"):
+        """
+        Plot single and pairwise margins in bokeh-plot. Single margins are always plotted (not expensive), pairwise can
+        be configured by argument.
+
+        Parameters
+        ----------
+        plot_name: str
+            path where to store the plot, None to not save it
+        show_plot: bool
+            whether or not to open plot in standard browser
+        plot_pairwise: str
+            choose from ["none", "most_important", "all"] where "most_important" relies on the fanova module to decide
+            what that means
+
+        Returns
+        -------
+        layout: bokeh.models.Column
+            bokeh plot (can be used in notebook or comparted with components)
+        """
+        vis = Visualizer(self.evaluator, self.cs, directory='.', y_label=self._get_label(self.scenario.run_obj))
+
+        ####################
+        # Single marginals #
+        ####################
+        plots_single = []
+        params = list(self.evaluated_parameter_importance.keys())
+        pbar = tqdm(deepcopy(params), ascii=True, disable=not self.verbose)
+        for param_name in pbar:
+            # Try and except pairwise importances that are also saved in evaluated_parameter_importance...
+            try:
+                param = self.cs.get_hyperparameter(param_name)
+            except KeyError as err:
+                self.logger.debug(err, exc_info=1)
+                continue
+
+            pbar.set_description('Plotting fANOVA (in bokeh) for %s' % param_name)
+
+            incumbents = []
+            if not self.incumbents is None:
+                incumbents = self.incumbents.copy() if isinstance(self.incumbents, list) else [self.incumbents]
+            values = [c[param_name] for c in incumbents if param_name in c and c[param_name] is not None]
+
+            if isinstance(param, (CategoricalHyperparameter, Constant)):
+                labels = param.choices if isinstance(param, CategoricalHyperparameter) else str(param)
+                mean, std = vis.generate_marginal(param_name)
+                inc_indices = [labels.index(val) for val in values]
+
+                p = bokeh_boxplot(labels, mean, std,
+                                  x_label=param.name,
+                                  y_label="runtime [sec]" if self.scenario.run_obj == "runtime" else "cost",
+                                  runtime=self.scenario.run_obj=="runtime",
+                                  inc_indices=inc_indices)
+
+            else:
+                mean, std, grid = vis.generate_marginal(param_name, 100)
+                mean, std = np.asarray(mean), np.asarray(std)
+                log_scale = param.log or (np.diff(grid).std() > 0.000001)
+                inc_indices = [(np.abs(np.asarray(grid) - val)).argmin() for val in values]
+
+                p = bokeh_line_uncertainty(grid, mean, std, log_scale,
+                                           x_label=param.name,
+                                           y_label="runtime [sec]" if self.scenario.run_obj == "runtime" else "cost",
+                                           inc_indices=inc_indices)
+
+            plots_single.append(Panel(child=Row(p), title=param_name))
+
+        ######################
+        # Pairwise marginals #
+        ######################
+        if plot_pairwise == "all":
+            combis = list(it.combinations(self.cs.get_hyperparameters(), 2))
+        elif plot_pairwise == "most_important":
+            most_important_ones = list(self.evaluated_parameter_importance.keys())[
+                                  :min(self.num_single, self.n_most_imp_pairs)]
+            most_important_pairwise_marginals = vis.fanova.get_most_important_pairwise_marginals(
+                                                params=most_important_ones)
+            combis = [(self.cs.get_hyperparameter(name1), self.cs.get_hyperparameter(name2)) for name1, name2 in
+                      most_important_pairwise_marginals]
+        elif plot_pairwise == "none":
+            combis = []
+        else:
+            raise ValueError("{} not a valid set of pairwise plots to generate...".format(plot_pairwise))
+
+        plots_pairwise = []
+        pbar = tqdm(deepcopy(combis), ascii=True, disable=not self.verbose)
+        for p1, p2 in pbar:
+            pbar.set_description('Plotting pairwise fANOVA (in bokeh) for %s & %s' % (p1.name, p2.name))
+            first_is_cat = isinstance(p1, CategoricalHyperparameter)
+            second_is_cat = isinstance(p2, CategoricalHyperparameter)
+            # There are essentially three cases / different plots:
+            # First case: both categorical -> heatmap
+            if first_is_cat or second_is_cat:
+                choices, zz = vis.generate_pairwise_marginal((p1.name, p2.name), 20)
+                # Working with pandas makes life easier
+                data = pd.DataFrame(zz, index=choices[0], columns=choices[1])
+                # Setting names for rows and columns and make categoricals strings
+                data.index.name, data.columns.name = p1.name, p2.name
+                data.index = data.index.astype(str) if first_is_cat else data.index
+                data.columns = data.columns.astype(str) if second_is_cat else data.columns
+                if first_is_cat and second_is_cat:
+                    p = bokeh_heatmap_cat(data, p1.name, p2.name)
+                else:
+                    # Only one of them is categorical -> create multi-line-plot
+                    cat_choices = p1.choices if first_is_cat else p2.choices
+                    # We want categorical values be represented by columns:
+                    if not second_is_cat:
+                        data = data.transpose()
+                    # Find y_min and y_max BEFORE resetting index (otherwise index max obscure the query)
+                    y_limits = (data.min().min(), data.max().max())
+                    x_limits = (p1.lower if second_is_cat else p2.lower, p1.upper if second_is_cat else p2.upper)
+                    # We want the index as a column (for plotting on x-axis)
+                    data = data.reset_index()
+                    p = bokeh_multiline(data, x_limits, y_limits,
+                                        p1.name if second_is_cat else p2.name,
+                                        cat_choices,
+                                        y_label="runtime [sec]" if self.scenario.run_obj == "runtime" else "cost",
+                                        z_label=p1.name if first_is_cat else p2.name,
+                                        )
+
+            else:
+                # Third case: both continous
+                grid, zz = vis.generate_pairwise_marginal((p1.name, p2.name), 20)
+                data = pd.DataFrame(zz, index=grid[0], columns=grid[1])
+                data.index.name, data.columns.name = p1.name, p2.name
+                p = bokeh_heatmap_num(data, p1.name, p2.name, p1.log, p2.log)
+
+            plots_pairwise.append(Panel(child=Row(p), title=" & ".join([p1.name, p2.name])))
+
+        # Putting both together
+        tabs_single = Tabs(tabs=[*plots_single])
+        if len(plots_pairwise) > 0:
+            tabs_pairwise = Tabs(tabs=[*plots_pairwise])
+            layout = Column(tabs_single, tabs_pairwise)
+        else:
+            layout = Column(tabs_single)
+
+        # Save and show...
+        save_and_show(plot_name, show_plot, layout)
+
+        return layout
 
     def run(self) -> OrderedDict:
         try:
