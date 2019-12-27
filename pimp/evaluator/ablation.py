@@ -526,7 +526,7 @@ class Ablation(AbstractEvaluator):
         Method to plot a barchart of individual parameter contributions of the improvement from source to target
         """
         p_names = np.array(list(self.evaluated_parameter_importance.keys())[1:-1])
-        p_names_short = np.array(self.shorten_unique(p_names))
+        p_names_short = np.array(shorten_unique(p_names))
         p_importance = np.array([100 * self.evaluated_parameter_importance[p] for p in p_names])
         max_to_plot = min(len(p_names), self.MAX_PARAMS_TO_PLOT)
 
@@ -579,7 +579,7 @@ class Ablation(AbstractEvaluator):
         y_label = self.scenario.run_obj if self.scenario.run_obj != 'quality' else 'cost'
 
         path = list(self.predicted_parameter_performances.keys())
-        path = np.array(self.shorten_unique(path))
+        path = np.array(shorten_unique(path))
         max_to_plot = min(len(path), self.MAX_PARAMS_TO_PLOT)
         performances = list(self.predicted_parameter_performances.values())
         performances = np.array(performances).reshape((-1, 1))

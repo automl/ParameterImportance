@@ -12,8 +12,7 @@ from smac.optimizer.smbo import get_types
 from smac.tae.execute_ta_run import StatusType
 from tqdm import tqdm
 
-from pimp.configspace import CategoricalHyperparameter, Configuration, \
-    impute_inactive_values
+from pimp.configspace import CategoricalHyperparameter, Configuration, impute_inactive_values
 from pimp.epm.base_epm import RandomForestWithInstances
 from pimp.epm.unlogged_epar_x_rfwi import UnloggedEPARXrfi
 from pimp.epm.unlogged_rfwi import Unloggedrfwi
