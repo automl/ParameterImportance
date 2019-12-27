@@ -1,8 +1,13 @@
 import copy
 from collections import OrderedDict
 
-import numpy as np
 import matplotlib as mpl
+import numpy as np
+from bokeh.models import ColumnDataSource, CDSView, IndexFilter, Span, BasicTickFormatter, Row
+from bokeh.plotting import figure
+
+from pimp.utils.bokeh_helpers import save_and_show, shorten_unique
+
 mpl.use('Agg')
 from matplotlib import pyplot as plt
 
@@ -422,42 +427,130 @@ class Ablation(AbstractEvaluator):
         self.logger.info('Saved plots as %s[percentage|performance].png' % name)
         plt.close('all')
 
+
+    def plot_bokeh(self, plot_name=None, show_plot=False, predicted_percentage=True, predicted_performance=True):
+        """
+        Plot ablation results in an interactive bokeh-plot.
+
+        Parameters
+        ----------
+        plot_name: str
+            path where to store the plot, None to not save it
+        show_plot: bool
+            whether or not to open plot in standard browser
+        predicted_percentage: bool
+            include a barchart of individual parameter contributions of the improvement from source to target
+        predicted_performance: bool
+            include a plot of the ablation path using the predicted performances of parameter flips
+
+        Returns
+        -------
+        layout: bokeh.models.Row
+            bokeh plot (can be used in notebook or comparted with components)
+        """
+
+        # Get all relevant data-points
+        p_names = list(self.evaluated_parameter_importance.keys())
+        p_names_short = shorten_unique(p_names)
+        p_importance = [100 * self.evaluated_parameter_importance[p] for p in p_names]
+        p_performance = [self.predicted_parameter_performances[p] for p in p_names]
+        p_variance = [self.predicted_parameter_variances[p] for p in p_names]
+
+        # We don't always want to plot everything, reduce plotted parameters by taking out the least important ones
+        max_to_plot = min(len(p_names), self.MAX_PARAMS_TO_PLOT)
+        plot_indices = sorted(range(1, len(p_importance) - 1), key=lambda x: p_importance[x], reverse=True)[:max_to_plot]
+        plot_indices = [0] + plot_indices + [len(p_importance) - 1]  # Always keep "source" and "target"
+
+        # Customizing plot-style
+        bar_width = 25
+        tooltips = [("Parameter", "@parameter_names"),
+                    ("Importance", "@parameter_importance"),
+                    ("Predicted Performance", "@parameter_performance")]
+
+        # Create ColumnDataSource for both plots
+        source = ColumnDataSource(data=dict(parameter_names_short=p_names_short,
+                                            parameter_names=p_names,
+                                            parameter_importance=p_importance,
+                                            parameter_performance=p_performance,
+                                            parameter_variance=p_variance,
+                                            ))
+
+        plots = []
+        if predicted_percentage:
+            # Don't plot source and target in this plot, use IndexFilter
+            view_predicted_percentage = CDSView(source=source, filters=[IndexFilter(plot_indices[1:-1])])
+            p = figure(x_range=[p_names_short[idx] for idx in plot_indices[1:-1]],
+                       plot_height=350, plot_width=100+max_to_plot*bar_width,
+                       toolbar_location=None, tools="hover", tooltips=tooltips)
+
+            p.vbar(x='parameter_names_short', top='parameter_importance', width=0.9,
+                   source=source, view=view_predicted_percentage)
+            for value in [self.IMPORTANCE_THRESHOLD, -self.IMPORTANCE_THRESHOLD]:
+                p.add_layout(Span(location=value*100, dimension='width', line_color='red', line_dash='dashed'))
+
+            p.yaxis.axis_label = "improvement [%]"
+            plots.append(p)
+
+        if predicted_performance:
+            view_predicted_performance = CDSView(source=source, filters=[IndexFilter(plot_indices)])
+            p = figure(x_range=[p_names_short[idx] for idx in plot_indices],
+                       plot_height=350, plot_width=100 + max_to_plot * bar_width,
+                       toolbar_location=None, tools="hover", tooltips=tooltips)
+
+            p.line(x='parameter_names_short', y='parameter_performance', source=source, view=view_predicted_performance)
+            band_x = np.append(list(range(len(plot_indices))), list(range(len(plot_indices)))[::-1])
+            band_y = np.append([max(p-np.sqrt(v), 0) if self.scenario.run_obj == "runtime" else p-np.sqrt(v)
+                                for p, v in [(p_performance[idx], p_variance[idx]) for idx in plot_indices]],
+                               [p+np.sqrt(v) for p, v in [(p_performance[idx], p_variance[idx])
+                                                          for idx in plot_indices][::-1]])
+            p.patch(band_x, band_y, color='#7570B3', fill_alpha=0.2)
+
+            p.yaxis.axis_label = "est. runtime [sec]" if self.scenario.run_obj == 'runtime' else 'est. cost'
+            plots.append(p)
+
+        # Common styling:
+        for p in plots:
+            p.xaxis.major_label_orientation = 1.3
+            p.xaxis.major_label_text_font_size = "14pt"
+            p.yaxis.formatter = BasicTickFormatter(use_scientific=False)
+
+        layout = Row(*plots)
+
+        # Save and show...
+        save_and_show(plot_name, show_plot, layout)
+
+        return layout
+
     def plot_predicted_percentage(self, plot_name=None, show=True):
         """
         Method to plot a barchart of individual parameter contributions of the improvement from source to target
         """
+        p_names = np.array(list(self.evaluated_parameter_importance.keys())[1:-1])
+        p_names_short = np.array(shorten_unique(p_names))
+        p_importance = np.array([100 * self.evaluated_parameter_importance[p] for p in p_names])
+        max_to_plot = min(len(p_names), self.MAX_PARAMS_TO_PLOT)
+
         fig = plt.figure()
         ax1 = fig.add_subplot(111)
         plt.subplots_adjust(bottom=0.25, top=0.9, left=0.05, right=.95)
 
-        path = list(self.evaluated_parameter_importance.keys())[1:-1]
-        true_path = np.array(copy.deepcopy(path))
-        for idx, p in enumerate(path):
-            if len(p) >= 18:
-                p = p[:8] + '...' + p[-8:]
-                path[idx] = p
-        performances = list(self.evaluated_parameter_importance.values())
-        performances = 100 * np.array(performances).reshape((1, -1)).squeeze()
-        path = np.array(path)
-        max_to_plot = min(len(path), self.MAX_PARAMS_TO_PLOT)
-        ax1.bar(list(range(len(path))),
-                performances[1:-1], color=self.area_color)
+        ax1.bar(list(range(len(p_names))), p_importance, color=self.area_color)
 
-        ax1.set_xticks(np.arange(len(path)))
+        ax1.set_xticks(np.arange(len(p_names)))
         ax1.set_xlim(-0.5, max_to_plot - .25)
-        ax1.set_ylim(min(performances) - max(2, min(performances)*0.1),
-                     max(performances) + min(2, max(performances)*.1))
+        ax1.set_ylim(min(p_importance) - max(2, min(p_importance)*.1),
+                     max(p_importance) + min(2, max(p_importance)*.1))
 
         ax1.set_ylabel('improvement [%]', zorder=81, **self.LABEL_FONT)
-        ax1.plot(list(range(-1, len(path) + 1)),
-                 [self.IMPORTANCE_THRESHOLD*100 for _ in range(len(path) + 2)], c='r', linestyle='--')
-        ax1.plot(list(range(-1, len(path) + 1)),
-                 [-self.IMPORTANCE_THRESHOLD*100 for _ in range(len(path) + 2)], c='r', linestyle='--')
-        ax1.set_xticklabels(path, rotation=25, ha='right', **self.AXIS_FONT)
+        ax1.plot(list(range(-1, len(p_names_short) + 1)),
+                 [self.IMPORTANCE_THRESHOLD*100 for _ in range(len(p_names_short) + 2)], c='r', linestyle='--')
+        ax1.plot(list(range(-1, len(p_names_short) + 1)),
+                 [-self.IMPORTANCE_THRESHOLD*100 for _ in range(len(p_names_short) + 2)], c='r', linestyle='--')
+        ax1.set_xticklabels(p_names_short, rotation=25, ha='right', **self.AXIS_FONT)
 
         for idx, t in enumerate(ax1.xaxis.get_ticklabels()):
             color_ = (0.45, 0.45, 0.45)
-            if self.evaluated_parameter_importance[true_path[idx]] > self.IMPORTANCE_THRESHOLD:
+            if self.evaluated_parameter_importance[p_names[idx]] > self.IMPORTANCE_THRESHOLD:
                 color_ = (0., 0., 0.)
             t.set_color(color_)
 
@@ -486,11 +579,7 @@ class Ablation(AbstractEvaluator):
         y_label = self.scenario.run_obj if self.scenario.run_obj != 'quality' else 'cost'
 
         path = list(self.predicted_parameter_performances.keys())
-        for idx, p in enumerate(path):
-            if len(p) >= 18:
-                p = p[:8] + '...' + p[-8:]
-                path[idx] = p
-        path = np.array(path)
+        path = np.array(shorten_unique(path))
         max_to_plot = min(len(path), self.MAX_PARAMS_TO_PLOT)
         performances = list(self.predicted_parameter_performances.values())
         performances = np.array(performances).reshape((-1, 1))

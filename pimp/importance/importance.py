@@ -3,30 +3,26 @@ import json
 import logging
 import os
 import sys
-import warnings
-from typing import Union, List, Dict, Tuple
 from collections import OrderedDict
+from typing import Union, List, Dict, Tuple
 
 import numpy as np
-from tqdm import tqdm
-
-# from smac.utils.util_funcs import
+from smac.epm.rfr_imputator import RFRImputator
 from smac.optimizer.smbo import get_types
 from smac.tae.execute_ta_run import StatusType
-from smac.epm.rfr_imputator import RFRImputator
-from smac.utils.io.cmd_reader import truthy
+from tqdm import tqdm
 
-from pimp.configspace import CategoricalHyperparameter, Configuration, \
-    FloatHyperparameter, IntegerHyperparameter, impute_inactive_values, Constant
+from pimp.configspace import CategoricalHyperparameter, Configuration, impute_inactive_values
 from pimp.epm.base_epm import RandomForestWithInstances
 from pimp.epm.unlogged_epar_x_rfwi import UnloggedEPARXrfi
 from pimp.epm.unlogged_rfwi import Unloggedrfwi
 from pimp.evaluator.ablation import Ablation
-from pimp.evaluator.local_parameter_importance import LPI
+from pimp.evaluator.fanova import fANOVA
 from pimp.evaluator.forward_selection import ForwardSelector, AbstractEvaluator
 from pimp.evaluator.influence_models import InfluenceModel
+from pimp.evaluator.local_parameter_importance import LPI
 from pimp.utils import RunHistory, RunHistory2EPM4Cost, RunHistory2EPM4LogCost, Scenario, average_cost
-from pimp.evaluator.fanova import fANOVA
+from pimp.utils.io.traj_logger import TrajLogger as PimpTrajLogger
 
 __author__ = "Andre Biedenkapp"
 __copyright__ = "Copyright 2016, ML4AAD"
@@ -259,27 +255,20 @@ class Importance(object):
         """
         if not (os.path.exists(fn) and os.path.isfile(fn)):  # File existence check
             raise FileNotFoundError('File %s not found!' % fn)
-        with open(fn, 'r') as fh:
-            for line in fh.readlines():
-                pass
-        line = line.strip()
-        incumbent_dict = json.loads(line)
-        inc_dict = {}
-        for key_val in incumbent_dict['incumbent']:  # convert string to Configuration
-            key, val = key_val.replace("'", '').split('=')
-            if val.lower() in ('yes', 'true', 'on', '1', 'no', 'false', 'off', '0'):
-                val = truthy(val)
-            if isinstance(self.scenario.cs.get_hyperparameter(key), (CategoricalHyperparameter)):
-                inc_dict[key] = val
-            elif isinstance(self.scenario.cs.get_hyperparameter(key), (FloatHyperparameter)):
-                inc_dict[key] = float(val)
-            elif isinstance(self.scenario.cs.get_hyperparameter(key), (IntegerHyperparameter)):
-                inc_dict[key] = int(val)
-            elif isinstance(self.scenario.cs.get_hyperparameter(key), (Constant)):
-                inc_dict[key] = val
-        incumbent = Configuration(self.scenario.cs, inc_dict, allow_inactive_with_values=True)
-        incumbent = impute_inactive_values(incumbent)
-        incumbent_cost = incumbent_dict['cost']
+        with open(fn) as fp:
+            # In aclib2, the incumbent is a list of strings, in alljson it's a dictionary.
+            fileformat = 'aclib2' if isinstance(json.loads(fp.readline())["incumbent"], list) else 'alljson'
+
+        # If minimum SMAC is > 0.11.1, use TrajLogger from SMAC directly!
+        if fileformat == "aclib2":
+            self.logger.info("Format is 'aclib2'. This format has issues with recovering configurations properly. We "
+                             "recommend to use the alljson-format.")
+            traj = PimpTrajLogger.read_traj_aclib_format(fn, self.scenario.cs)
+        else:
+            traj = PimpTrajLogger.read_traj_alljson_format(fn, self.scenario.cs)
+
+        incumbent_cost = traj[-1]['cost']
+        incumbent = traj[-1]['incumbent']
         return [incumbent, incumbent_cost]
 
     @property
@@ -480,7 +469,7 @@ class Importance(object):
             self.logger.info('Fitting Model')
             self.model.train(X, Y)
 
-    def evaluate_scenario(self, methods, save_folder=None) -> Union[
+    def evaluate_scenario(self, methods, save_folder=None, plot_pyplot=True, plot_bokeh=False) -> Union[
             Tuple[Dict[str, Dict[str, float]], List[AbstractEvaluator]], Dict[str, Dict[str, float]]]:
         """
         Evaluate the given scenario
@@ -492,13 +481,16 @@ class Importance(object):
             3 => fANOVA, Ablation, Forward Selection
             4 => Forward Selection, Ablation, fANOVA
             5 => Forward Selection, fANOVA, Ablation
+        :param plot_pyplot: whether to perform standard matplotlib- plotting
+        :param plot_bokeh: whether to perform advanced bokeh plotting
         :return: if evaluation all: Tupel of dictionary[evaluation_method] -> importance values, List ov evaluator
                                     names, ordered according to sort_by
                  else:
                       dict[evalution_method] -> importance values
         """
         # influence-model currently not supported
-        assert(len(methods) >= 1)
+        if not len(methods) >= 1:
+            raise ValueError("Specify at least one method to evaluate the scenario!")
         fn = os.path.join(save_folder, 'pimp_results.json')
         load = os.path.exists(fn)
         dict_ = {}
@@ -507,17 +499,19 @@ class Importance(object):
             self.evaluator = method
             dict_[self.evaluator.name.lower()] = self.evaluator.run()
             self.evaluators.append(self.evaluator)
-            if save_folder:
+            if save_folder and plot_pyplot:
                 self.evaluator.plot_result(os.path.join(save_folder, self.evaluator.name.lower()), show=False)
+            if save_folder and plot_bokeh:
+                self.evaluator.plot_bokeh(os.path.join(save_folder, self.evaluator.name.lower() + "_bokeh"))
             if load:
                 with open(fn, 'r') as in_file:
                     doct = json.load(in_file)
                     for key in doct:
                         dict_[key] = doct[key]
-            with open(fn, 'w') as out_file:
-                json.dump(dict_,
-                          out_file, sort_keys=True, indent=4, separators=(',', ': '))
-                load = True
+            if save_folder:
+                with open(fn, 'w') as out_file:
+                    json.dump(dict_, out_file, sort_keys=True, indent=4, separators=(',', ': '))
+                    load = True
         return dict_, self.evaluators
 
     def plot_results(self, name: Union[List[str], str, None] = None, evaluators: Union[List[AbstractEvaluator],

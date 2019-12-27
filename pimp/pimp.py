@@ -12,7 +12,6 @@ from typing import Dict
 from typing import Union
 
 import numpy as np
-from smac.facade.smac_facade import SMAC
 from smac.scenario.scenario import Scenario
 from smac.runhistory.runhistory import RunHistory, RunKey
 from smac.optimizer.objective import average_cost
@@ -20,6 +19,12 @@ from smac.tae.execute_ta_run_aclib import StatusType
 from ConfigSpace.configuration_space import Configuration
 from pimp.importance.importance import Importance
 from pimp.utils.io.cmd_reader import CMDs
+
+try:
+    from smac.facade.smac_ac_facade import SMAC4AC as SMAC
+except ModuleNotFoundError:
+    # Backwards-compatibility for SMAC <= 0.10.0
+    from smac.facade.smac_facade import SMAC
 
 __author__ = "Andre Biedenkapp"
 __copyright__ = "Copyright 2016, ML4AAD"
