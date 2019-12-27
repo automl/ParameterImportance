@@ -35,6 +35,8 @@ setup(
         "fanova",
         "tqdm",
         "argcomplete",
+        "pandas",
+        "bokeh>=1.1.0",
     ],
     url='',
     license='BSD 3-clause',

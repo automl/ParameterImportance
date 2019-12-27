@@ -9,4 +9,5 @@ fanova>=2.0.14
 smac>=0.8.0
 tqdm
 argcomplete
+pandas
 bokeh>=1.1.0
