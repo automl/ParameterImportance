@@ -2,7 +2,7 @@ Cython
 numpy
 sklearn
 matplotlib
-ConfigSpace>=0.4
+ConfigSpace>=0.4.9
 scipy
 pyrfr>=0.8.0
 fanova>=2.0.14
