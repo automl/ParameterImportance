@@ -8,7 +8,7 @@ from typing import Union, List, Dict, Tuple
 
 import numpy as np
 from smac.epm.rfr_imputator import RFRImputator
-from smac.optimizer.smbo import get_types
+from smac.epm.util_funcs import get_types
 from smac.tae.execute_ta_run import StatusType
 from tqdm import tqdm
 
@@ -21,7 +21,7 @@ from pimp.evaluator.fanova import fANOVA
 from pimp.evaluator.forward_selection import ForwardSelector, AbstractEvaluator
 from pimp.evaluator.influence_models import InfluenceModel
 from pimp.evaluator.local_parameter_importance import LPI
-from pimp.utils import RunHistory, RunHistory2EPM4Cost, RunHistory2EPM4LogCost, Scenario, average_cost
+from pimp.utils import RunHistory, RunHistory2EPM4Cost, RunHistory2EPM4LogCost, Scenario
 from pimp.utils.io.traj_logger import TrajLogger as PimpTrajLogger
 
 __author__ = "Andre Biedenkapp"
@@ -229,7 +229,7 @@ class Importance(object):
             self.runhistory = runhistory
         elif runhistory_file is not None:
             self.logger.info('Reading Runhistory')
-            self.runhistory = RunHistory(aggregate_func=average_cost)
+            self.runhistory = RunHistory()
 
             globed_files = glob.glob(runhistory_file)
             self.logger.info('#RunHistories found: %d' % len(globed_files))
@@ -277,6 +277,8 @@ class Importance(object):
 
     @model.setter
     def model(self, model_short_name='urfi'):
+        print(len(self.scenario.cs.get_hyperparameters()))
+        print(self.scenario.feature_array.shape)
         if model_short_name not in ['urfi', 'rfi']:
             raise ValueError('Specified model %s does not exist or not supported!' % model_short_name)
         elif model_short_name == 'rfi':

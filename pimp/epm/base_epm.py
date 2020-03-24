@@ -108,7 +108,7 @@ class RandomForestWithInstances(AbstractEPM):
         self.rf_opts.num_trees = num_trees
         self.rf_opts.do_bootstrapping = do_bootstrapping
         max_features = 0 if ratio_features > 1.0 else \
-            max(1, int(types.shape[0] * ratio_features))
+            max(1, int(len(types) * ratio_features))
         self.rf_opts.tree_opts.max_features = max_features
         self.rf_opts.tree_opts.min_samples_to_split = min_samples_split
         self.rf_opts.tree_opts.min_samples_in_leaf = min_samples_leaf
@@ -132,6 +132,7 @@ class RandomForestWithInstances(AbstractEPM):
         self.logger = logging.getLogger(self.__module__ + "." +
                                         self.__class__.__name__)
 
+
     def _impute_inactive(self, X: np.ndarray) -> np.ndarray:
         X = X.copy()
         for idx, hp in enumerate(self.configspace.get_hyperparameters()):
@@ -151,6 +152,8 @@ class RandomForestWithInstances(AbstractEPM):
 
             nonfinite_mask = ~np.isfinite(X[:, idx])
             X[nonfinite_mask, idx] = self.impute_values[idx]
+
+        print("what the {}".format(len(self.types)))
 
         return X
 
@@ -234,9 +237,11 @@ class RandomForestWithInstances(AbstractEPM):
         if len(X.shape) != 2:
             raise ValueError(
                 'Expected 2d array, got %dd array!' % len(X.shape))
-        if X.shape[1] != self.types.shape[0]:
+        print(len(self.types))
+        print(X.shape)
+        if X.shape[1] != len(self._initial_types):
             raise ValueError('Rows in X should have %d entries but have %d!' %
-                             (self.types.shape[0], X.shape[1]))
+                             (len(self.types), X.shape[1]))
 
         means, vars_ = [], []
 
