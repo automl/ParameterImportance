@@ -10,6 +10,7 @@ import numpy as np
 from smac.epm.rfr_imputator import RFRImputator
 from smac.epm.util_funcs import get_types
 from smac.tae.execute_ta_run import StatusType
+from smac.utils.io.traj_logging import TrajLogger
 from tqdm import tqdm
 
 from pimp.configspace import CategoricalHyperparameter, Configuration, impute_inactive_values
@@ -22,7 +23,6 @@ from pimp.evaluator.forward_selection import ForwardSelector, AbstractEvaluator
 from pimp.evaluator.influence_models import InfluenceModel
 from pimp.evaluator.local_parameter_importance import LPI
 from pimp.utils import RunHistory, RunHistory2EPM4Cost, RunHistory2EPM4LogCost, Scenario
-from pimp.utils.io.traj_logger import TrajLogger as PimpTrajLogger
 
 __author__ = "Andre Biedenkapp"
 __copyright__ = "Copyright 2016, ML4AAD"
@@ -259,13 +259,12 @@ class Importance(object):
             # In aclib2, the incumbent is a list of strings, in alljson it's a dictionary.
             fileformat = 'aclib2' if isinstance(json.loads(fp.readline())["incumbent"], list) else 'alljson'
 
-        # If minimum SMAC is > 0.11.1, use TrajLogger from SMAC directly!
         if fileformat == "aclib2":
             self.logger.info("Format is 'aclib2'. This format has issues with recovering configurations properly. We "
                              "recommend to use the alljson-format.")
-            traj = PimpTrajLogger.read_traj_aclib_format(fn, self.scenario.cs)
+            traj = TrajLogger.read_traj_aclib_format(fn, self.scenario.cs)
         else:
-            traj = PimpTrajLogger.read_traj_alljson_format(fn, self.scenario.cs)
+            traj = TrajLogger.read_traj_alljson_format(fn, self.scenario.cs)
 
         incumbent_cost = traj[-1]['cost']
         incumbent = traj[-1]['incumbent']

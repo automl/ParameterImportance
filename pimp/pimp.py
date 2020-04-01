@@ -19,11 +19,7 @@ from ConfigSpace.configuration_space import Configuration
 from pimp.importance.importance import Importance
 from pimp.utils.io.cmd_reader import CMDs
 
-try:
-    from smac.facade.smac_ac_facade import SMAC4AC as SMAC
-except ModuleNotFoundError:
-    # Backwards-compatibility for SMAC <= 0.10.0
-    from smac.facade.smac_facade import SMAC
+from smac.facade.smac_ac_facade import SMAC4AC as SMAC
 
 __author__ = "Andre Biedenkapp"
 __copyright__ = "Copyright 2016, ML4AAD"
