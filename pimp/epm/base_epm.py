@@ -132,6 +132,7 @@ class RandomForestWithInstances(AbstractEPM):
         self.logger = logging.getLogger(self.__module__ + "." +
                                         self.__class__.__name__)
 
+
     def _impute_inactive(self, X: np.ndarray) -> np.ndarray:
         X = X.copy()
         for idx, hp in enumerate(self.configspace.get_hyperparameters()):
@@ -234,9 +235,9 @@ class RandomForestWithInstances(AbstractEPM):
         if len(X.shape) != 2:
             raise ValueError(
                 'Expected 2d array, got %dd array!' % len(X.shape))
-        if X.shape[1] != self.types.shape[0]:
+        if X.shape[1] != len(self._initial_types):
             raise ValueError('Rows in X should have %d entries but have %d!' %
-                             (self.types.shape[0], X.shape[1]))
+                             (len(self._initial_types), X.shape[1]))
 
         means, vars_ = [], []
 
