@@ -37,9 +37,10 @@ if __name__ == '__main__':
                             save_folder=save_folder,
                             impute_censored=args.impute)  # create importance object
     save_folder += '_run1'
+    os.makedirs(save_folder, exist_ok=True)
     with open(os.path.join(save_folder, 'pimp_args.json'), 'w') as out_file:
         json.dump(args.__dict__, out_file, sort_keys=True, indent=4, separators=(',', ': '))
-    result = importance.evaluate_scenario(args.modus, sort_by=args.order)
+    result = importance.evaluate_scenario(args.modus, save_folder=save_folder)
 
     if args.modus == 'all':
         with open(os.path.join(save_folder, 'pimp_values_%s.json' % args.modus), 'w') as out_file:
@@ -52,7 +53,7 @@ if __name__ == '__main__':
         else:
             importance.table_for_comparison(evaluators=result[1], style='cmd')
     else:
-        with open(os.path.join(save_folder, 'pimp_values_%s.json' % args.modus), 'w') as out_file:
-            json.dump(result, out_file, sort_keys=True, indent=4, separators=(',', ': '))
+        with open(os.path.join(save_folder, 'pimp_values_%s.json' % args.modus[0]), 'w') as out_file:
+            json.dump(result[0], out_file, sort_keys=True, indent=4, separators=(',', ': '))
 
-        importance.plot_results(name=os.path.join(save_folder, args.modus), show=False)
+        importance.plot_results(name=os.path.join(save_folder, args.modus[0]), show=False)

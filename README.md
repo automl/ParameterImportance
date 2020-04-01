@@ -24,20 +24,33 @@ The documentation can be found [here](https://automl.github.io/ParameterImportan
 Example results of the package look as follows:
 
 ## Forward Selection
-An Example call of forward-selection:
-`
-pimp --scenario_file scenario.txt --history smac-output/runhistory.json --modus forward-selection
-`
+An example call of forward-selection:
+
+```
+cd examples/branin
+pimp --scenario_file smac3-out/scenario.txt --history smac3-out/runhistory.json --modus forward-selection
+```
+
 Results in an image such as:
 ![](examples/ForwardSelection.png)
 
 
 ## Surrogate-ablation
 An example call of surrogate-ablation:
-`
-pimp --scenario_file scenario.txt --history smac3-out/runhistory.json --trajectory smac3-out/traj.json --modus ablation
-`
+
+```
+cd examples/branin
+pimp --scenario_file smac3-out/scenario.txt --history smac3-out/runhistory.json --trajectory smac3-out/traj.json --modus ablation`
+```
+
 Results in two plots:
 ![](examples/Ablationpercentage.png)
 ![](examples/Ablationperformance.png)
 
+## Reading in multiple runhistories
+To read in multiple runhistories, check out the spear-qcp example:
+
+```
+cd examples/spear_qcp
+pimp --scenario_file scenario.txt --history './*/runhistory.json' --modus forward-selection
+```
