@@ -12,6 +12,7 @@ from typing import Dict
 from typing import Union
 
 import numpy as np
+import fanova
 from smac.scenario.scenario import Scenario
 from smac.runhistory.runhistory import RunHistory, RunKey
 from smac.tae.execute_ta_run_aclib import StatusType
@@ -190,15 +191,6 @@ def cmd_line_call():
     logging.basicConfig(level=args.verbose_level)
     ts = time.time()
     ts = datetime.datetime.fromtimestamp(ts).strftime('%Y_%m_%d_%H:%M:%S')
-    fanova_ready = True
-
-    try:
-        import fanova
-    except ImportError:
-        warnings.simplefilter('always', ImportWarning)
-        warnings.warn('fANOVA is not installed in your environment. To install it please run '
-                      '"git+http://github.com/automl/fanova.git@master"')
-        fanova_ready = False
 
     if 'influence-model' in args.modus:
         logging.warning('influence-model not fully supported yet!')
@@ -208,17 +200,11 @@ def cmd_line_call():
                       ' lpi. Use lpi instead.', DeprecationWarning, stacklevel=2)
     if 'lpi' in args.modus:  # LPI will replace incneighbor in the future
         args.modus[args.modus.index('lpi')] = 'incneighbor'
-    if 'fanova' in args.modus and not fanova_ready:
-        raise ImportError('fANOVA is not installed! To install it please run '
-                          '"git+http://github.com/automl/fanova.git@master"')
     if 'all' in args.modus:
         choices = ['ablation',
                    'forward-selection',
                    'fanova',
                    'incneighbor']
-        if not fanova_ready:
-            raise ImportError('fANOVA is not installed! To install it please run '
-                              '"git+http://github.com/automl/fanova.git@master"')
         del args.modus[args.modus.index('all')]
         if len(args.modus) == len(choices):
             pass
