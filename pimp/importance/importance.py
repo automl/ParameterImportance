@@ -8,8 +8,9 @@ from typing import Union, List, Dict, Tuple
 
 import numpy as np
 from smac.epm.rfr_imputator import RFRImputator
-from smac.optimizer.smbo import get_types
+from smac.epm.util_funcs import get_types
 from smac.tae.execute_ta_run import StatusType
+from smac.utils.io.traj_logging import TrajLogger
 from tqdm import tqdm
 
 from pimp.configspace import CategoricalHyperparameter, Configuration, impute_inactive_values
@@ -21,8 +22,7 @@ from pimp.evaluator.fanova import fANOVA
 from pimp.evaluator.forward_selection import ForwardSelector, AbstractEvaluator
 from pimp.evaluator.influence_models import InfluenceModel
 from pimp.evaluator.local_parameter_importance import LPI
-from pimp.utils import RunHistory, RunHistory2EPM4Cost, RunHistory2EPM4LogCost, Scenario, average_cost
-from pimp.utils.io.traj_logger import TrajLogger as PimpTrajLogger
+from pimp.utils import RunHistory, RunHistory2EPM4Cost, RunHistory2EPM4LogCost, Scenario
 
 __author__ = "Andre Biedenkapp"
 __copyright__ = "Copyright 2016, ML4AAD"
@@ -229,7 +229,7 @@ class Importance(object):
             self.runhistory = runhistory
         elif runhistory_file is not None:
             self.logger.info('Reading Runhistory')
-            self.runhistory = RunHistory(aggregate_func=average_cost)
+            self.runhistory = RunHistory()
 
             globed_files = glob.glob(runhistory_file)
             self.logger.info('#RunHistories found: %d' % len(globed_files))
@@ -259,13 +259,12 @@ class Importance(object):
             # In aclib2, the incumbent is a list of strings, in alljson it's a dictionary.
             fileformat = 'aclib2' if isinstance(json.loads(fp.readline())["incumbent"], list) else 'alljson'
 
-        # If minimum SMAC is > 0.11.1, use TrajLogger from SMAC directly!
         if fileformat == "aclib2":
             self.logger.info("Format is 'aclib2'. This format has issues with recovering configurations properly. We "
                              "recommend to use the alljson-format.")
-            traj = PimpTrajLogger.read_traj_aclib_format(fn, self.scenario.cs)
+            traj = TrajLogger.read_traj_aclib_format(fn, self.scenario.cs)
         else:
-            traj = PimpTrajLogger.read_traj_alljson_format(fn, self.scenario.cs)
+            traj = TrajLogger.read_traj_alljson_format(fn, self.scenario.cs)
 
         incumbent_cost = traj[-1]['cost']
         incumbent = traj[-1]['incumbent']
@@ -275,25 +274,31 @@ class Importance(object):
     def model(self):
         return self._model
 
+    def _get_types(self, scenario, features):
+        types, bounds = get_types(scenario, features)
+        types = np.array(types, dtype='uint')
+        bounds = np.array(bounds, dtype='object')
+        return types, bounds
+
     @model.setter
     def model(self, model_short_name='urfi'):
         if model_short_name not in ['urfi', 'rfi']:
             raise ValueError('Specified model %s does not exist or not supported!' % model_short_name)
         elif model_short_name == 'rfi':
-            self.types, self.bounds = get_types(self.scenario.cs, self.scenario.feature_array)
+            self.types, self.bounds = self._get_types(self.scenario.cs, self.scenario.feature_array)
             self._model = RandomForestWithInstances(self.scenario.cs, self.types, self.bounds, 12345,
                                                     instance_features=self.scenario.feature_array,
                                                     logged_y=self.logged_y)
         elif model_short_name == 'urfi':
             self.logged_y = True
             if not self._preprocessed:
-                self.types, self.bounds = get_types(self.scenario.cs, self.scenario.feature_array)
+                self.types, self.bounds = self._get_types(self.scenario.cs, self.scenario.feature_array)
                 self._model = UnloggedEPARXrfi(self.scenario.cs, self.types, self.bounds, 12345,
                                                instance_features=self.scenario.feature_array,
                                                cutoff=self.cutoff, threshold=self.threshold,
                                                logged_y=self.logged_y)
             else:
-                self.types, self.bounds = get_types(self.scenario.cs, None)
+                self.types, self.bounds = self._get_types(self.scenario.cs, None)
                 self._model = Unloggedrfwi(self.scenario.cs, self.types, self.bounds, 12345,
                                            instance_features=None,
                                            logged_y=self.logged_y)

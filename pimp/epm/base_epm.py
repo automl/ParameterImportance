@@ -89,15 +89,8 @@ class RandomForestWithInstances(AbstractEPM):
         logged_y: bool
             Indicates if the y data is transformed (i.e. put on logscale) or not
         """
-        try:
-            super().__init__(configspace=configspace, types=types, bounds=bounds, seed=seed, **kwargs)
-        except TypeError:
-            try:
-                # To ensure backwards-compatibility with smac==0.10.0
-                super().__init__(types, bounds, **kwargs)
-            except TypeError:
-                # To ensure backwards-compatibility with smac<0.9.0
-                super().__init__(**kwargs)
+        super().__init__(configspace=configspace, types=types, bounds=bounds, seed=seed, **kwargs)
+
 
         self.configspace = configspace
         self.types = types
@@ -131,6 +124,7 @@ class RandomForestWithInstances(AbstractEPM):
 
         self.logger = logging.getLogger(self.__module__ + "." +
                                         self.__class__.__name__)
+
 
     def _impute_inactive(self, X: np.ndarray) -> np.ndarray:
         X = X.copy()
@@ -234,9 +228,9 @@ class RandomForestWithInstances(AbstractEPM):
         if len(X.shape) != 2:
             raise ValueError(
                 'Expected 2d array, got %dd array!' % len(X.shape))
-        if X.shape[1] != self.types.shape[0]:
+        if X.shape[1] != len(self._initial_types):
             raise ValueError('Rows in X should have %d entries but have %d!' %
-                             (self.types.shape[0], X.shape[1]))
+                             (len(self._initial_types), X.shape[1]))
 
         means, vars_ = [], []
 

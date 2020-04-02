@@ -14,17 +14,12 @@ from typing import Union
 import numpy as np
 from smac.scenario.scenario import Scenario
 from smac.runhistory.runhistory import RunHistory, RunKey
-from smac.optimizer.objective import average_cost
 from smac.tae.execute_ta_run_aclib import StatusType
 from ConfigSpace.configuration_space import Configuration
 from pimp.importance.importance import Importance
 from pimp.utils.io.cmd_reader import CMDs
 
-try:
-    from smac.facade.smac_ac_facade import SMAC4AC as SMAC
-except ModuleNotFoundError:
-    # Backwards-compatibility for SMAC <= 0.10.0
-    from smac.facade.smac_facade import SMAC
+from smac.facade.smac_ac_facade import SMAC4AC as SMAC
 
 __author__ = "Andre Biedenkapp"
 __copyright__ = "Copyright 2016, ML4AAD"
@@ -85,7 +80,7 @@ class PIMP:
         elif X is not None and y is not None:
             X = np.array(X)
             y = np.array(y)
-            runHist = RunHistory(average_cost)
+            runHist = RunHistory()
             if X.shape[0] != y.shape[0]:
                 raise Exception('Number of samples in X and y dont match!')
             n_params = len(scenario.cs.get_hyperparameters())
