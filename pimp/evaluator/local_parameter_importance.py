@@ -246,7 +246,7 @@ class LPI(AbstractEvaluator):
             tmp_perf = performance_dict[param][:inc_at] + performance_dict[param][inc_at + 1:]
             if delta == 0:
                 delta = 1  # To avoid division by zero
-            imp_over_mea = (np.mean(tmp_perf) - performance_dict[param][inc_at]) / delta
+            imp_over_mea = (np.nanmean(tmp_perf) - performance_dict[param][inc_at]) / delta
             imp_over_med = (np.median(tmp_perf) - performance_dict[param][inc_at]) / delta
             try:
                 imp_over_max = (np.max(tmp_perf) - performance_dict[param][inc_at]) / delta
@@ -273,7 +273,7 @@ class LPI(AbstractEvaluator):
                 str(sum_var_per_tree), len(list(pred_per_tree.values())[0][0]))
         for param in performance_dict.keys():
             if self.quantify_importance_via_variance:
-                evaluated_parameter_importance[param] = np.mean(overall_var_per_tree[param])
+                evaluated_parameter_importance[param] = np.nanmean(overall_var_per_tree[param])
             else:
                 evaluated_parameter_importance[param] = overall_imp[param][0]
 
