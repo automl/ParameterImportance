@@ -7,4 +7,4 @@ from ConfigSpace.hyperparameters import CategoricalHyperparameter, FloatHyperpar
 from ConfigSpace.conditions import AndConjunction, OrConjunction, InCondition, EqualsCondition
 from ConfigSpace.exceptions import ForbiddenValueError
 from ConfigSpace.hyperparameters import UniformFloatHyperparameter, UniformIntegerHyperparameter, Constant, \
-    OrdinalHyperparameter
+    OrdinalHyperparameter, NumericalHyperparameter

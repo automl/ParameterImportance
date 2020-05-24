@@ -20,7 +20,7 @@ from matplotlib import pyplot as plt
 from smac.runhistory.runhistory import RunHistory
 from ConfigSpace.configuration_space import Configuration
 from ConfigSpace.util import impute_inactive_values
-from ConfigSpace.hyperparameters import CategoricalHyperparameter, Constant
+from ConfigSpace.hyperparameters import CategoricalHyperparameter, OrdinalHyperparameter, Constant
 
 try:
     from fanova import fANOVA as fanova_pyrfr
@@ -103,8 +103,7 @@ class fANOVA(AbstractEvaluator):
                 for c_idx, config in enumerate(self.X):
                     # print("{}/{}".format(c_idx, len(self.X)))
                     for p_idx, param in enumerate(self.cs.get_hyperparameters()):
-                        if not (isinstance(param, CategoricalHyperparameter) or
-                                isinstance(param, Constant)):
+                        if not isinstance(param, (CategoricalHyperparameter, OrdinalHyperparameter, Constant)):
                             # getting the parameters out of the hypercube setting as used in smac runhistory
                             self._X[c_idx][p_idx] = param._transform(self.X[c_idx][p_idx])
         else:
