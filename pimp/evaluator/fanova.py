@@ -25,6 +25,7 @@ from ConfigSpace.hyperparameters import CategoricalHyperparameter, OrdinalHyperp
 try:
     from fanova import fANOVA as fanova_pyrfr
     from fanova.visualizer import Visualizer
+    from fanova.__version__ import __version__ as fanova_version
 except ImportError:
     warnings.simplefilter('always', ImportWarning)
     warnings.warn('\n{0}\n{0}{1}{0}\n{0}'.format('!'*120,
@@ -117,6 +118,8 @@ class fANOVA(AbstractEvaluator):
             cutoffs = (self.model.predict_marginalized_over_instances(
                 np.array([impute_inactive_values( self.cs.get_default_configuration()).get_array()]))[0].flatten()[0],
                        np.inf)
+        if fanova_version > '2.0.17':
+            self._X = pd.DataFrame(self._X, columns=self.cs.get_hyperparameter_names())
         self.evaluator = fanova_pyrfr(X=self._X, Y=self._y.flatten(), config_space=self.cs,
                                       seed=self.rng.randint(2**31-1), cutoffs=cutoffs)
         self.n_most_imp_pairs = n_pairs
