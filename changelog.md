@@ -1,4 +1,4 @@
-# 1.1.0
+# 1.1.1
 
 ## Major changes
 * Add support for SMAC 0.12.1 and 0.12.2
