@@ -14,7 +14,7 @@ mpl.use('Agg')
 from matplotlib import pyplot as plt
 
 from pimp.configspace import change_hp_value, Configuration, ForbiddenValueError,\
-    impute_inactive_values, CategoricalHyperparameter, check_forbidden
+    impute_inactive_values, CategoricalHyperparameter, NumericalHyperparameter, check_forbidden
 from pimp.evaluator.base_evaluator import AbstractEvaluator
 
 __author__ = "Andre Biedenkapp"
@@ -379,7 +379,7 @@ class LPI(AbstractEvaluator):
                             color_ = (1, 0, 0)
                         t.set_color(color_)
 
-                if not isinstance(self.cs.get_hyperparameter(param), CategoricalHyperparameter):
+                if isinstance(self.cs.get_hyperparameter(param), NumericalHyperparameter):
                     ax1.set_xscale('log' if self.cs.get_hyperparameter(param).log else 'linear')
                 plt.xlabel(param)
                 if self.scenario.run_obj == 'runtime':

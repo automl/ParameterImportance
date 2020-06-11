@@ -210,7 +210,7 @@ class RandomForestWithInstances(AbstractEPM):
             data.add_data_point(row_X, row_y)
         return data
 
-    def _predict(self, X: np.ndarray):
+    def _predict(self, X: np.ndarray, cov_return_type='diagonal_cov'):
         """Predict means and variances for given X.
 
         Parameters
@@ -231,6 +231,8 @@ class RandomForestWithInstances(AbstractEPM):
         if X.shape[1] != len(self._initial_types):
             raise ValueError('Rows in X should have %d entries but have %d!' %
                              (len(self._initial_types), X.shape[1]))
+        if cov_return_type != 'diagonal_cov':
+            raise ValueError("'cov_return_type' can only take 'diagonal_cov' for this model")
 
         means, vars_ = [], []
 

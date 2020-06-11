@@ -1,6 +1,12 @@
 # 1.1.0
 
 ## Major changes
+* Add support for SMAC 0.12.1 and 0.12.2
+* Update args of random-forest to fit latest SMAC-requirements
+
+# 1.1.0
+
+## Major changes
 * Add support for SMAC 0.12.0
 * Drop support for SMAC < 0.12.0 
 
