@@ -457,7 +457,7 @@ class Importance(object):
             self.model = 'rfi'
             rh2EPM = RunHistory2EPM4Cost(scenario=self.scenario,
                                          num_params=num_params,
-                                         success_states=None,
+                                         success_states=[StatusType.SUCCESS],
                                          impute_censored_data=self.impute,
                                          impute_state=None)
         self.logger.info('Using model %s' % str(self.model))
@@ -477,7 +477,7 @@ class Importance(object):
     def evaluate_scenario(self, methods, save_folder=None, plot_pyplot=True, plot_bokeh=False) -> Union[
             Tuple[Dict[str, Dict[str, float]], List[AbstractEvaluator]], Dict[str, Dict[str, float]]]:
         """
-        Evaluate the given scenario
+         the given scenario
         :param evaluation_method: name of the method to use
         :param sort_by: int, determines the order (only used if evaluation_method == all)
             0 => Ablation, fANOVA, Forward Selection
