@@ -1,3 +1,8 @@
+# 1.1.2
+
+## Bugfixes
+* Bokeh plots ignored the `show_plot`-argument and always opened browser (#127)
+
 # 1.1.1
 
 ## Major changes
