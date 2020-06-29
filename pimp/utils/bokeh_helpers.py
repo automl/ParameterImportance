@@ -115,7 +115,7 @@ def bokeh_boxplot(labels, mean, std, x_label, y_label, runtime, inc_indices):
 def bokeh_multiline(data, x_limits, y_limits, x_column, line_columns, y_label, z_label):
     """
     Bokeh multiline plot
-    
+
     Parameters
     ----------
     data: pandas.DataFrame
@@ -218,7 +218,7 @@ def save_and_show(plot_name, show_plot, layout):
             plot_name = plot_name + '.html'
         output_file(plot_name)
         save(layout)
-    if True or show_plot:
+    if show_plot:
         show(layout)
 
 def shorten_unique(names, keep_first=4, keep_last=4):
