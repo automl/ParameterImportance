@@ -9,7 +9,7 @@ from typing import Union, List, Dict, Tuple
 import numpy as np
 from smac.epm.rfr_imputator import RFRImputator
 from smac.epm.util_funcs import get_types
-from smac.tae.execute_ta_run import StatusType
+from smac.tae import StatusType
 from smac.utils.io.traj_logging import TrajLogger
 from tqdm import tqdm
 
