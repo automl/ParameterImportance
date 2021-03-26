@@ -12,7 +12,7 @@ mpl.use('Agg')
 from matplotlib import pyplot as plt
 from tqdm import tqdm, trange
 from sklearn.model_selection import KFold
-from sklearn.metrics.regression import mean_squared_error
+from sklearn.metrics import mean_squared_error
 from pimp.evaluator.base_evaluator import AbstractEvaluator
 
 __author__ = "Andre Biedenkapp"
