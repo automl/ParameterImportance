@@ -8,7 +8,7 @@ import matplotlib as mpl
 mpl.use('Agg')
 from matplotlib import pyplot as plt
 from sklearn.linear_model import LinearRegression
-from sklearn.metrics.regression import mean_squared_error
+from sklearn.metrics import mean_squared_error
 
 from pimp.evaluator.base_evaluator import AbstractEvaluator
 
