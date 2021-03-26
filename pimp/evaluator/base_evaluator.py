@@ -105,6 +105,11 @@ class AbstractEvaluator(object):
         """
         # We need to fake config-space bypass imputation of inactive values in random forest implementation
         fake_cs = ConfigurationSpace(name="fake-cs-for-configurator-footprint")
+        # We need to add fake hyperparameters
+        fake_cs.add_hyperparameters([
+            UniformFloatHyperparameter('fake-%s' % i, lower=0., upper=100000., default_value=0.,
+                                       log=False) for i in range(len(types))
+        ])
 
         self.model = RandomForestWithInstances(fake_cs, types, bounds, seed=12345, do_bootstrapping=True)
         self.model.rf_opts.compute_oob_error = True
